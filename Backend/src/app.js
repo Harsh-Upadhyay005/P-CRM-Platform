@@ -8,6 +8,7 @@ import { ApiResponse } from "./utils/ApiResponse.js";
 import { ApiError } from "./utils/ApiError.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 import { env } from "./config/env.js";
+import authRoute from "./routes/auth.routes.js";
 
 const app = express();
 
@@ -45,6 +46,9 @@ app.get("/health", (req, res) => {
     .status(200)
     .json(new ApiResponse(200, { status: "OK" }, "Server is healthy"));
 });
+
+// ROUTES
+app.use("/api/v1/auth", authRoute);
 
 // 404 HANDLER
 app.use((req, res, next) => {
