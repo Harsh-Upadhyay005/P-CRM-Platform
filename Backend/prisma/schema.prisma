@@ -1,13 +1,234 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+}
+
+// ENUMS
+
+enum RoleType {
+  SUPER_ADMIN
+  ADMIN
+  DEPARTMENT_HEAD
+  OFFICER
+  CALL_OPERATOR
+}
+
+enum ComplaintStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  ESCALATED
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// TENANT (Political Office)
+
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users       User[]
+  departments Department[]
+  complaints  Complaint[]
+  auditLogs   AuditLog[]
+
+  @@index([slug])
+}
+
+// ROLE
+
+model Role {
+  id        String   @id @default(uuid())
+  type      RoleType @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     User[]
+}
+
+// USER
+
+model User {
+  id            String   @id @default(uuid())
+  tenantId      String
+  roleId        String
+  departmentId  String?
+
+  name          String
+  email         String   @unique
+  password      String
+
+  isActive      Boolean  @default(true)
+  isDeleted     Boolean  @default(false)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant     @relation(fields: [tenantId], references: [id])
+  role          Role       @relation(fields: [roleId], references: [id])
+  department    Department? @relation(fields: [departmentId], references: [id])
+
+  assignedComplaints Complaint[] @relation("AssignedTo")
+
+  statusChanges ComplaintStatusHistory[]
+  notes         InternalNote[]
+  notifications Notification[]
+
+  @@index([tenantId])
+  @@index([roleId])
+  @@index([departmentId])
+}
+
+// DEPARTMENT
+
+model Department {
+  id          String   @id @default(uuid())
+  tenantId    String
+
+  name        String
+  slaHours    Int      @default(48)
+
+  isActive    Boolean  @default(true)
+  isDeleted   Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  users       User[]
+  complaints  Complaint[]
+
+  @@index([tenantId])
+}
+
+// COMPLAINT
+
+model Complaint {
+  id              String   @id @default(uuid())
+  trackingId      String   @unique
+  tenantId        String
+
+  citizenName     String
+  citizenPhone    String
+  citizenEmail    String?
+  description     String
+
+  category        String?
+  priority        Priority @default(MEDIUM)
+  status          ComplaintStatus @default(OPEN)
+
+  departmentId    String?
+  assignedToId    String?
+
+  aiScore         Float?
+  sentimentScore  Float?
+  duplicateScore  Float?
+
+  isDeleted       Boolean @default(false)
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  resolvedAt      DateTime?
+
+  tenant          Tenant      @relation(fields: [tenantId], references: [id])
+  department      Department? @relation(fields: [departmentId], references: [id])
+  assignedTo      User?       @relation("AssignedTo", fields: [assignedToId], references: [id])
+
+  statusHistory   ComplaintStatusHistory[]
+  notes           InternalNote[]
+  notifications   Notification[]
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([priority])
+  @@index([departmentId])
+  @@index([assignedToId])
+  @@index([createdAt])
+}
+
+// STATUS HISTORY
+
+model ComplaintStatusHistory {
+  id           String   @id @default(uuid())
+  complaintId  String
+  oldStatus    ComplaintStatus
+  newStatus    ComplaintStatus
+  changedById  String
+  changedAt    DateTime @default(now())
+
+  complaint    Complaint @relation(fields: [complaintId], references: [id])
+  changedBy    User      @relation(fields: [changedById], references: [id])
+
+  @@index([complaintId])
+}
+
+// INTERNAL NOTES
+
+model InternalNote {
+  id          String   @id @default(uuid())
+  complaintId String
+  userId      String
+  note        String
+
+  createdAt   DateTime @default(now())
+
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([complaintId])
+}
+
+// NOTIFICATIONS
+
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String
+  complaintId String?
+
+  title       String
+  message     String
+  isRead      Boolean  @default(false)
+
+  createdAt   DateTime @default(now())
+
+  user        User       @relation(fields: [userId], references: [id])
+  complaint   Complaint? @relation(fields: [complaintId], references: [id])
+
+  @@index([userId])
+}
+
+// AUDIT LOG
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String?
+  action      String
+  entityType  String
+  entityId    String
+  metadata    Json?
+
+  createdAt   DateTime @default(now())
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+  @@index([entityType])
 }
