@@ -129,7 +129,7 @@ export const updateMyProfile = async (userId, data, user) => {
   return updated;
 };
 
-export const assignRole = async (targetId, { roleType }, user) => {
+export const assignRole = async (targetId, { roleType, departmentId }, user) => {
   if (!canAssignRole(user.role, roleType)) {
     throw new ApiError(403, `You cannot assign the ${roleType} role`);
   }
@@ -145,11 +145,22 @@ export const assignRole = async (targetId, { roleType }, user) => {
     throw new ApiError(403, "You cannot modify a user with an equal or higher role");
   }
 
+  // Validate departmentId belongs to tenant if provided
+  if (departmentId !== undefined && departmentId !== null) {
+    const dept = await prisma.department.findFirst({
+      where: { id: departmentId, isDeleted: false, isActive: true, ...forTenant(user) },
+    });
+    if (!dept) throw new ApiError(404, "Department not found");
+  }
+
   const roleId = await resolveRoleId(roleType);
 
   const updated = await prisma.user.update({
     where: { id: targetId },
-    data: { roleId },
+    data: {
+      roleId,
+      ...(departmentId !== undefined && { departmentId }),
+    },
     select: userSelect,
   });
 
