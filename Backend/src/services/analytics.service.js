@@ -3,6 +3,11 @@ import { ApiError } from "../utils/ApiError.js";
 import { forTenant } from "../utils/tenantScope.js";
 import { isSlaBreached, NON_SLA_STATUSES } from "../utils/slaEngine.js";
 
+// Max rows pulled per analytics sub-query to protect the DB under high complaint volume.
+// Real-time aggregation at this scale is intentional; a background cache/materialized view
+// should be introduced if complaint counts exceed this threshold per tenant.
+const ANALYTICS_ROW_CAP = 5_000;
+
 const getABACFilter = async (user) => {
   const { userId, role } = user;
 
@@ -80,6 +85,8 @@ export const getOverview = async (user, query = {}) => {
       createdAt:  true,
       department: { select: { slaHours: true } },
     },
+    orderBy: { createdAt: "desc" },
+    take:    ANALYTICS_ROW_CAP,
   });
 
   const slaBreachedCount = activeComplaints.filter((c) =>
@@ -97,7 +104,9 @@ export const getOverview = async (user, query = {}) => {
       status:      { in: ["RESOLVED", "CLOSED"] },
       resolvedAt:  { not: null },
     },
-    select: { createdAt: true, resolvedAt: true },
+    select:  { createdAt: true, resolvedAt: true },
+    orderBy: { resolvedAt: "desc" },
+    take:    ANALYTICS_ROW_CAP,
   });
 
   const avgResMs = avgResolutionMs(resolvedComplaints);
@@ -171,6 +180,8 @@ export const getDepartmentStats = async (user) => {
         createdAt:    true,
         department:   { select: { slaHours: true } },
       },
+      orderBy: { createdAt: "desc" },
+      take:    ANALYTICS_ROW_CAP,
     }),
     prisma.complaint.findMany({
       where: {
@@ -179,7 +190,9 @@ export const getDepartmentStats = async (user) => {
         status:     { in: ["RESOLVED", "CLOSED"] },
         resolvedAt: { not: null },
       },
-      select: { departmentId: true, createdAt: true, resolvedAt: true },
+      select:  { departmentId: true, createdAt: true, resolvedAt: true },
+      orderBy: { resolvedAt: "desc" },
+      take:    ANALYTICS_ROW_CAP,
     }),
   ]);
 
@@ -265,6 +278,7 @@ export const getTrends = async (user, query = {}) => {
     where:   baseWhere,
     select:  { createdAt: true, status: true },
     orderBy: { createdAt: "asc" },
+    take:    ANALYTICS_ROW_CAP,
   });
 
   if (granularity === "weekly") {
@@ -335,6 +349,8 @@ export const getOfficerLeaderboard = async (user) => {
         resolvedAt:   true,
         department:   { select: { slaHours: true } },
       },
+      orderBy: { resolvedAt: "desc" },
+      take:    ANALYTICS_ROW_CAP,
     }),
     prisma.complaint.findMany({
       where: {
@@ -346,6 +362,8 @@ export const getOfficerLeaderboard = async (user) => {
         createdAt:    true,
         department:   { select: { slaHours: true } },
       },
+      orderBy: { createdAt: "desc" },
+      take:    ANALYTICS_ROW_CAP,
     }),
   ]);
 
