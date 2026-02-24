@@ -135,7 +135,15 @@ export const resendVerificationEmail = async (email) => {
     },
   });
 
-  await sendVerificationEmail(email, user.name, rawToken);
+  try {
+    await sendVerificationEmail(email, user.name, rawToken);
+  } catch {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { verificationToken: null, verificationExpiry: null },
+    }).catch(() => {});
+    throw new ApiError(500, "Failed to send verification email. Please try again.");
+  }
 
   return true;
 };

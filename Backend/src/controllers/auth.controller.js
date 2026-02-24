@@ -1,5 +1,6 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { ApiError } from "../utils/ApiError.js";
 import * as authService from "../services/auth.service.js";
 import { env } from "../config/env.js";
 import { parseDurationToMs } from "../utils/token.utils.js";
@@ -58,9 +59,7 @@ export const login = asyncHandler(async (req, res) => {
 export const refresh = asyncHandler(async (req, res) => {
   const token = req.cookies?.refreshToken;
   if (!token) {
-    return res
-      .status(401)
-      .json(new ApiResponse(401, null, "Refresh token missing"));
+    throw new ApiError(401, "Refresh token missing");
   }
   const { accessToken, refreshToken } = await authService.refreshTokens(token);
   setAuthCookies(res, accessToken, refreshToken);
