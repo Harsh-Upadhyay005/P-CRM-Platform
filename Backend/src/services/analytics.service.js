@@ -129,52 +129,63 @@ export const getOverview = async (user, query = {}) => {
 };
 
 export const getDepartmentStats = async (user) => {
-  if (!["ADMIN", "SUPER_ADMIN"].includes(user.role)) {
+  if (!["ADMIN", "SUPER_ADMIN", "DEPARTMENT_HEAD"].includes(user.role)) {
     throw new ApiError(403, "Insufficient permissions");
   }
 
   const tenantFilter = forTenant(user);
   const baseWhere    = { isDeleted: false, ...tenantFilter };
 
+  let deptIdFilter = {};
+  if (user.role === "DEPARTMENT_HEAD") {
+    const dbUser = await prisma.user.findUnique({
+      where:  { id: user.userId },
+      select: { departmentId: true },
+    });
+    if (!dbUser?.departmentId) {
+      throw new ApiError(403, "Department head is not assigned to any department");
+    }
+    deptIdFilter = { id: dbUser.departmentId };
+  }
+
   const departments = await prisma.department.findMany({
-    where:  { isDeleted: false, ...tenantFilter },
+    where:  { isDeleted: false, ...tenantFilter, ...deptIdFilter },
     select: { id: true, name: true, slug: true, slaHours: true },
   });
 
   if (departments.length === 0) return [];
 
-  const grouped = await prisma.complaint.groupBy({
-    by:    ["departmentId", "status"],
-    where: { ...baseWhere, departmentId: { not: null } },
-    _count: { _all: true },
-  });
+  const deptIds            = departments.map((d) => d.id);
+  const deptComplaintFilter = { departmentId: { in: deptIds } };
 
-  const activeComplaints = await prisma.complaint.findMany({
-    where: {
-      ...baseWhere,
-      status: { notIn: NON_SLA_STATUSES },
-      departmentId: { not: null },
-    },
-    select: {
-      departmentId: true,
-      createdAt:    true,
-      department:   { select: { slaHours: true } },
-    },
-  });
+  const [grouped, activeComplaints, resolvedComplaints] = await Promise.all([
+    prisma.complaint.groupBy({
+      by:    ["departmentId", "status"],
+      where: { ...baseWhere, ...deptComplaintFilter },
+      _count: { _all: true },
+    }),
+    prisma.complaint.findMany({
+      where: { ...baseWhere, ...deptComplaintFilter, status: { notIn: NON_SLA_STATUSES } },
+      select: {
+        departmentId: true,
+        createdAt:    true,
+        department:   { select: { slaHours: true } },
+      },
+    }),
+    prisma.complaint.findMany({
+      where: {
+        ...baseWhere,
+        ...deptComplaintFilter,
+        status:     { in: ["RESOLVED", "CLOSED"] },
+        resolvedAt: { not: null },
+      },
+      select: { departmentId: true, createdAt: true, resolvedAt: true },
+    }),
+  ]);
 
-  const resolvedComplaints = await prisma.complaint.findMany({
-    where: {
-      ...baseWhere,
-      status:      { in: ["RESOLVED", "CLOSED"] },
-      resolvedAt:  { not: null },
-      departmentId: { not: null },
-    },
-    select: { departmentId: true, createdAt: true, resolvedAt: true },
-  });
-
-  const byDeptStatus    = {};
-  const byDeptActive    = {};
-  const byDeptResolved  = {};
+  const byDeptStatus   = {};
+  const byDeptActive   = {};
+  const byDeptResolved = {};
 
   for (const row of grouped) {
     if (!byDeptStatus[row.departmentId]) byDeptStatus[row.departmentId] = {};
@@ -190,11 +201,11 @@ export const getDepartmentStats = async (user) => {
   }
 
   return departments.map((dept) => {
-    const statusMap  = byDeptStatus[dept.id]  ?? {};
-    const active     = byDeptActive[dept.id]  ?? [];
-    const resolved   = byDeptResolved[dept.id] ?? [];
+    const statusMap = byDeptStatus[dept.id]  ?? {};
+    const active    = byDeptActive[dept.id]  ?? [];
+    const resolved  = byDeptResolved[dept.id] ?? [];
 
-    const total = Object.values(statusMap).reduce((s, n) => s + n, 0);
+    const total      = Object.values(statusMap).reduce((s, n) => s + n, 0);
     const slaBreached = active.filter((c) =>
       isSlaBreached(c.createdAt, dept.slaHours)
     ).length;
@@ -211,9 +222,9 @@ export const getDepartmentStats = async (user) => {
         CLOSED:      statusMap.CLOSED      ?? 0,
       },
       sla: {
-        activeCount:  active.length,
+        activeCount:   active.length,
         breachedCount: slaBreached,
-        breachPct:    active.length > 0
+        breachPct:     active.length > 0
           ? +((slaBreached / active.length) * 100).toFixed(1)
           : 0,
       },
@@ -222,15 +233,27 @@ export const getDepartmentStats = async (user) => {
   });
 };
 
+const getISOWeekKey = (date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+  const week1   = new Date(d.getFullYear(), 0, 4);
+  const weekNum = 1 + Math.round(((d - week1) / 86_400_000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
+  return `${d.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
+};
+
 export const getTrends = async (user, query = {}) => {
-  const days = Math.min(Math.max(parseInt(query.days) || 30, 7), 90);
+  const granularity = query.granularity === "weekly" ? "weekly" : "daily";
+  const maxDays     = granularity === "weekly" ? 364 : 90;
+  const defaultDays = granularity === "weekly" ? 84  : 30;
+  const days        = Math.min(Math.max(parseInt(query.days) || defaultDays, 7), maxDays);
 
   const [abacFilter, tenantFilter] = await Promise.all([
     getABACFilter(user),
     Promise.resolve(forTenant(user)),
   ]);
 
-  const since    = new Date(Date.now() - days * 86_400_000);
+  const since     = new Date(Date.now() - days * 86_400_000);
   const baseWhere = {
     isDeleted: false,
     ...tenantFilter,
@@ -239,18 +262,34 @@ export const getTrends = async (user, query = {}) => {
   };
 
   const complaints = await prisma.complaint.findMany({
-    where:  baseWhere,
-    select: { createdAt: true, status: true, priority: true },
+    where:   baseWhere,
+    select:  { createdAt: true, status: true },
     orderBy: { createdAt: "asc" },
   });
 
+  if (granularity === "weekly") {
+    const buckets = {};
+    for (let i = 0; i < days; i++) {
+      const key = getISOWeekKey(new Date(since.getTime() + i * 86_400_000));
+      if (!buckets[key]) buckets[key] = { week: key, total: 0, resolved: 0, escalated: 0 };
+    }
+    for (const c of complaints) {
+      const key = getISOWeekKey(c.createdAt);
+      if (buckets[key]) {
+        buckets[key].total++;
+        if (c.status === "RESOLVED" || c.status === "CLOSED") buckets[key].resolved++;
+        if (c.status === "ESCALATED") buckets[key].escalated++;
+      }
+    }
+    return { granularity, days, since: since.toISOString(), data: Object.values(buckets) };
+  }
+
   const buckets = {};
   for (let i = 0; i < days; i++) {
-    const d = new Date(since.getTime() + i * 86_400_000);
+    const d   = new Date(since.getTime() + i * 86_400_000);
     const key = d.toISOString().slice(0, 10);
     buckets[key] = { date: key, total: 0, resolved: 0, escalated: 0 };
   }
-
   for (const c of complaints) {
     const key = new Date(c.createdAt).toISOString().slice(0, 10);
     if (buckets[key]) {
@@ -259,21 +298,28 @@ export const getTrends = async (user, query = {}) => {
       if (c.status === "ESCALATED") buckets[key].escalated++;
     }
   }
-
-  return {
-    days,
-    since: since.toISOString(),
-    data:  Object.values(buckets),
-  };
+  return { granularity, days, since: since.toISOString(), data: Object.values(buckets) };
 };
 
 export const getOfficerLeaderboard = async (user) => {
-  if (!["ADMIN", "SUPER_ADMIN"].includes(user.role)) {
+  if (!["ADMIN", "SUPER_ADMIN", "DEPARTMENT_HEAD"].includes(user.role)) {
     throw new ApiError(403, "Insufficient permissions");
   }
 
   const tenantFilter = forTenant(user);
-  const baseWhere    = { isDeleted: false, ...tenantFilter, assignedToId: { not: null } };
+  let deptFilter = {};
+  if (user.role === "DEPARTMENT_HEAD") {
+    const dbUser = await prisma.user.findUnique({
+      where:  { id: user.userId },
+      select: { departmentId: true },
+    });
+    if (!dbUser?.departmentId) {
+      throw new ApiError(403, "Department head is not assigned to any department");
+    }
+    deptFilter = { departmentId: dbUser.departmentId };
+  }
+
+  const baseWhere = { isDeleted: false, ...tenantFilter, assignedToId: { not: null }, ...deptFilter };
 
   const [statusGroups, resolvedComplaints, activeComplaints] = await Promise.all([
     prisma.complaint.groupBy({
@@ -283,7 +329,12 @@ export const getOfficerLeaderboard = async (user) => {
     }),
     prisma.complaint.findMany({
       where: { ...baseWhere, status: { in: ["RESOLVED", "CLOSED"] }, resolvedAt: { not: null } },
-      select: { assignedToId: true, createdAt: true, resolvedAt: true },
+      select: {
+        assignedToId: true,
+        createdAt:    true,
+        resolvedAt:   true,
+        department:   { select: { slaHours: true } },
+      },
     }),
     prisma.complaint.findMany({
       where: {
@@ -334,6 +385,11 @@ export const getOfficerLeaderboard = async (user) => {
       isSlaBreached(c.createdAt, c.department?.slaHours ?? 48)
     ).length;
 
+    const resolvedWithinSla = resolved.filter((c) => {
+      const deadline = new Date(c.createdAt).getTime() + (c.department?.slaHours ?? 48) * 3_600_000;
+      return new Date(c.resolvedAt).getTime() <= deadline;
+    }).length;
+
     return {
       officer:           officerMap[oid] ?? { id: oid },
       totalAssigned,
@@ -341,6 +397,9 @@ export const getOfficerLeaderboard = async (user) => {
       openCount:         (statusMap.IN_PROGRESS ?? 0) + (statusMap.ASSIGNED ?? 0),
       escalatedCount:    statusMap.ESCALATED ?? 0,
       slaBreachedActive: slaBreached,
+      slaComplianceRate: resolved.length > 0
+        ? +((resolvedWithinSla / resolved.length) * 100).toFixed(1)
+        : null,
       avgResolutionTime: msToHuman(avgResolutionMs(resolved)),
     };
   });

@@ -14,6 +14,7 @@ import complaintsRoute from "./routes/complaints.routes.js";
 import usersRoute from "./routes/users.routes.js";
 import departmentsRoute from "./routes/departments.routes.js";
 import analyticsRoute from "./routes/analytics.routes.js";
+import notificationsRoute from "./routes/notifications.routes.js";
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use("/api/v1/complaints", complaintsRoute);
 app.use("/api/v1/users", usersRoute);
 app.use("/api/v1/departments", departmentsRoute);
 app.use("/api/v1/analytics", analyticsRoute);
+app.use("/api/v1/notifications", notificationsRoute);
 
 // 404 HANDLER
 app.use((req, res, next) => {

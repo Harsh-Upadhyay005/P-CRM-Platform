@@ -21,13 +21,13 @@ router.get(
 
 router.get(
   "/departments",
-  authorizeMinimum("ADMIN"),
+  authorizeMinimum("DEPARTMENT_HEAD"),
   controller.getDepartmentStats,
 );
 
 router.get(
   "/officers",
-  authorizeMinimum("ADMIN"),
+  authorizeMinimum("DEPARTMENT_HEAD"),
   controller.getOfficerLeaderboard,
 );
 
