@@ -2,7 +2,8 @@ import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/ApiError.js";
 import { forTenant, inTenant, assertTenant } from "../utils/tenantScope.js";
 import { generateTrackingId, getPagination, paginatedResponse } from "../utils/helpers.js";
-import { assertValidTransition, isTerminal } from "../utils/statusEngine.js";
+import { assertRoleCanTransition, isTerminal } from "../utils/statusEngine.js";
+import { notifyAssignment, notifyStatusChange } from "./notification.service.js";
 import { canManageUser } from "../utils/roleHierarchy.js";
 
 const complaintSummarySelect = {
@@ -265,8 +266,16 @@ export const assignComplaint = async (id, data, user) => {
         ...forTenant(user),
         role: { type: { in: ["OFFICER", "DEPARTMENT_HEAD"] } },
       },
+      select: { id: true, departmentId: true },
     });
     if (!officer) throw new ApiError(404, "Officer not found or not eligible for assignment");
+
+    if (user.role === "DEPARTMENT_HEAD") {
+      const effectiveDeptId = departmentId ?? complaint.departmentId;
+      if (effectiveDeptId && officer.departmentId !== effectiveDeptId) {
+        throw new ApiError(403, "Officer does not belong to the target department");
+      }
+    }
   }
 
   const targetDept = departmentId ?? complaint.departmentId;
@@ -296,6 +305,10 @@ export const assignComplaint = async (id, data, user) => {
       : []),
   ]);
 
+  if (assignedToId) {
+    notifyAssignment(id, assignedToId, user.userId, updated.trackingId).catch(() => {});
+  }
+
   return updated;
 };
 
@@ -321,7 +334,7 @@ export const updateComplaintStatus = async (id, { newStatus }, user) => {
     }
   }
 
-  assertValidTransition(complaint.status, newStatus);
+  assertRoleCanTransition(user.role, complaint.status, newStatus);
 
   const resolvedAt =
     newStatus === "RESOLVED" || newStatus === "CLOSED" ? new Date() : undefined;
@@ -344,6 +357,16 @@ export const updateComplaintStatus = async (id, { newStatus }, user) => {
       },
     }),
   ]);
+
+  notifyStatusChange(
+    id,
+    complaint.status,
+    newStatus,
+    complaint.createdById,
+    complaint.assignedToId,
+    user.userId,
+    updated.trackingId
+  ).catch(() => {});
 
   return updated;
 };
