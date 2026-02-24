@@ -190,6 +190,9 @@ model Complaint {
   @@index([assignedToId])
   @@index([createdById])
   @@index([createdAt])
+  // Compound indexes for the two most common filter combinations
+  @@index([tenantId, status])
+  @@index([tenantId, isDeleted])
 }
 
 // STATUS HISTORY
@@ -241,6 +244,8 @@ model Notification {
   complaint   Complaint? @relation(fields: [complaintId], references: [id])
 
   @@index([userId])
+  @@index([userId, isRead])   // getUnreadCount + paginated list filter
+  @@index([createdAt])        // paginated list ordering
 }
 
 // AUDIT LOG
@@ -259,5 +264,9 @@ model AuditLog {
   tenant      Tenant @relation(fields: [tenantId], references: [id])
 
   @@index([tenantId])
+  @@index([action])
   @@index([entityType])
+  @@index([createdAt])
+  // Compound for the most common admin query: tenant + action
+  @@index([tenantId, action])
 }
