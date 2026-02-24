@@ -95,6 +95,7 @@ model User {
   department    Department? @relation(fields: [departmentId], references: [id])
 
   assignedComplaints Complaint[] @relation("AssignedTo")
+  createdComplaints  Complaint[] @relation("CreatedBy")
   statusChanges ComplaintStatusHistory[]
   notes         InternalNote[]
   notifications Notification[]
@@ -126,6 +127,7 @@ model Department {
   tenantId    String
 
   name        String
+  slug        String
   slaHours    Int      @default(48)
 
   isActive    Boolean  @default(true)
@@ -138,6 +140,7 @@ model Department {
   users       User[]
   complaints  Complaint[]
 
+  @@unique([tenantId, slug])
   @@index([tenantId])
 }
 
@@ -159,6 +162,7 @@ model Complaint {
 
   departmentId    String?
   assignedToId    String?
+  createdById     String?
 
   aiScore         Float?
   sentimentScore  Float?
@@ -173,6 +177,7 @@ model Complaint {
   tenant          Tenant      @relation(fields: [tenantId], references: [id])
   department      Department? @relation(fields: [departmentId], references: [id])
   assignedTo      User?       @relation("AssignedTo", fields: [assignedToId], references: [id])
+  createdBy       User?       @relation("CreatedBy", fields: [createdById], references: [id])
 
   statusHistory   ComplaintStatusHistory[]
   notes           InternalNote[]
@@ -183,6 +188,7 @@ model Complaint {
   @@index([priority])
   @@index([departmentId])
   @@index([assignedToId])
+  @@index([createdById])
   @@index([createdAt])
 }
 
