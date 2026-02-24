@@ -1,7 +1,15 @@
 import express from "express";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { authorize, authorizeMinimum } from "../middlewares/role.middleware.js";
+import { validate } from "../middlewares/validate.middleware.js";
 import * as controller from "../controllers/complaints.controller.js";
+import {
+  createComplaintSchema,
+  updateComplaintSchema,
+  assignComplaintSchema,
+  updateStatusSchema,
+  addNoteSchema,
+} from "../validators/complaints.validators.js";
 
 const router = express.Router();
 
@@ -12,6 +20,7 @@ router.use(authMiddleware);
 router.post(
   "/",
   authorizeMinimum("CALL_OPERATOR"),
+  validate(createComplaintSchema),
   controller.createComplaint,
 );
 
@@ -30,18 +39,21 @@ router.get(
 router.patch(
   "/:id",
   authorizeMinimum("ADMIN"),
+  validate(updateComplaintSchema),
   controller.updateComplaint,
 );
 
 router.patch(
   "/:id/assign",
   authorizeMinimum("DEPARTMENT_HEAD"),
+  validate(assignComplaintSchema),
   controller.assignComplaint,
 );
 
 router.patch(
   "/:id/status",
   authorizeMinimum("OFFICER"),
+  validate(updateStatusSchema),
   controller.updateComplaintStatus,
 );
 
@@ -54,6 +66,7 @@ router.delete(
 router.post(
   "/:id/notes",
   authorizeMinimum("OFFICER"),
+  validate(addNoteSchema),
   controller.addNote,
 );
 
