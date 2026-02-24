@@ -11,6 +11,8 @@ import errorMiddleware from "./middlewares/error.middleware.js";
 import { env } from "./config/env.js";
 import authRoute from "./routes/auth.routes.js";
 import complaintsRoute from "./routes/complaints.routes.js";
+import usersRoute from "./routes/users.routes.js";
+import departmentsRoute from "./routes/departments.routes.js";
 
 const app = express();
 
@@ -59,6 +61,8 @@ app.get("/health", (req, res) => {
 // ROUTES
 app.use("/api/v1/auth", authRoute);
 app.use("/api/v1/complaints", complaintsRoute);
+app.use("/api/v1/users", usersRoute);
+app.use("/api/v1/departments", departmentsRoute);
 
 // 404 HANDLER
 app.use((req, res, next) => {
