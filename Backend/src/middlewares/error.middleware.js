@@ -7,7 +7,7 @@ const errorMiddleware = (err, req, res, next) => {
   if (err instanceof ApiError) {
     return res
       .status(err.statusCode)
-      .json(new ApiResponse(err.statusCode, null, err.message));
+      .json(new ApiResponse(err.statusCode, null, err.message, err.errors?.length ? err.errors : undefined));
   }
 
   return res
