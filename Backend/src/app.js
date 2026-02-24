@@ -10,11 +10,12 @@ import { ApiError } from "./utils/ApiError.js";
 import errorMiddleware from "./middlewares/error.middleware.js";
 import { env } from "./config/env.js";
 import authRoute from "./routes/auth.routes.js";
+import complaintsRoute from "./routes/complaints.routes.js";
 
 const app = express();
 
 const allowedOrigins = [
-  "http://localhost:3000",
+  env.NODE_ENV === "development" && "http://localhost:3000",
   env.FRONTEND_URL,
 ].filter(Boolean);
 
@@ -31,8 +32,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 100,
+  windowMs: 15 * 60 * 1000,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -46,9 +47,7 @@ const globalLimiter = rateLimit({
 app.use("/api", globalLimiter);
 
 // LOGGER
-if (env.NODE_ENV === "development") {
-  app.use(morgan("dev"));
-}
+app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
 // HEALTH CHECK
 app.get("/health", (req, res) => {
@@ -59,6 +58,7 @@ app.get("/health", (req, res) => {
 
 // ROUTES
 app.use("/api/v1/auth", authRoute);
+app.use("/api/v1/complaints", complaintsRoute);
 
 // 404 HANDLER
 app.use((req, res, next) => {
