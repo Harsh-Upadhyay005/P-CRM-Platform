@@ -2,13 +2,15 @@ import { verifyAccessToken } from "../utils/token.utils.js";
 import { ApiError } from "../utils/ApiError.js";
 
 export const authMiddleware = (req, res, next) => {
-  const authHeader = req.headers.authorization;
+  const token =
+    req.cookies?.accessToken ||
+    (req.headers.authorization?.startsWith("Bearer ")
+      ? req.headers.authorization.split(" ")[1]
+      : null);
 
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+  if (!token) {
     throw new ApiError(401, "Unauthorized");
   }
-
-  const token = authHeader.split(" ")[1];
 
   try {
     const decoded = verifyAccessToken(token);

@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser";
 
 import { ApiResponse } from "./utils/ApiResponse.js";
 import { ApiError } from "./utils/ApiError.js";
@@ -14,7 +15,7 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:3000",
-  env.NODE_ENV === "production" ? env.FRONTEND_URL : null,
+  env.FRONTEND_URL,
 ].filter(Boolean);
 
 // SECURITY
@@ -22,21 +23,30 @@ app.use(helmet());
 app.use(
   cors({
     origin: allowedOrigins,
+    credentials: true,    // required for browsers to send/accept cookies cross-origin
   }),
 );
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-// RATE LIMITER
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 min
   max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    statusCode: 429,
+    success: false,
+    data: null,
+    message: "Too many requests. Please slow down and try again later.",
+  },
 });
 
-app.use("/api", limiter);
+app.use("/api", globalLimiter);
 
 // LOGGER
-if (process.env.NODE_ENV === "development") {
+if (env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
 
