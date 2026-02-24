@@ -2,65 +2,69 @@ import rateLimit from "express-rate-limit";
 
 const rateLimitMessage = (action) => ({
   statusCode: 429,
-  success: false,
-  data: null,
-  message: `Too many ${action} attempts. Please try again later.`,
+  success:    false,
+  data:       null,
+  message:    `Too many ${action} attempts. Please try again later.`,
 });
 
-export const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 5,
+const base = {
   standardHeaders: true,
-  legacyHeaders: false,
-  message: rateLimitMessage("login"),
+  legacyHeaders:   false,
+};
+
+export const loginLimiter = rateLimit({
+  ...base,
+  windowMs: 15 * 60 * 1000,
+  max:      5,
+  message:  rateLimitMessage("login"),
   skipSuccessfulRequests: true,
 });
 
 export const registerLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: rateLimitMessage("registration"),
+  ...base,
+  windowMs: 60 * 60 * 1000,
+  max:      10,
+  message:  rateLimitMessage("registration"),
 });
 
 export const forgotPasswordLimiter = rateLimit({
-  windowMs: 30 * 60 * 1000, // 30 min
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: rateLimitMessage("password reset"),
+  ...base,
+  windowMs: 30 * 60 * 1000,
+  max:      5,
+  message:  rateLimitMessage("password reset"),
 });
 
 export const resetPasswordLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: rateLimitMessage("password reset"),
+  ...base,
+  windowMs: 15 * 60 * 1000,
+  max:      5,
+  message:  rateLimitMessage("password reset"),
 });
 
 export const verifyEmailLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 10,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: rateLimitMessage("email verification"),
+  ...base,
+  windowMs: 15 * 60 * 1000,
+  max:      10,
+  message:  rateLimitMessage("email verification"),
 });
 
 export const refreshTokenLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 30,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: rateLimitMessage("token refresh"),
+  ...base,
+  windowMs: 15 * 60 * 1000,
+  max:      30,
+  message:  rateLimitMessage("token refresh"),
 });
 
-// 3 resend attempts per 30 min — prevents inbox bombing
 export const resendVerificationLimiter = rateLimit({
-  windowMs: 30 * 60 * 1000, // 30 min
-  max: 3,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: rateLimitMessage("resend verification"),
+  ...base,
+  windowMs: 30 * 60 * 1000,
+  max:      3,
+  message:  rateLimitMessage("resend verification"),
+});
+
+export const apiWriteLimiter = rateLimit({
+  ...base,
+  windowMs: 15 * 60 * 1000,
+  max:      60,
+  message:  rateLimitMessage("write"),
 });

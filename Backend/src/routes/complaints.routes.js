@@ -2,6 +2,7 @@ import express from "express";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { authorize, authorizeMinimum } from "../middlewares/role.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
+import { apiWriteLimiter } from "../middlewares/rateLimiters.js";
 import * as controller from "../controllers/complaints.controller.js";
 import {
   createComplaintSchema,
@@ -16,6 +17,11 @@ const router = express.Router();
 router.get("/track/:trackingId", controller.trackComplaint);
 
 router.use(authMiddleware);
+
+router.use((req, res, next) => {
+  if (["POST", "PATCH", "DELETE"].includes(req.method)) return apiWriteLimiter(req, res, next);
+  next();
+});
 
 router.post(
   "/",

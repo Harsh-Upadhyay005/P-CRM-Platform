@@ -18,62 +18,71 @@ import notificationsRoute from "./routes/notifications.routes.js";
 
 const app = express();
 
+app.set("trust proxy", 1);
+
 const allowedOrigins = [
   env.NODE_ENV === "development" && "http://localhost:3000",
   env.FRONTEND_URL,
 ].filter(Boolean);
 
-// SECURITY
-app.use(helmet());
 app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true,    // required for browsers to send/accept cookies cross-origin
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    contentSecurityPolicy:     false,
   }),
 );
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true }));
+
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+      return cb(new Error(`CORS: origin ${origin} not allowed`));
+    },
+    credentials:    true,
+    methods:        ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    maxAge:         600,
+  }),
+);
+
+app.use(express.json({ limit: "50kb" }));
+app.use(express.urlencoded({ extended: true, limit: "50kb" }));
 app.use(cookieParser());
 
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 500,
+  windowMs:        15 * 60 * 1000,
+  max:             150,
   standardHeaders: true,
-  legacyHeaders: false,
+  legacyHeaders:   false,
   message: {
     statusCode: 429,
-    success: false,
-    data: null,
-    message: "Too many requests. Please slow down and try again later.",
+    success:    false,
+    data:       null,
+    message:    "Too many requests. Please slow down and try again later.",
   },
 });
 
 app.use("/api", globalLimiter);
 
-// LOGGER
 app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
-// HEALTH CHECK
 app.get("/health", (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, { status: "OK" }, "Server is healthy"));
 });
 
-// ROUTES
-app.use("/api/v1/auth", authRoute);
-app.use("/api/v1/complaints", complaintsRoute);
-app.use("/api/v1/users", usersRoute);
-app.use("/api/v1/departments", departmentsRoute);
-app.use("/api/v1/analytics", analyticsRoute);
+app.use("/api/v1/auth",          authRoute);
+app.use("/api/v1/complaints",    complaintsRoute);
+app.use("/api/v1/users",         usersRoute);
+app.use("/api/v1/departments",   departmentsRoute);
+app.use("/api/v1/analytics",     analyticsRoute);
 app.use("/api/v1/notifications", notificationsRoute);
 
-// 404 HANDLER
 app.use((req, res, next) => {
   next(new ApiError(404, "Route not found"));
 });
 
-// GLOBAL ERROR HANDLER
 app.use(errorMiddleware);
 
 export default app;
