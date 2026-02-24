@@ -2,6 +2,7 @@ const PASSWORD_REGEX =
   /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()\-_=+\[\]{};:'",.<>?/\\|`~])[^\s]{8,64}$/;
 
 export const validatePassword = (password) => {
+  if (password === null || password === undefined) return "Password is required.";
   if (!PASSWORD_REGEX.test(password)) {
     return (
       "Password must be 8-64 characters and include at least one uppercase letter, " +
@@ -711,6 +712,7 @@ const BLOCKED_EMAIL_DOMAINS = new Set([
 ]);
 
 export const validateEmailDomain = (email) => {
+  if (email === null || email === undefined) return "Email is required.";
   const domain = email.split("@")[1]?.toLowerCase();
   if (!domain) return "Invalid email address.";
   if (BLOCKED_EMAIL_DOMAINS.has(domain)) {
