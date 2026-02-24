@@ -45,13 +45,21 @@ export const env = {
   ACCESS_TOKEN_EXPIRY: process.env.ACCESS_TOKEN_EXPIRY,
   REFRESH_TOKEN_EXPIRY: process.env.REFRESH_TOKEN_EXPIRY,
 
-  EMAIL_VERIFICATION_EXPIRY_MINUTES: Number(
-    process.env.EMAIL_VERIFICATION_EXPIRY_MINUTES,
-  ),
+  EMAIL_VERIFICATION_EXPIRY_MINUTES: (() => {
+    const v = Number(process.env.EMAIL_VERIFICATION_EXPIRY_MINUTES);
+    if (isNaN(v) || v <= 0) throw new Error("EMAIL_VERIFICATION_EXPIRY_MINUTES must be a positive number");
+    return v;
+  })(),
 
-  RESET_PASSWORD_EXPIRY_MINUTES: Number(
-    process.env.RESET_PASSWORD_EXPIRY_MINUTES,
-  ),
+  RESET_PASSWORD_EXPIRY_MINUTES: (() => {
+    const v = Number(process.env.RESET_PASSWORD_EXPIRY_MINUTES);
+    if (isNaN(v) || v <= 0) throw new Error("RESET_PASSWORD_EXPIRY_MINUTES must be a positive number");
+    return v;
+  })(),
 
-  BCRYPT_SALT_ROUNDS: Number(process.env.BCRYPT_SALT_ROUNDS),
+  BCRYPT_SALT_ROUNDS: (() => {
+    const v = Number(process.env.BCRYPT_SALT_ROUNDS);
+    if (isNaN(v) || v <= 0) throw new Error("BCRYPT_SALT_ROUNDS must be a positive number");
+    return v;
+  })(),
 };
