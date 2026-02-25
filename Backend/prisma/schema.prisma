@@ -183,6 +183,7 @@ model Complaint {
   notes           InternalNote[]
   notifications   Notification[]
   attachments     ComplaintAttachment[]
+  feedback        ComplaintFeedback?
 
   @@index([tenantId])
   @@index([status])
@@ -282,11 +283,23 @@ model ComplaintAttachment {
   fileName    String
   fileSize    Int
   mimeType    String
-  storagePath String
+  fileUrl     String
 
   createdAt   DateTime @default(now())
 
   complaint   Complaint @relation(fields: [complaintId], references: [id])
 
   @@index([complaintId])
+}
+
+// COMPLAINT FEEDBACK
+
+model ComplaintFeedback {
+  id          String   @id @default(uuid())
+  complaintId String   @unique
+  rating      Int
+  comment     String?
+  submittedAt DateTime @default(now())
+
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
 }
