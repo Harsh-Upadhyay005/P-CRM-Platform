@@ -10,28 +10,38 @@ export const runSlaTick = async () => {
   const summary = { scanned: 0, escalated: 0, errors: 0 };
 
   try {
-    const candidates = await prisma.complaint.findMany({
-      where: {
-        isDeleted:    false,
-        status:       { notIn: NON_SLA_STATUSES },
-        departmentId: { not: null },
-      },
-      select: {
-        id:           true,
-        tenantId:     true,
-        trackingId:   true,
-        status:       true,
-        createdAt:    true,
-        assignedToId: true,
-        createdById:  true,
-        department:   { select: { name: true, slaHours: true } },
-        assignedTo:   { select: { name: true, email: true } },
-        createdBy:    { select: { name: true, email: true } },
-      },
-      take:    BATCH_SIZE,
-      orderBy: { createdAt: "asc" },
-    });
+    let cursor = undefined;
+    let batch;
+    const allCandidates = [];
 
+    do {
+      batch = await prisma.complaint.findMany({
+        where: {
+          isDeleted:    false,
+          status:       { notIn: NON_SLA_STATUSES },
+          departmentId: { not: null },
+        },
+        select: {
+          id:           true,
+          tenantId:     true,
+          trackingId:   true,
+          status:       true,
+          createdAt:    true,
+          assignedToId: true,
+          createdById:  true,
+          department:   { select: { name: true, slaHours: true } },
+          assignedTo:   { select: { name: true, email: true } },
+          createdBy:    { select: { name: true, email: true } },
+        },
+        take:    BATCH_SIZE,
+        ...(cursor && { skip: 1, cursor: { id: cursor } }),
+        orderBy: { id: "asc" },
+      });
+      allCandidates.push(...batch);
+      if (batch.length === BATCH_SIZE) cursor = batch[batch.length - 1].id;
+    } while (batch.length === BATCH_SIZE);
+
+    const candidates = allCandidates;
     summary.scanned = candidates.length;
     if (candidates.length === 0) return summary;
 

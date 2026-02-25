@@ -297,3 +297,167 @@ export const sendSlaBreachEmail = async (recipients, complaintTrackingId, depart
     }
   }
 };
+
+// ── STATUS CHANGE EMAIL ────────────────────────────────────────────────────
+
+const STATUS_META = {
+  OPEN:        { label: "Open",        color: "#6b7280", icon: "📋" },
+  ASSIGNED:    { label: "Assigned",    color: "#3b82f6", icon: "👤" },
+  IN_PROGRESS: { label: "In Progress", color: "#f59e0b", icon: "⚙️" },
+  ESCALATED:   { label: "Escalated",   color: "#ef4444", icon: "🚨" },
+  RESOLVED:    { label: "Resolved",    color: "#10b981", icon: "✅" },
+  CLOSED:      { label: "Closed",      color: "#6b7280", icon: "🔒" },
+};
+
+const statusChangeEmailBody = (citizenName, trackingId, oldStatus, newStatus) => {
+  const from = STATUS_META[oldStatus] ?? { label: oldStatus, color: "#6b7280", icon: "•" };
+  const to   = STATUS_META[newStatus] ?? { label: newStatus, color: "#1a56db", icon: "•" };
+
+  return `
+  <h2 style="margin:0 0 8px;color:#1a3a6e;font-size:22px;font-weight:700;">Complaint Status Update</h2>
+  <p style="margin:0 0 24px;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb;padding-bottom:20px;">Grievance Management — P-CRM Portal</p>
+
+  <p style="margin:0 0 8px;color:#374151;font-size:16px;">Dear <strong>${citizenName}</strong>,</p>
+  <p style="margin:0 0 24px;color:#4b5563;font-size:15px;line-height:1.7;">
+    The status of your complaint has been updated. Here are the details:
+  </p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+    <tr>
+      <td style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 24px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="color:#64748b;font-size:13px;padding:4px 0;width:130px;"><strong>Tracking ID:</strong></td>
+            <td style="color:#1e293b;font-size:14px;font-weight:700;padding:4px 0;font-family:monospace;">${trackingId}</td>
+          </tr>
+          <tr>
+            <td style="color:#64748b;font-size:13px;padding:4px 0;"><strong>Previous Status:</strong></td>
+            <td style="padding:4px 0;">
+              <span style="display:inline-block;background-color:${from.color}22;color:${from.color};font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid ${from.color}44;">
+                ${from.icon} ${from.label}
+              </span>
+            </td>
+          </tr>
+          <tr>
+            <td style="color:#64748b;font-size:13px;padding:4px 0;"><strong>New Status:</strong></td>
+            <td style="padding:4px 0;">
+              <span style="display:inline-block;background-color:${to.color}22;color:${to.color};font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid ${to.color}44;">
+                ${to.icon} ${to.label}
+              </span>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  ${newStatus === "RESOLVED" || newStatus === "CLOSED" ? `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+    <tr>
+      <td style="background-color:#ecfdf5;border-left:4px solid #10b981;border-radius:6px;padding:16px 20px;">
+        <p style="margin:0;color:#064e3b;font-size:13px;line-height:1.6;">
+          <strong>✅ Your complaint has been resolved.</strong> We hope your issue has been addressed satisfactorily.
+          You may share your feedback via the P-CRM tracking portal using your Tracking ID.
+        </p>
+      </td>
+    </tr>
+  </table>
+  ` : `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+    <tr>
+      <td style="background-color:#eff6ff;border-left:4px solid #3b82f6;border-radius:6px;padding:16px 20px;">
+        <p style="margin:0;color:#1e3a8a;font-size:13px;line-height:1.6;">
+          <strong>ℹ️ Your complaint is being actively processed.</strong>
+          Use your Tracking ID <strong>${trackingId}</strong> to monitor progress on the portal.
+        </p>
+      </td>
+    </tr>
+  </table>
+  `}
+`;
+};
+
+export const sendStatusChangeEmail = async (citizenEmail, citizenName, trackingId, oldStatus, newStatus) => {
+  if (!citizenEmail) return;
+
+  const from = STATUS_META[oldStatus]?.label ?? oldStatus;
+  const to   = STATUS_META[newStatus]?.label ?? newStatus;
+
+  const html = emailWrapper(
+    "linear-gradient(135deg, #1a56db 0%, #1e3a8a 100%)",
+    { preheader: `Your complaint ${trackingId} status changed: ${from} → ${to}` },
+    statusChangeEmailBody(citizenName, trackingId, oldStatus, newStatus),
+  );
+
+  try {
+    await transactionalEmailApi.sendTransacEmail({
+      sender:      { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
+      to:          [{ email: citizenEmail, name: citizenName }],
+      subject:     `Complaint Update: ${trackingId} — Status Changed to ${to}`,
+      htmlContent: html,
+      textContent: `Dear ${citizenName},\n\nYour complaint (${trackingId}) status has been updated from ${from} to ${to}.\n\nTrack your complaint on the P-CRM Portal using your Tracking ID.\n\nP-CRM Portal`,
+    });
+    console.log(`[email] Status change email sent to ${citizenEmail} for complaint ${trackingId}`);
+  } catch (err) {
+    console.error(`[email] Failed to send status change email to ${citizenEmail}:`, err?.message);
+  }
+};
+
+// ── COMPLAINT CONFIRMATION EMAIL (citizen self-filing) ────────────────────
+
+const complaintConfirmationEmailBody = (citizenName, trackingId) => `
+  <h2 style="margin:0 0 8px;color:#1a3a6e;font-size:22px;font-weight:700;">Complaint Registered</h2>
+  <p style="margin:0 0 24px;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb;padding-bottom:20px;">Grievance Confirmation — P-CRM Portal</p>
+
+  <p style="margin:0 0 8px;color:#374151;font-size:16px;">Dear <strong>${citizenName}</strong>,</p>
+  <p style="margin:0 0 24px;color:#4b5563;font-size:15px;line-height:1.7;">
+    Your complaint has been successfully registered with the <strong>P-CRM Government Portal</strong>.
+    Please save your Tracking ID — you will need it to monitor your complaint's progress.
+  </p>
+
+  <!-- Tracking ID highlight -->
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+    <tr>
+      <td align="center" style="background:linear-gradient(135deg,#1a56db,#1e3a8a);border-radius:10px;padding:28px;">
+        <p style="margin:0 0 6px;color:rgba(255,255,255,0.8);font-size:13px;letter-spacing:1px;text-transform:uppercase;">Your Tracking ID</p>
+        <p style="margin:0;color:#ffffff;font-size:28px;font-weight:700;letter-spacing:3px;font-family:monospace;">${trackingId}</p>
+      </td>
+    </tr>
+  </table>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+    <tr>
+      <td style="background-color:#eff6ff;border-left:4px solid #3b82f6;border-radius:6px;padding:16px 20px;">
+        <p style="margin:0;color:#1e3a8a;font-size:13px;line-height:1.8;">
+          <strong>What happens next?</strong><br/>
+          • Your complaint will be reviewed and assigned to the relevant department.<br/>
+          • You will receive email updates whenever the status changes.<br/>
+          • Use your Tracking ID on the portal to check the current status at any time.
+        </p>
+      </td>
+    </tr>
+  </table>
+`;
+
+export const sendComplaintConfirmationEmail = async (citizenEmail, citizenName, trackingId) => {
+  if (!citizenEmail) return;
+
+  const html = emailWrapper(
+    "linear-gradient(135deg, #059669 0%, #064e3b 100%)",
+    { preheader: `Your complaint has been registered — Tracking ID: ${trackingId}` },
+    complaintConfirmationEmailBody(citizenName, trackingId),
+  );
+
+  try {
+    await transactionalEmailApi.sendTransacEmail({
+      sender:      { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
+      to:          [{ email: citizenEmail, name: citizenName }],
+      subject:     `Complaint Registered — Tracking ID: ${trackingId}`,
+      htmlContent: html,
+      textContent: `Dear ${citizenName},\n\nYour complaint has been registered.\n\nTracking ID: ${trackingId}\n\nUse this ID to track your complaint status on the P-CRM Portal.\n\nP-CRM Portal`,
+    });
+    console.log(`[email] Confirmation email sent to ${citizenEmail} for complaint ${trackingId}`);
+  } catch (err) {
+    console.error(`[email] Failed to send confirmation email to ${citizenEmail}:`, err?.message);
+  }
+};

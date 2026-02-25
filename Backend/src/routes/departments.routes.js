@@ -1,7 +1,9 @@
 import express from "express";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { authorizeMinimum } from "../middlewares/role.middleware.js";
+import { validate } from "../middlewares/validate.middleware.js";
 import * as controller from "../controllers/departments.controller.js";
+import { createDepartmentSchema, updateDepartmentSchema } from "../validators/departments.validators.js";
 
 const router = express.Router();
 
@@ -22,12 +24,14 @@ router.get(
 router.post(
   "/",
   authorizeMinimum("ADMIN"),
+  validate(createDepartmentSchema),
   controller.createDepartment,
 );
 
 router.patch(
   "/:id",
   authorizeMinimum("DEPARTMENT_HEAD"),
+  validate(updateDepartmentSchema),
   controller.updateDepartment,
 );
 

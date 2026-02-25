@@ -1,6 +1,4 @@
 import multer from "multer";
-import path from "path";
-import crypto from "crypto";
 import { ApiError } from "../utils/ApiError.js";
 
 const ALLOWED_MIME_TYPES = new Set([
@@ -19,17 +17,6 @@ const ALLOWED_MIME_TYPES = new Set([
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_FILES_PER_REQUEST = 5;
 
-const storage = multer.diskStorage({
-  destination(_req, _file, cb) {
-    cb(null, "uploads/complaints");
-  },
-  filename(_req, file, cb) {
-    const uniqueSuffix = crypto.randomBytes(8).toString("hex");
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, `${Date.now()}-${uniqueSuffix}${ext}`);
-  },
-});
-
 const fileFilter = (_req, file, cb) => {
   if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
     return cb(new ApiError(415, `File type "${file.mimetype}" is not allowed`));
@@ -38,7 +25,7 @@ const fileFilter = (_req, file, cb) => {
 };
 
 export const uploadMiddleware = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: {
     fileSize: MAX_FILE_SIZE_BYTES,

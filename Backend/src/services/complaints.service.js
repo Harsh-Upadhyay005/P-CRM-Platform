@@ -1,11 +1,12 @@
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/ApiError.js";
-import { forTenant, inTenant, assertTenant } from "../utils/tenantScope.js";
+import { forTenant, inTenant } from "../utils/tenantScope.js";
 import { generateTrackingId, getPagination, paginatedResponse } from "../utils/helpers.js";
 import { assertRoleCanTransition, isTerminal } from "../utils/statusEngine.js";
 import { notifyAssignment, notifyStatusChange } from "./notification.service.js";
 import { canManageUser } from "../utils/roleHierarchy.js";
 import { analyzeComplaint, analyzeSentiment, predictPriority } from "./ai.service.js";
+import { sendStatusChangeEmail, sendComplaintConfirmationEmail } from "./email.service.js";
 
 const complaintSummarySelect = {
   id: true,
@@ -373,7 +374,16 @@ export const assignComplaint = async (id, data, user) => {
 export const updateComplaintStatus = async (id, { newStatus }, user) => {
   const complaint = await prisma.complaint.findFirst({
     where: { id, isDeleted: false, ...forTenant(user) },
-    select: { id: true, status: true, createdById: true, assignedToId: true, departmentId: true },
+    select: {
+      id: true,
+      status: true,
+      createdById: true,
+      assignedToId: true,
+      departmentId: true,
+      citizenEmail: true,
+      citizenName: true,
+      trackingId: true,
+    },
   });
 
   if (!complaint) throw new ApiError(404, "Complaint not found");
@@ -425,6 +435,17 @@ export const updateComplaintStatus = async (id, { newStatus }, user) => {
     user.userId,
     updated.trackingId
   ).catch(() => {});
+
+  // Fire-and-forget status change email to citizen
+  if (complaint.citizenEmail) {
+    sendStatusChangeEmail(
+      complaint.citizenEmail,
+      complaint.citizenName,
+      complaint.trackingId,
+      complaint.status,
+      newStatus,
+    ).catch(() => {});
+  }
 
   return updated;
 };
@@ -516,4 +537,126 @@ export const getInternalNotes = async (complaintId, user) => {
   });
 
   return notes;
+};
+
+// ── CITIZEN SELF-FILING (public — no auth) ────────────────────────────────
+
+export const createPublicComplaint = async (data) => {
+  const { citizenName, citizenPhone, citizenEmail, description, category, priority, departmentId, tenantSlug } = data;
+
+  // Resolve tenant from slug
+  const tenant = await prisma.tenant.findFirst({
+    where: { slug: tenantSlug, isActive: true },
+  });
+  if (!tenant) throw new ApiError(404, "Portal not found");
+
+  if (departmentId) {
+    const dept = await prisma.department.findFirst({
+      where: { id: departmentId, isDeleted: false, isActive: true, tenantId: tenant.id },
+    });
+    if (!dept) throw new ApiError(404, "Department not found");
+  }
+
+  const aiResult = await analyzeComplaint({
+    description,
+    category:  category ?? null,
+    tenantId:  tenant.id,
+    excludeId: null,
+  });
+
+  const resolvedPriority = priority ?? aiResult.suggestedPriority ?? "MEDIUM";
+  const trackingId = generateTrackingId();
+
+  const complaint = await prisma.complaint.create({
+    data: {
+      trackingId,
+      tenantId: tenant.id,
+      citizenName,
+      citizenPhone,
+      citizenEmail,
+      description,
+      category:       category ?? null,
+      priority:       resolvedPriority,
+      sentimentScore: aiResult.sentimentScore,
+      duplicateScore: aiResult.duplicateScore,
+      aiScore:        aiResult.aiScore,
+      departmentId:   departmentId ?? null,
+      createdById:    null,
+    },
+    select: {
+      trackingId: true,
+      citizenName: true,
+      status: true,
+      priority: true,
+      category: true,
+      createdAt: true,
+    },
+  });
+
+  // Send confirmation email fire-and-forget
+  sendComplaintConfirmationEmail(citizenEmail, citizenName, trackingId).catch(() => {});
+
+  return complaint;
+};
+
+// ── COMPLAINT FEEDBACK ────────────────────────────────────────────────────
+
+export const submitFeedback = async (trackingId, { rating, comment }) => {
+  const complaint = await prisma.complaint.findFirst({
+    where: { trackingId, isDeleted: false },
+    select: { id: true, status: true },
+  });
+
+  if (!complaint) throw new ApiError(404, "Complaint not found");
+
+  if (complaint.status !== "RESOLVED" && complaint.status !== "CLOSED") {
+    throw new ApiError(422, "Feedback can only be submitted for resolved or closed complaints");
+  }
+
+  // Check for existing feedback (@unique on complaintId)
+  const existing = await prisma.complaintFeedback.findUnique({
+    where: { complaintId: complaint.id },
+  });
+  if (existing) throw new ApiError(409, "Feedback has already been submitted for this complaint");
+
+  const feedback = await prisma.complaintFeedback.create({
+    data: {
+      complaintId: complaint.id,
+      rating,
+      comment: comment ?? null,
+    },
+    select: {
+      id:          true,
+      rating:      true,
+      comment:     true,
+      submittedAt: true,
+    },
+  });
+
+  return feedback;
+};
+
+export const getFeedback = async (complaintId, user) => {
+  const complaint = await prisma.complaint.findFirst({
+    where: { id: complaintId, isDeleted: false, ...forTenant(user) },
+    select: { id: true, assignedToId: true, departmentId: true },
+  });
+
+  if (!complaint) throw new ApiError(404, "Complaint not found");
+
+  await assertComplaintAccess(complaint, user);
+
+  const feedback = await prisma.complaintFeedback.findUnique({
+    where: { complaintId },
+    select: {
+      id:          true,
+      rating:      true,
+      comment:     true,
+      submittedAt: true,
+    },
+  });
+
+  if (!feedback) throw new ApiError(404, "No feedback has been submitted for this complaint");
+
+  return feedback;
 };

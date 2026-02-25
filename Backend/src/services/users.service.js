@@ -1,7 +1,7 @@
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/ApiError.js";
 import { forTenant } from "../utils/tenantScope.js";
-import { getPagination, paginatedResponse, sanitizeUser } from "../utils/helpers.js";
+import { getPagination, paginatedResponse } from "../utils/helpers.js";
 import { canAssignRole, canManageUser } from "../utils/roleHierarchy.js";
 
 const userSelect = {

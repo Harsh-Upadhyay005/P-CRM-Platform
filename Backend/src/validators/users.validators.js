@@ -17,6 +17,8 @@ export const setUserStatusSchema = z.object({
   isActive: z.boolean({ required_error: "isActive must be a boolean" }),
 });
 
-export const updateMyProfileSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters").max(100),
-});
+export const updateMyProfileSchema = z
+  .object({
+    name: z.string().min(2, "Name must be at least 2 characters").max(100).optional(),
+  })
+  .refine((d) => d.name !== undefined, { message: "At least one field must be provided" });
