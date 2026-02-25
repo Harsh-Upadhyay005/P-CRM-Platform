@@ -182,6 +182,7 @@ model Complaint {
   statusHistory   ComplaintStatusHistory[]
   notes           InternalNote[]
   notifications   Notification[]
+  attachments     ComplaintAttachment[]
 
   @@index([tenantId])
   @@index([status])
@@ -269,4 +270,23 @@ model AuditLog {
   @@index([createdAt])
   // Compound for the most common admin query: tenant + action
   @@index([tenantId, action])
+}
+
+// COMPLAINT ATTACHMENTS
+
+model ComplaintAttachment {
+  id          String   @id @default(uuid())
+  complaintId String
+  uploadedById String
+
+  fileName    String
+  fileSize    Int
+  mimeType    String
+  storagePath String
+
+  createdAt   DateTime @default(now())
+
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+
+  @@index([complaintId])
 }

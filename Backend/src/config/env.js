@@ -18,6 +18,8 @@ const requiredEnvVars = [
   "EMAIL_VERIFICATION_EXPIRY_MINUTES",
   "RESET_PASSWORD_EXPIRY_MINUTES",
   "BCRYPT_SALT_ROUNDS",
+  "UPSTASH_REDIS_REST_URL",
+  "UPSTASH_REDIS_REST_TOKEN",
 ];
 
 requiredEnvVars.forEach((key) => {
@@ -62,4 +64,8 @@ export const env = {
     if (isNaN(v) || v <= 0) throw new Error("BCRYPT_SALT_ROUNDS must be a positive number");
     return v;
   })(),
+
+  REDIS_URL: process.env.REDIS_URL || null,
+  UPSTASH_REDIS_REST_URL:   process.env.UPSTASH_REDIS_REST_URL   || null,
+  UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN || null,
 };

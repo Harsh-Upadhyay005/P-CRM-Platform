@@ -239,3 +239,61 @@ export const sendResetPasswordEmail = async (email, fullName, rawToken) => {
     throw new Error("Failed to send password reset email");
   }
 };
+
+const slaBreachEmailBody = (complaintTrackingId, departmentName, createdAt, slaHours) => `
+  <h2 style="margin:0 0 8px;color:#7c2d12;font-size:22px;font-weight:700;">SLA Breach Alert</h2>
+  <p style="margin:0 0 24px;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb;padding-bottom:20px;">Auto-Escalation Notification — P-CRM Portal</p>
+
+  <p style="margin:0 0 20px;color:#4b5563;font-size:15px;line-height:1.7;">
+    A complaint has exceeded its Service Level Agreement (SLA) window and has been <strong>automatically escalated</strong>.
+  </p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+    <tr>
+      <td style="background-color:#fff7ed;border:1px solid #fed7aa;border-radius:8px;padding:20px 24px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr><td style="color:#92400e;font-size:13px;padding:4px 0;"><strong>Tracking ID:</strong></td><td style="color:#1c1917;font-size:13px;padding:4px 0;">${complaintTrackingId}</td></tr>
+          <tr><td style="color:#92400e;font-size:13px;padding:4px 0;"><strong>Department:</strong></td><td style="color:#1c1917;font-size:13px;padding:4px 0;">${departmentName}</td></tr>
+          <tr><td style="color:#92400e;font-size:13px;padding:4px 0;"><strong>Filed On:</strong></td><td style="color:#1c1917;font-size:13px;padding:4px 0;">${new Date(createdAt).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</td></tr>
+          <tr><td style="color:#92400e;font-size:13px;padding:4px 0;"><strong>SLA Window:</strong></td><td style="color:#dc2626;font-size:13px;font-weight:700;padding:4px 0;">${slaHours} hours (BREACHED)</td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px;">
+    <tr>
+      <td style="background-color:#fef2f2;border-left:4px solid #dc2626;border-radius:6px;padding:16px 20px;">
+        <p style="margin:0;color:#7f1d1d;font-size:13px;line-height:1.6;">
+          <strong>⚠️ Immediate Action Required.</strong> Please review this complaint and take necessary action to resolve it as soon as possible.
+        </p>
+      </td>
+    </tr>
+  </table>
+`;
+
+export const sendSlaBreachEmail = async (recipients, complaintTrackingId, departmentName, createdAt, slaHours) => {
+  if (!recipients || recipients.length === 0) return;
+
+  const html = emailWrapper(
+    "linear-gradient(135deg, #dc2626 0%, #7c2d12 100%)",
+    { preheader: `SLA Breach Alert — Complaint ${complaintTrackingId} auto-escalated` },
+    slaBreachEmailBody(complaintTrackingId, departmentName, createdAt, slaHours),
+  );
+
+  const subject = `SLA Breach — Complaint ${complaintTrackingId} Auto-Escalated`;
+
+  for (const { email, name } of recipients) {
+    try {
+      await transactionalEmailApi.sendTransacEmail({
+        sender:      { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
+        to:          [{ email, name }],
+        subject,
+        htmlContent: html,
+        textContent: `SLA Breach Alert\n\nComplaint ${complaintTrackingId} has exceeded its ${slaHours}-hour SLA window and has been auto-escalated.\n\nDepartment: ${departmentName}\nFiled On: ${new Date(createdAt).toISOString()}\n\nPlease take immediate action.\n\nP-CRM Portal`,
+      });
+    } catch (err) {
+      console.error(`[email] Failed to send SLA breach email to ${email}:`, err?.message);
+    }
+  }
+};
