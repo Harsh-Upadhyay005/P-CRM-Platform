@@ -1,10 +1,30 @@
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/ApiError.js";
 import { getPagination, paginatedResponse } from "../utils/helpers.js";
+import { emitToUser } from "./sse.service.js";
 
 const createNotifications = async (records) => {
   if (!records || records.length === 0) return;
-  await prisma.notification.createMany({ data: records, skipDuplicates: true });
+
+  const created = await prisma.notification.createManyAndReturn({
+    data:           records,
+    skipDuplicates: true,
+    select: {
+      id:          true,
+      userId:      true,
+      title:       true,
+      message:     true,
+      complaintId: true,
+      isRead:      true,
+      createdAt:   true,
+    },
+  });
+
+  // Push each notification to the recipient's open SSE stream (fire-and-forget)
+  for (const notification of created) {
+    const { userId, ...payload } = notification;
+    emitToUser(userId, "notification", payload);
+  }
 };
 
 export const notifyAssignment = async (complaintId, assignedToId, actorId, trackingId) => {
