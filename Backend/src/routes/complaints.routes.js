@@ -4,6 +4,8 @@ import { authorize, authorizeMinimum } from "../middlewares/role.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import { apiWriteLimiter } from "../middlewares/rateLimiters.js";
 import * as controller from "../controllers/complaints.controller.js";
+import * as attachmentController from "../controllers/attachment.controller.js";
+import { uploadMiddleware } from "../middlewares/upload.middleware.js";
 import {
   createComplaintSchema,
   updateComplaintSchema,
@@ -80,6 +82,25 @@ router.get(
   "/:id/notes",
   authorizeMinimum("OFFICER"),
   controller.getNotes,
+);
+
+router.post(
+  "/:id/attachments",
+  authorizeMinimum("CALL_OPERATOR"),
+  uploadMiddleware.array("files", 5),
+  attachmentController.uploadAttachments,
+);
+
+router.get(
+  "/:id/attachments",
+  authorizeMinimum("CALL_OPERATOR"),
+  attachmentController.listAttachments,
+);
+
+router.delete(
+  "/:id/attachments/:attachmentId",
+  authorizeMinimum("ADMIN"),
+  attachmentController.deleteAttachment,
 );
 
 export default router;

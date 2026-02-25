@@ -5,6 +5,7 @@ import { generateTrackingId, getPagination, paginatedResponse } from "../utils/h
 import { assertRoleCanTransition, isTerminal } from "../utils/statusEngine.js";
 import { notifyAssignment, notifyStatusChange } from "./notification.service.js";
 import { canManageUser } from "../utils/roleHierarchy.js";
+import { analyzeComplaint, analyzeSentiment, predictPriority } from "./ai.service.js";
 
 const complaintSummarySelect = {
   id: true,
@@ -105,6 +106,19 @@ export const createComplaint = async (data, user) => {
     if (!dept) throw new ApiError(404, "Department not found");
   }
 
+  // ── AI Analysis ──────────────────────────────────────────────────────────
+  // Run BEFORE creating so duplicate detection compares against existing records.
+  // analyzeComplaint never throws — returns safe defaults on failure.
+  const aiResult = await analyzeComplaint({
+    description,
+    category:  category ?? null,
+    tenantId:  user.tenantId,
+    excludeId: null,
+  });
+
+  // Use AI-suggested priority only when the caller did not explicitly provide one
+  const resolvedPriority = priority ?? aiResult.suggestedPriority ?? "MEDIUM";
+
   const trackingId = generateTrackingId();
 
   const complaint = await prisma.complaint.create({
@@ -115,9 +129,12 @@ export const createComplaint = async (data, user) => {
       citizenEmail,
       description,
       category,
-      priority: priority ?? "MEDIUM",
-      departmentId: departmentId ?? null,
-      createdById: user.userId,
+      priority:       resolvedPriority,
+      sentimentScore: aiResult.sentimentScore,
+      duplicateScore: aiResult.duplicateScore,
+      aiScore:        aiResult.aiScore,
+      departmentId:   departmentId ?? null,
+      createdById:    user.userId,
       ...inTenant(user),
     },
     select: complaintDetailSelect,
@@ -202,7 +219,16 @@ export const updateComplaint = async (id, data, user) => {
 
   const complaint = await prisma.complaint.findFirst({
     where: { id, isDeleted: false, ...forTenant(user) },
-    select: { id: true, status: true, createdById: true, assignedToId: true, departmentId: true },
+    // Fetch description + category so we can re-score if only one of them changes
+    select: {
+      id:           true,
+      status:       true,
+      createdById:  true,
+      assignedToId: true,
+      departmentId: true,
+      description:  true,
+      category:     true,
+    },
   });
 
   if (!complaint) throw new ApiError(404, "Complaint not found");
@@ -213,12 +239,44 @@ export const updateComplaint = async (id, data, user) => {
 
   await assertComplaintAccess(complaint, user);
 
+  // ── Re-run AI when text content changes ───────────────────────────────────
+  // Use whichever field is being updated; fall back to stored value for the other.
+  // Duplicate score is NOT re-computed — this complaint already exists.
+  let aiUpdates = {};
+  const textChanging    = description !== undefined;
+  const categoryChanging = category !== undefined;
+
+  if (textChanging || categoryChanging) {
+    const effectiveDesc     = description ?? complaint.description;
+    const effectiveCategory = category    ?? complaint.category ?? null;
+
+    const newSentiment  = textChanging
+      ? analyzeSentiment(effectiveDesc)
+      : undefined;
+
+    const { suggestedPriority, aiScore: newAiScore } = predictPriority(
+      effectiveDesc,
+      effectiveCategory,
+    );
+
+    aiUpdates = {
+      ...(newSentiment !== undefined && { sentimentScore: newSentiment }),
+      aiScore: newAiScore,
+      // Only override priority with AI suggestion if the caller did NOT
+      // explicitly provide a priority in this request
+      ...(priority === undefined && { priority: suggestedPriority }),
+    };
+  }
+
   const updated = await prisma.complaint.update({
     where: { id },
     data: {
       ...(description !== undefined && { description }),
-      ...(category !== undefined && { category }),
-      ...(priority !== undefined && { priority }),
+      ...(category    !== undefined && { category }),
+      // Explicit priority always wins; aiUpdates.priority is only present
+      // when priority was NOT passed in the request
+      ...(priority !== undefined ? { priority } : {}),
+      ...aiUpdates,
     },
     select: complaintDetailSelect,
   });

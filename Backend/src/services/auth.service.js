@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/ApiError.js";
+import { blacklistToken } from "../config/redis.js";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -234,12 +235,17 @@ export const refreshTokens = async (token) => {
   };
 };
 
-export const logoutUser = async (token, userId) => {
+export const logoutUser = async (token, userId, jti, exp) => {
   const hashedToken = hashRefreshToken(token);
 
   await prisma.refreshToken.deleteMany({
     where: { token: hashedToken, userId },
   });
+
+  if (jti && exp) {
+    const ttlSeconds = exp - Math.floor(Date.now() / 1000);
+    await blacklistToken(jti, ttlSeconds);
+  }
 
   return true;
 };

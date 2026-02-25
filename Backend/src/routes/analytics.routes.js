@@ -31,4 +31,22 @@ router.get(
   controller.getOfficerLeaderboard,
 );
 
+router.get(
+  "/sla-heatmap",
+  authorizeMinimum("DEPARTMENT_HEAD"),
+  controller.getSlaHeatmap,
+);
+
+router.get(
+  "/escalation-trends",
+  authorizeMinimum("CALL_OPERATOR"),
+  controller.getEscalationTrend,
+);
+
+router.get(
+  "/category-distribution",
+  authorizeMinimum("CALL_OPERATOR"),
+  controller.getCategoryDistribution,
+);
+
 export default router;

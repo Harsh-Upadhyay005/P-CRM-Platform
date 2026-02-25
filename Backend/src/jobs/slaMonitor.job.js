@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { prisma } from "../config/db.js";
 import { isSlaBreached, NON_SLA_STATUSES } from "../utils/slaEngine.js";
+import { sendSlaBreachEmail } from "../services/email.service.js";
 
 const CRON_SCHEDULE = "0,30 * * * *";
 const BATCH_SIZE = 100;
@@ -18,11 +19,14 @@ export const runSlaTick = async () => {
       select: {
         id:           true,
         tenantId:     true,
+        trackingId:   true,
         status:       true,
         createdAt:    true,
         assignedToId: true,
         createdById:  true,
-        department:   { select: { slaHours: true } },
+        department:   { select: { name: true, slaHours: true } },
+        assignedTo:   { select: { name: true, email: true } },
+        createdBy:    { select: { name: true, email: true } },
       },
       take:    BATCH_SIZE,
       orderBy: { createdAt: "asc" },
@@ -101,6 +105,27 @@ const notifyEscalation = async (complaint, adminIds) => {
     })),
     skipDuplicates: true,
   });
+
+  const emailRecipients = [];
+  if (complaint.createdBy?.email) {
+    emailRecipients.push({ email: complaint.createdBy.email, name: complaint.createdBy.name });
+  }
+  if (complaint.assignedTo?.email) {
+    const alreadyAdded = emailRecipients.some((r) => r.email === complaint.assignedTo.email);
+    if (!alreadyAdded) {
+      emailRecipients.push({ email: complaint.assignedTo.email, name: complaint.assignedTo.name });
+    }
+  }
+
+  if (emailRecipients.length > 0) {
+    sendSlaBreachEmail(
+      emailRecipients,
+      complaint.trackingId,
+      complaint.department?.name ?? "Unknown",
+      complaint.createdAt,
+      complaint.department?.slaHours ?? 48,
+    ).catch(() => {});
+  }
 };
 
 const getAdminIdsPerTenant = async (tenantIds) => {
