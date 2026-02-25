@@ -51,3 +51,20 @@ export const getNotes = asyncHandler(async (req, res) => {
   const notes = await service.getInternalNotes(req.params.id, req.user);
   res.json(new ApiResponse(200, notes, "Notes retrieved"));
 });
+
+// ── PUBLIC / CITIZEN ENDPOINTS ────────────────────────────────────────────
+
+export const createPublicComplaint = asyncHandler(async (req, res) => {
+  const complaint = await service.createPublicComplaint(req.body);
+  res.status(201).json(new ApiResponse(201, complaint, "Complaint registered. Check your email for your Tracking ID."));
+});
+
+export const submitFeedback = asyncHandler(async (req, res) => {
+  const feedback = await service.submitFeedback(req.params.trackingId, req.body);
+  res.status(201).json(new ApiResponse(201, feedback, "Feedback submitted successfully"));
+});
+
+export const getFeedback = asyncHandler(async (req, res) => {
+  const feedback = await service.getFeedback(req.params.id, req.user);
+  res.json(new ApiResponse(200, feedback, "Feedback retrieved"));
+});

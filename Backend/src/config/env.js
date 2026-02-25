@@ -20,6 +20,9 @@ const requiredEnvVars = [
   "BCRYPT_SALT_ROUNDS",
   "UPSTASH_REDIS_REST_URL",
   "UPSTASH_REDIS_REST_TOKEN",
+  "SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "SUPABASE_STORAGE_BUCKET",
 ];
 
 requiredEnvVars.forEach((key) => {
@@ -68,4 +71,8 @@ export const env = {
   REDIS_URL: process.env.REDIS_URL || null,
   UPSTASH_REDIS_REST_URL:   process.env.UPSTASH_REDIS_REST_URL   || null,
   UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN || null,
+
+  SUPABASE_URL:               process.env.SUPABASE_URL               || null,
+  SUPABASE_SERVICE_ROLE_KEY:  process.env.SUPABASE_SERVICE_ROLE_KEY  || null,
+  SUPABASE_STORAGE_BUCKET:    process.env.SUPABASE_STORAGE_BUCKET    || "complaint-attachments",
 };

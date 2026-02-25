@@ -43,3 +43,23 @@ export const updateStatusSchema = z.object({
 export const addNoteSchema = z.object({
   note: z.string().min(1, "Note cannot be empty").max(2000),
 });
+
+// ── PUBLIC SELF-FILING (citizen) ─────────────────────────────────────────
+export const publicCreateComplaintSchema = z.object({
+  citizenName:  z.string().min(2, "Citizen name must be at least 2 characters").max(100),
+  citizenPhone: z
+    .string()
+    .regex(/^\+?[\d\s\-()\/.]{7,20}$/, "Invalid phone number"),
+  citizenEmail: z.string().email("A valid email is required to receive updates"),
+  description:  z.string().min(10, "Description must be at least 10 characters").max(5000),
+  category:     z.string().min(2).max(100).optional().nullable(),
+  priority:     Priority.optional(),
+  departmentId: z.string().uuid("Invalid department ID").optional().nullable(),
+  tenantSlug:   z.string().min(1, "tenantSlug is required"),
+});
+
+// ── FEEDBACK ──────────────────────────────────────────────────────────────
+export const feedbackSchema = z.object({
+  rating:  z.number().int().min(1, "Rating must be between 1 and 5").max(5, "Rating must be between 1 and 5"),
+  comment: z.string().max(1000, "Comment must be at most 1000 characters").optional(),
+});

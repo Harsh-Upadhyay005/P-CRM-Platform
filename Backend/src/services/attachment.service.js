@@ -1,8 +1,21 @@
-import fs from "fs";
+import crypto from "crypto";
 import path from "path";
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/ApiError.js";
+import { supabase, BUCKET } from "../config/supabase.js";
 import { getComplaint } from "./complaints.service.js";
+
+const getStoragePath = (complaintId, originalName) => {
+  const uniqueSuffix = crypto.randomBytes(8).toString("hex");
+  const ext = path.extname(originalName).toLowerCase();
+  return `complaints/${complaintId}/${Date.now()}-${uniqueSuffix}${ext}`;
+};
+
+const extractStoragePath = (fileUrl) => {
+  const marker = `/object/public/${BUCKET}/`;
+  const idx = fileUrl.indexOf(marker);
+  return idx !== -1 ? fileUrl.slice(idx + marker.length) : null;
+};
 
 export const uploadAttachments = async (complaintId, files, user) => {
   await getComplaint(complaintId, user);
@@ -11,22 +24,45 @@ export const uploadAttachments = async (complaintId, files, user) => {
     throw new ApiError(400, "No files provided");
   }
 
-  const records = files.map((f) => ({
-    complaintId,
-    uploadedById: user.userId,
-    fileName:    f.originalname,
-    fileSize:    f.size,
-    mimeType:    f.mimetype,
-    storagePath: f.path.replace(/\\/g, "/"),
-  }));
+  if (!supabase) {
+    throw new ApiError(503, "File storage is not configured");
+  }
 
-  await prisma.complaintAttachment.createMany({ data: records });
+  const uploaded = [];
 
-  return records.map((r) => ({
-    fileName:    r.fileName,
-    fileSize:    r.fileSize,
-    mimeType:    r.mimeType,
-    url:         `/${r.storagePath}`,
+  for (const file of files) {
+    const storagePath = getStoragePath(complaintId, file.originalname);
+
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(storagePath, file.buffer, {
+        contentType:  file.mimetype,
+        upsert:       false,
+      });
+
+    if (error) {
+      throw new ApiError(500, `Failed to upload "${file.originalname}": ${error.message}`);
+    }
+
+    const { data } = supabase.storage.from(BUCKET).getPublicUrl(storagePath);
+
+    uploaded.push({
+      complaintId,
+      uploadedById: user.userId,
+      fileName:     file.originalname,
+      fileSize:     file.size,
+      mimeType:     file.mimetype,
+      fileUrl:      data.publicUrl,
+    });
+  }
+
+  await prisma.complaintAttachment.createMany({ data: uploaded });
+
+  return uploaded.map(({ fileName, fileSize, mimeType, fileUrl }) => ({
+    fileName,
+    fileSize,
+    mimeType,
+    url: fileUrl,
   }));
 };
 
@@ -37,12 +73,12 @@ export const listAttachments = async (complaintId, user) => {
     where:   { complaintId },
     orderBy: { createdAt: "desc" },
     select: {
-      id:          true,
-      fileName:    true,
-      fileSize:    true,
-      mimeType:    true,
-      storagePath: true,
-      createdAt:   true,
+      id:        true,
+      fileName:  true,
+      fileSize:  true,
+      mimeType:  true,
+      fileUrl:   true,
+      createdAt: true,
     },
   });
 };
@@ -56,7 +92,12 @@ export const deleteAttachment = async (complaintId, attachmentId, user) => {
 
   if (!attachment) throw new ApiError(404, "Attachment not found");
 
-  await prisma.complaintAttachment.delete({ where: { id: attachmentId } });
+  if (supabase) {
+    const storagePath = extractStoragePath(attachment.fileUrl);
+    if (storagePath) {
+      await supabase.storage.from(BUCKET).remove([storagePath]);
+    }
+  }
 
-  fs.unlink(path.resolve(attachment.storagePath), () => {});
+  await prisma.complaintAttachment.delete({ where: { id: attachmentId } });
 };

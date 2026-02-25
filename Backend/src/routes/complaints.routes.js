@@ -12,12 +12,30 @@ import {
   assignComplaintSchema,
   updateStatusSchema,
   addNoteSchema,
+  publicCreateComplaintSchema,
+  feedbackSchema,
 } from "../validators/complaints.validators.js";
 
 const router = express.Router();
 
+// ── PUBLIC (no auth) ──────────────────────────────────────────────────────
 router.get("/track/:trackingId", controller.trackComplaint);
 
+router.post(
+  "/public",
+  apiWriteLimiter,
+  validate(publicCreateComplaintSchema),
+  controller.createPublicComplaint,
+);
+
+router.post(
+  "/feedback/:trackingId",
+  apiWriteLimiter,
+  validate(feedbackSchema),
+  controller.submitFeedback,
+);
+
+// ── AUTHENTICATED ─────────────────────────────────────────────────────────
 router.use(authMiddleware);
 
 router.use((req, res, next) => {
@@ -82,6 +100,12 @@ router.get(
   "/:id/notes",
   authorizeMinimum("OFFICER"),
   controller.getNotes,
+);
+
+router.get(
+  "/:id/feedback",
+  authorizeMinimum("OFFICER"),
+  controller.getFeedback,
 );
 
 router.post(

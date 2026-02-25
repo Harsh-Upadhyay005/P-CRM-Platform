@@ -39,13 +39,13 @@ router.get(
 
 router.get(
   "/escalation-trends",
-  authorizeMinimum("CALL_OPERATOR"),
+  authorizeMinimum("DEPARTMENT_HEAD"),
   controller.getEscalationTrend,
 );
 
 router.get(
   "/category-distribution",
-  authorizeMinimum("CALL_OPERATOR"),
+  authorizeMinimum("DEPARTMENT_HEAD"),
   controller.getCategoryDistribution,
 );
 
