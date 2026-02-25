@@ -68,7 +68,7 @@ app.use("/api", globalLimiter);
 
 app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
-app.get("/health", (req, res) => {
+app.get(["/health", "/api/v1/health"], (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, { status: "OK" }, "Server is healthy"));

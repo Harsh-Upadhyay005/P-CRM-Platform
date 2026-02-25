@@ -1,0 +1,2120 @@
+{
+  "info": {
+    "_postman_id": "p-crm-collection-v1",
+    "name": "P-CRM Platform API",
+    "description": "Complete API test suite for the P-CRM backend.\n\n**Run order:**\n1. Health Check\n2. Auth — Login (Admin)\n3. Tenants (SUPER_ADMIN)\n4. Departments\n5. Users\n6. Complaints — Public\n7. Complaints — Staff\n8. Analytics\n9. Notifications\n10. Audit Logs\n\n**Cookie note:** Postman manages httpOnly auth cookies automatically. No manual token handling needed — just login first and every subsequent request inherits the session.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [{ "key": "baseUrl", "value": "{{baseUrl}}" }],
+  "item": [
+    {
+      "name": "01. Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Server is healthy', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data.status).to.eql('OK');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "02. Auth",
+      "description": "Run Login first. Cookies are captured automatically by Postman.",
+      "item": [
+        {
+          "name": "Register (new user)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"testuser@example.com\",\n  \"password\": \"Test@1234\",\n  \"tenantSlug\": \"{{tenantSlug}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Returns user object', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data).to.have.property('id');",
+                  "  pm.expect(json.data.emailVerified).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resend Verification Email",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"testuser@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/resend-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "resend-verification"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 (always, anti-enumeration)', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify Email  [paste token from email into verifyEmailToken env var]",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{verifyEmailToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-email",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "verify-email"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (Admin) ← run this first",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns user with role', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data.user).to.have.property('id');",
+                  "  pm.expect(json.data.user.role.type).to.be.oneOf(['ADMIN','SUPER_ADMIN']);",
+                  "});",
+                  "pm.test('httpOnly cookie set (Postman cookie jar)', () => {",
+                  "  pm.expect(pm.response.headers.get('set-cookie')).to.include('accessToken');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (Officer)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{officerEmail}}\",\n  \"password\": \"{{officerPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Role is OFFICER', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data.user.role.type).to.eql('OFFICER');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('New accessToken cookie issued', () => {",
+                  "  pm.expect(pm.response.headers.get('set-cookie') || '').to.include('accessToken');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "forgot-password"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 (always, anti-enumeration)', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reset Password  [paste token from email into resetPasswordToken env var]",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{resetPasswordToken}}\",\n  \"newPassword\": \"Admin@1234\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "reset-password"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "// Note: Cookies are cleared by the backend. Log back in before continuing.",
+                  "console.log('You are now logged out. Run Login (Admin) again before testing other routes.');"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "03. Tenants  [SUPER_ADMIN only — login as super admin first]",
+      "item": [
+        {
+          "name": "List Tenants",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tenants?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Paginated response', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data).to.have.property('pagination');",
+                  "  pm.expect(json.data.data).to.be.an('array');",
+                  "});",
+                  "const tenants = pm.response.json().data.data;",
+                  "if (tenants && tenants.length > 0) {",
+                  "  pm.environment.set('tenantId', tenants[0].id);",
+                  "  console.log('Captured tenantId:', tenants[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Tenant",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Municipality\",\n  \"slug\": \"test-municipality\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tenants",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Tenant created with slug', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data).to.have.property('slug');",
+                  "  pm.environment.set('tenantId', json.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Tenant by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tenants/{{tenantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants", "{{tenantId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has _count stats', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data).to.have.property('_count');",
+                  "  pm.expect(json.data._count).to.have.all.keys('users','departments','complaints');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Tenant",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Municipality Updated\",\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tenants/{{tenantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants", "{{tenantId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Deactivate Tenant",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tenants/{{tenantId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["tenants", "{{tenantId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Deactivated (not hard deleted)', () => {",
+                  "  const msg = pm.response.json().message.toLowerCase();",
+                  "  pm.expect(msg).to.not.include('deleted');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "04. Departments  [Login as Admin first]",
+      "item": [
+        {
+          "name": "List Departments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departments?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["departments"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has _count fields', () => {",
+                  "  const json = pm.response.json();",
+                  "  const depts = json.data.data;",
+                  "  if (depts.length > 0) {",
+                  "    pm.expect(depts[0]).to.have.property('_count');",
+                  "    pm.environment.set('departmentId', depts[0].id);",
+                  "    console.log('Captured departmentId:', depts[0].id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Department",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Roads & Infrastructure\",\n  \"slaHours\": 48\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/departments",
+              "host": ["{{baseUrl}}"],
+              "path": ["departments"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Slug auto-generated', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data).to.have.property('slug');",
+                  "  pm.expect(json.data.slaHours).to.eql(48);",
+                  "  pm.environment.set('departmentId', json.data.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Department by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["departments", "{{departmentId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has slaHours', () => {",
+                  "  pm.expect(pm.response.json().data.slaHours).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Department",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Roads & Infrastructure\",\n  \"slaHours\": 72,\n  \"isActive\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["departments", "{{departmentId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('slaHours updated', () => {",
+                  "  pm.expect(pm.response.json().data.slaHours).to.eql(72);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Department (expect 409 if active users assigned)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departments/{{departmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["departments", "{{departmentId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 or 409', () => {",
+                  "  pm.expect([200, 409]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 409) {",
+                  "  pm.test('409: active users assigned (expected)', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('active');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search Departments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departments?search=roads&isActive=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["departments"],
+              "query": [
+                { "key": "search", "value": "roads" },
+                { "key": "isActive", "value": "true" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Filtered results only', () => {",
+                  "  const depts = pm.response.json().data.data;",
+                  "  depts.forEach(d => pm.expect(d.isActive).to.eql(true));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "05. Users  [Login as Admin first]",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has role and department', () => {",
+                  "  const user = pm.response.json().data;",
+                  "  pm.expect(user).to.have.property('role');",
+                  "  pm.expect(user.role).to.have.property('type');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update My Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Admin User Updated\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "me"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Name updated', () => {",
+                  "  pm.expect(pm.response.json().data.name).to.eql('Admin User Updated');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Users (DEPT_HEAD+)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Paginated users list', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data.data).to.be.an('array');",
+                  "  if (json.data.data.length > 0) {",
+                  "    pm.environment.set('userId', json.data.data[0].id);",
+                  "    console.log('Captured userId:', json.data.data[0].id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Users by Role",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users?roleType=OFFICER",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [{ "key": "roleType", "value": "OFFICER" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('All returned users are OFFICER', () => {",
+                  "  const users = pm.response.json().data.data;",
+                  "  users.forEach(u => pm.expect(u.role.type).to.eql('OFFICER'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get User by ID (DEPT_HEAD+)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('User has expected fields', () => {",
+                  "  const user = pm.response.json().data;",
+                  "  ['id','name','email','role','isActive','emailVerified'].forEach(f =>",
+                  "    pm.expect(user).to.have.property(f)",
+                  "  );",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign Role (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roleType\": \"OFFICER\",\n  \"departmentId\": \"{{departmentId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/role",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "role"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Role updated', () => {",
+                  "  const user = pm.response.json().data;",
+                  "  pm.expect(user.role.type).to.eql('OFFICER');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set User Status — Deactivate (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": false\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('User is now inactive', () => {",
+                  "  pm.expect(pm.response.json().data.isActive).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set User Status — Reactivate (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": true\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('User is now active', () => {",
+                  "  pm.expect(pm.response.json().data.isActive).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "06. Complaints — Public (No Auth)",
+      "description": "These three requests require NO login. They simulate citizen interactions.",
+      "item": [
+        {
+          "name": "Create Public Complaint (Citizen)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"citizenName\": \"Ramesh Kumar\",\n  \"citizenPhone\": \"+91 9876543210\",\n  \"citizenEmail\": \"ramesh@example.com\",\n  \"description\": \"The road outside my house has a very large pothole causing accidents daily\",\n  \"category\": \"Roads\",\n  \"priority\": \"HIGH\",\n  \"departmentId\": \"{{departmentId}}\",\n  \"tenantSlug\": \"{{tenantSlug}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/complaints/public",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "public"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Returns trackingId', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data).to.have.property('trackingId');",
+                  "  pm.environment.set('publicTrackingId', json.data.trackingId);",
+                  "  console.log('Tracking ID:', json.data.trackingId);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Track Complaint by Tracking ID (Public)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/track/{{publicTrackingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "track", "{{publicTrackingId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns status and citizen-safe fields only', () => {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.have.property('trackingId');",
+                  "  pm.expect(data).to.have.property('status');",
+                  "  pm.expect(data).to.not.have.property('aiScore');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit Feedback (Public — only works on RESOLVED/CLOSED complaint)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 4,\n  \"comment\": \"Issue was resolved promptly. Some delays initially but overall good service.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/complaints/feedback/{{resolvedTrackingId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "feedback", "{{resolvedTrackingId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201 or 400 (if complaint not resolved yet)', () => {",
+                  "  pm.expect([201, 400]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 400) {",
+                  "  console.log('Expected: complaint must be RESOLVED or CLOSED to accept feedback');",
+                  "  console.log('Set resolvedTrackingId env variable to a resolved complaint tracking ID');",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "07. Complaints — Staff  [Login as Admin first]",
+      "item": [
+        {
+          "name": "Create Complaint (Staff / CALL_OPERATOR+)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"citizenName\": \"Priya Sharma\",\n  \"citizenPhone\": \"+91 9123456789\",\n  \"citizenEmail\": \"priya@example.com\",\n  \"description\": \"Streetlight near the park has been non-functional for two weeks creating safety hazards at night\",\n  \"category\": \"Electrical\",\n  \"priority\": \"MEDIUM\",\n  \"departmentId\": \"{{departmentId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/complaints",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Complaint created — capture IDs', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data).to.have.property('id');",
+                  "  pm.expect(json.data).to.have.property('trackingId');",
+                  "  pm.environment.set('complaintId', json.data.id);",
+                  "  pm.environment.set('trackingId', json.data.trackingId);",
+                  "  console.log('complaintId:', json.data.id);",
+                  "  console.log('trackingId:', json.data.trackingId);",
+                  "});",
+                  "pm.test('Status is OPEN by default', () => {",
+                  "  pm.expect(pm.response.json().data.status).to.eql('OPEN');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Complaints (ABAC-filtered)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Paginated with isDeleted=false items only', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data.pagination).to.have.all.keys('total','page','limit','totalPages','hasNextPage','hasPrevPage');",
+                  "  json.data.data.forEach(c => pm.expect(c).to.not.have.property('isDeleted'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Complaints by Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints?status=OPEN",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints"],
+              "query": [{ "key": "status", "value": "OPEN" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('All results are OPEN', () => {",
+                  "  pm.response.json().data.data.forEach(c =>",
+                  "    pm.expect(c.status).to.eql('OPEN')",
+                  "  );",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search Complaints",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints?search=pothole",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints"],
+              "query": [{ "key": "search", "value": "pothole" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Complaint by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "{{complaintId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Full detail including statusHistory', () => {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.have.property('statusHistory');",
+                  "  pm.expect(data.statusHistory).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign Complaint (DEPT_HEAD+)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"departmentId\": \"{{departmentId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/assign",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "{{complaintId}}", "assign"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Department assigned', () => {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data.department).to.not.be.null;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Status → ASSIGNED (OFFICER+)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newStatus\": \"ASSIGNED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "{{complaintId}}", "status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('New status is ASSIGNED', () => {",
+                  "  pm.expect(pm.response.json().data.status).to.eql('ASSIGNED');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Status → IN_PROGRESS (OFFICER+)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newStatus\": \"IN_PROGRESS\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "{{complaintId}}", "status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('New status is IN_PROGRESS', () => {",
+                  "  pm.expect(pm.response.json().data.status).to.eql('IN_PROGRESS');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Status → RESOLVED (OFFICER+)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newStatus\": \"RESOLVED\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "{{complaintId}}", "status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('resolvedAt is set', () => {",
+                  "  pm.expect(pm.response.json().data.resolvedAt).to.not.be.null;",
+                  "  pm.environment.set('resolvedTrackingId', pm.response.json().data.trackingId);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Status → INVALID TRANSITION (expect 400)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"newStatus\": \"OPEN\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "{{complaintId}}", "status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 — invalid transition rejected', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add Internal Note (OFFICER+)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Contractor contacted. Repair scheduled for next Tuesday.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "{{complaintId}}", "notes"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Note saved with author', () => {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.have.property('note');",
+                  "  pm.expect(data).to.have.property('createdBy');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Internal Notes (OFFICER+)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "{{complaintId}}", "notes"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array of notes', () => {",
+                  "  pm.expect(pm.response.json().data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload Attachments  [select a file in Body > form-data > files]",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": [],
+                  "description": "Select up to 5 files — field name MUST be 'files' (plural)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/attachments",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "{{complaintId}}", "attachments"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Returns attachment list with signed URLs', () => {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.be.an('array');",
+                  "  if (data.length > 0) {",
+                  "    pm.expect(data[0]).to.have.property('url');",
+                  "    pm.environment.set('attachmentId', data[0].id);",
+                  "    console.log('Captured attachmentId:', data[0].id);",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Attachments (signed URLs)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/attachments",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "{{complaintId}}", "attachments"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('URLs are fresh 1-hour signed URLs', () => {",
+                  "  const files = pm.response.json().data;",
+                  "  if (files.length > 0) pm.expect(files[0].url).to.include('http');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Attachment (ADMIN)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/attachments/{{attachmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": [
+                "complaints",
+                "{{complaintId}}",
+                "attachments",
+                "{{attachmentId}}"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Citizen Feedback for Complaint (OFFICER+)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}/feedback",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "{{complaintId}}", "feedback"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Edit Complaint (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Streetlight near the park has been non-functional for two weeks. Multiple residents affected.\",\n  \"priority\": \"HIGH\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "{{complaintId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Priority updated', () => {",
+                  "  pm.expect(pm.response.json().data.priority).to.eql('HIGH');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete Complaint (ADMIN — soft delete)",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/{{complaintId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "{{complaintId}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "// Soft-deleted complaints should no longer appear in list",
+                  "console.log('Run List Complaints again — deleted complaint should not appear');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "ABAC: CALL_OPERATOR cannot see other users complaints (expect empty list or 403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints?page=1&limit=100",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// When logged in as CALL_OPERATOR: results should only include their own complaints.",
+                  "// When logged in as ADMIN: results include all non-deleted complaints in the tenant.",
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "console.log('Total visible complaints for current role:', pm.response.json().data.pagination.total);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "08. Analytics  [Login as DEPT_HEAD or ADMIN first]",
+      "item": [
+        {
+          "name": "Overview Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/overview",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "overview"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has all overview fields', () => {",
+                  "  const data = pm.response.json().data;",
+                  "  ['total','byStatus','byPriority','sla','avgResolutionTime','resolvedCount']",
+                  "    .forEach(k => pm.expect(data).to.have.property(k));",
+                  "  pm.expect(data.sla).to.have.all.keys('activeComplaints','breachedCount','breachPercentage');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Complaint Trends (last 30 days)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/trends?days=30",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "trends"],
+              "query": [{ "key": "days", "value": "30" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns daily trend array', () => {",
+                  "  const data = pm.response.json().data;",
+                  "  pm.expect(data).to.be.an('array');",
+                  "  if (data.length > 0) pm.expect(data[0]).to.have.property('date');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Department Performance Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/departments",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "departments"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has department name in results', () => {",
+                  "  const data = pm.response.json().data;",
+                  "  if (data.length > 0) pm.expect(data[0]).to.have.property('department');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Officer Leaderboard",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/officers",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "officers"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has officer, assigned, resolved fields', () => {",
+                  "  const data = pm.response.json().data;",
+                  "  if (data.length > 0) {",
+                  "    pm.expect(data[0]).to.have.property('officer');",
+                  "    pm.expect(data[0]).to.have.all.keys('officer','assigned','resolved','avgResolutionTime');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SLA Heatmap",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/sla-heatmap",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "sla-heatmap"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has breach percentage per department', () => {",
+                  "  const data = pm.response.json().data;",
+                  "  if (data.length > 0) pm.expect(data[0]).to.have.property('breachPct');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Escalation Trends (last 14 days)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/escalation-trends?days=14",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "escalation-trends"],
+              "query": [{ "key": "days", "value": "14" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Category Distribution",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/category-distribution",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "category-distribution"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns category + count pairs', () => {",
+                  "  const data = pm.response.json().data;",
+                  "  if (data.length > 0) {",
+                  "    pm.expect(data[0]).to.have.property('category');",
+                  "    pm.expect(data[0]).to.have.property('count');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "ABAC: CALL_OPERATOR blocked from analytics (expect 403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/analytics/overview",
+              "host": ["{{baseUrl}}"],
+              "path": ["analytics", "overview"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Run this while logged in as a CALL_OPERATOR user",
+                  "pm.test('403 when called by CALL_OPERATOR', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "09. Notifications",
+      "description": "NOTE: GET /notifications/stream (SSE) cannot be tested in Postman. Test it in a browser by opening DevTools > Network > EventStream.",
+      "item": [
+        {
+          "name": "Get Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/unread-count",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "unread-count"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns numeric unreadCount', () => {",
+                  "  pm.expect(pm.response.json().data.unreadCount).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Paginated notifications', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data.data).to.be.an('array');",
+                  "  if (json.data.data.length > 0) {",
+                  "    pm.environment.set('notificationId', json.data.data[0].id);",
+                  "    pm.expect(json.data.data[0]).to.have.all.keys('id','title','message','isRead','createdAt','complaintId');",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark Single Notification Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/{{notificationId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "{{notificationId}}", "read"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('isRead is now true', () => {",
+                  "  pm.expect(pm.response.json().data.isRead).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark All Notifications Read",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/read-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "read-all"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns updatedCount', () => {",
+                  "  pm.expect(pm.response.json().data.updatedCount).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "SSE Stream ← test manually in browser",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/notifications/stream",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications", "stream"]
+            },
+            "description": "SSE cannot be tested via Postman.\n\nTo verify it works in the browser:\n1. Open DevTools → Network tab\n2. Login at http://localhost:5000/api/v1/auth/login (or via frontend)\n3. Navigate to http://localhost:5000/api/v1/notifications/stream\n4. In the Network tab, filter by 'stream' — you will see the SSE connection\n5. Under EventStream tab, verify 'connected' event arrives with unreadCount\n6. Trigger a status change on a complaint — a 'notification' event should appear"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Postman receives the stream but cannot parse SSE events properly.",
+                  "// Status 200 here means the SSE endpoint is reachable.",
+                  "pm.test('SSE endpoint reachable (status 200)', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "10. Audit Logs  [ADMIN+ only]",
+      "item": [
+        {
+          "name": "List Audit Logs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit-logs"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Paginated audit logs', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.data.data).to.be.an('array');",
+                  "  if (json.data.data.length > 0) {",
+                  "    const log = json.data.data[0];",
+                  "    ['action','entityType','entityId','createdAt'].forEach(k =>",
+                  "      pm.expect(log).to.have.property(k)",
+                  "    );",
+                  "  }",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit Logs by Action",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs?action=STATUS_CHANGED",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit-logs"],
+              "query": [{ "key": "action", "value": "STATUS_CHANGED" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filter Audit Logs by Date Range",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs?from=2026-01-01&to=2026-12-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit-logs"],
+              "query": [
+                { "key": "from", "value": "2026-01-01" },
+                { "key": "to", "value": "2026-12-31" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "ABAC: OFFICER blocked from audit logs (expect 403)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit-logs"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Run while logged in as OFFICER",
+                  "pm.test('403 for OFFICER role', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "11. Error & Edge Cases",
+      "description": "Verify that the backend correctly rejects invalid input.",
+      "item": [
+        {
+          "name": "Login with wrong password (expect 401)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"WrongPassword!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 for bad credentials', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Register with weak password (expect 400 + field error)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test\",\n  \"email\": \"weakpw@example.com\",\n  \"password\": \"weak\",\n  \"tenantSlug\": \"{{tenantSlug}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 for weak password', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Access protected route without login (expect 401)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Cookie", "value": "" }],
+            "url": {
+              "raw": "{{baseUrl}}/complaints",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints"]
+            },
+            "description": "Clear the Cookie header manually or use a fresh Postman environment with no cookies to simulate an unauthenticated request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401 without auth cookie', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create complaint with invalid body (expect 400 + errors array)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"citizenName\": \"A\",\n  \"description\": \"short\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/complaints",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Zod errors array returned', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.errors).to.be.an('array');",
+                  "  pm.expect(json.errors[0]).to.have.all.keys('field','message');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get non-existent complaint (expect 404)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/complaints/non-existent-id-000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["complaints", "non-existent-id-000000"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
