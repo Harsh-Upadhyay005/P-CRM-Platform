@@ -152,7 +152,7 @@ export const resendVerificationEmail = async (email) => {
 export const loginUser = async ({ email, password }) => {
   const user = await prisma.user.findUnique({
     where: { email },
-    include: { role: true },
+    include: { role: true, tenant: true },
   });
 
   if (!user) {
@@ -161,6 +161,10 @@ export const loginUser = async ({ email, password }) => {
 
   if (!user.isActive || user.isDeleted) {
     throw new ApiError(403, "Account inactive");
+  }
+
+  if (!user.tenant?.isActive) {
+    throw new ApiError(403, "This office is currently inactive");
   }
 
   const isValid = await bcrypt.compare(password, user.password);
@@ -215,14 +219,22 @@ export const refreshTokens = async (token) => {
     throw new ApiError(401, "Refresh token expired");
   }
 
+  const { user: refreshUser } = storedToken;
+  if (!refreshUser.isActive || refreshUser.isDeleted) {
+    await prisma.refreshToken
+      .delete({ where: { id: storedToken.id } })
+      .catch(() => {});
+    throw new ApiError(401, "Account is inactive");
+  }
+
   const newRawRefreshToken = generateRefreshToken();
-  const newAccessToken = generateAccessToken(storedToken.user);
+  const newAccessToken = generateAccessToken(refreshUser);
 
   await prisma.$transaction([
     prisma.refreshToken.delete({ where: { id: storedToken.id } }),
     prisma.refreshToken.create({
       data: {
-        userId: storedToken.user.id,
+        userId: refreshUser.id,
         token: hashRefreshToken(newRawRefreshToken),
         expiresAt: parseDurationToDate(env.REFRESH_TOKEN_EXPIRY),
       },

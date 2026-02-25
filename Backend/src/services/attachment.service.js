@@ -69,7 +69,7 @@ export const uploadAttachments = async (complaintId, files, user) => {
 export const listAttachments = async (complaintId, user) => {
   await getComplaint(complaintId, user);
 
-  return prisma.complaintAttachment.findMany({
+  const attachments = await prisma.complaintAttachment.findMany({
     where:   { complaintId },
     orderBy: { createdAt: "desc" },
     select: {
@@ -81,6 +81,32 @@ export const listAttachments = async (complaintId, user) => {
       createdAt: true,
     },
   });
+
+  // When Supabase is available, replace permanent public URLs with 1-hour signed URLs
+  // so attachment files are not permanently accessible to anyone who finds the link.
+  if (!supabase) return attachments;
+
+  return Promise.all(
+    attachments.map(async (attachment) => {
+      const storagePath = extractStoragePath(attachment.fileUrl);
+      if (!storagePath) {
+        return { ...attachment, url: attachment.fileUrl, fileUrl: undefined };
+      }
+
+      const { data, error } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrl(storagePath, 3600);
+
+      return {
+        id:        attachment.id,
+        fileName:  attachment.fileName,
+        fileSize:  attachment.fileSize,
+        mimeType:  attachment.mimeType,
+        url:       error ? attachment.fileUrl : data.signedUrl,
+        createdAt: attachment.createdAt,
+      };
+    }),
+  );
 };
 
 export const deleteAttachment = async (complaintId, attachmentId, user) => {
