@@ -4,6 +4,8 @@ import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import { ApiResponse } from "./utils/ApiResponse.js";
 import { ApiError } from "./utils/ApiError.js";
@@ -16,8 +18,12 @@ import departmentsRoute from "./routes/departments.routes.js";
 import analyticsRoute from "./routes/analytics.routes.js";
 import notificationsRoute from "./routes/notifications.routes.js";
 import auditLogRoute from "./routes/auditLog.routes.js";
+import tenantRoute from "./routes/tenant.routes.js";
 
 const app = express();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
 
 app.set("trust proxy", 1);
 
@@ -50,6 +56,8 @@ app.use(express.json({ limit: "50kb" }));
 app.use(express.urlencoded({ extended: true, limit: "50kb" }));
 app.use(cookieParser());
 
+app.use("/uploads", express.static(path.join(__dirname, "..", "uploads")));
+
 const globalLimiter = rateLimit({
   windowMs:        15 * 60 * 1000,
   max:             150,
@@ -80,6 +88,7 @@ app.use("/api/v1/departments",   departmentsRoute);
 app.use("/api/v1/analytics",     analyticsRoute);
 app.use("/api/v1/notifications", notificationsRoute);
 app.use("/api/v1/audit-logs",    auditLogRoute);
+app.use("/api/v1/tenants",        tenantRoute);
 
 app.use((req, res, next) => {
   next(new ApiError(404, "Route not found"));
