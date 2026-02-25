@@ -23,6 +23,8 @@ const requiredEnvVars = [
   "SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
   "SUPABASE_STORAGE_BUCKET",
+  "SEED_SUPER_ADMIN_EMAIL",
+  "SEED_SUPER_ADMIN_PASSWORD",
 ];
 
 requiredEnvVars.forEach((key) => {
@@ -75,4 +77,7 @@ export const env = {
   SUPABASE_URL:               process.env.SUPABASE_URL               || null,
   SUPABASE_SERVICE_ROLE_KEY:  process.env.SUPABASE_SERVICE_ROLE_KEY  || null,
   SUPABASE_STORAGE_BUCKET:    process.env.SUPABASE_STORAGE_BUCKET    || "complaint-attachments",
+
+  SEED_SUPER_ADMIN_EMAIL:    process.env.SEED_SUPER_ADMIN_EMAIL,
+  SEED_SUPER_ADMIN_PASSWORD: process.env.SEED_SUPER_ADMIN_PASSWORD,
 };
