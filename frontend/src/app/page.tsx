@@ -18,7 +18,13 @@ export default function Home() {
     }
   }, [user, isLoading, router]);
 
-  if (isLoading) return null; // Or a loader
+  // Don't block render — unauthenticated users should see the landing page immediately.
+  // The redirect to /dashboard happens once loading finishes (see useEffect above).
+  if (isLoading && !user) return (
+    <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans bg-[#020617]">
+      <span className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
     <div className="relative min-h-screen flex items-center justify-center overflow-hidden font-sans">
@@ -44,7 +50,7 @@ export default function Home() {
 
         <div className="space-y-4">
           <Link
-            href="/signup"
+            href="/register"
             className="group relative w-full block bg-white text-gray-900 font-bold py-4 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all overflow-hidden"
           >
              <span className="relative z-10 flex items-center justify-center gap-2">
