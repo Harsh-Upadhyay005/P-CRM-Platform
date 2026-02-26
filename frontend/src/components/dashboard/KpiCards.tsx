@@ -2,8 +2,10 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { kpiStats } from '@/lib/dashboard-mock-data';
+import { useQuery } from '@tanstack/react-query';
+import { analyticsApi } from '@/lib/api';
 import type { LucideIcon } from 'lucide-react';
+import type { AnalyticsOverview } from '@/types';
 import {
   Inbox,
   Clock,
@@ -12,15 +14,8 @@ import {
   AlertTriangle,
   TrendingUp,
   TrendingDown,
+  Zap,
 } from 'lucide-react';
-
-const iconMap: Record<string, LucideIcon> = {
-  inbox: Inbox,
-  clock: Clock,
-  loader: Loader,
-  'check-circle': CheckCircle,
-  'alert-triangle': AlertTriangle,
-};
 
 const colorMap: Record<string, { bg: string; border: string; text: string; glow: string; icon: string }> = {
   blue:    { bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    text: 'text-blue-400',    glow: 'shadow-blue-500/20',    icon: 'text-blue-400' },
@@ -31,13 +26,50 @@ const colorMap: Record<string, { bg: string; border: string; text: string; glow:
   red:     { bg: 'bg-red-500/10',     border: 'border-red-500/20',     text: 'text-red-400',     glow: 'shadow-red-500/20',     icon: 'text-red-400' },
 };
 
+interface KpiStatItem {
+  label: string;
+  value: number;
+  icon: LucideIcon;
+  color: string;
+  change?: number;
+}
+
 export function KpiCards() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['analytics', 'overview'],
+    queryFn: () => analyticsApi.getOverview(),
+    staleTime: 60_000,
+  });
+
+  const overview = data?.data as AnalyticsOverview | undefined;
+
+  // getOverview returns { total, byStatus, byPriority, sla, avgResolutionTime, resolvedCount }
+  const stats: KpiStatItem[] = overview
+    ? [
+        { label: 'Total Complaints', value: overview.total ?? 0, icon: Inbox, color: 'blue' },
+        { label: 'Open', value: overview.byStatus?.OPEN ?? 0, icon: Clock, color: 'indigo' },
+        { label: 'In Progress', value: (overview.byStatus?.IN_PROGRESS ?? 0) + (overview.byStatus?.ASSIGNED ?? 0), icon: Loader, color: 'purple' },
+        { label: 'Resolved', value: overview.resolvedCount ?? 0, icon: CheckCircle, color: 'emerald' },
+        { label: 'SLA Breached', value: overview.sla?.breachedCount ?? 0, icon: AlertTriangle, color: 'red' },
+        { label: 'Escalated', value: overview.byStatus?.ESCALATED ?? 0, icon: Zap, color: 'amber' },
+      ]
+    : [];
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-28 rounded-xl border border-white/5 bg-slate-800/30 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-      {kpiStats.map((stat, i) => {
-        const Icon = iconMap[stat.icon] || Inbox;
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      {stats.map((stat, i) => {
+        const Icon = stat.icon;
         const c = colorMap[stat.color] || colorMap.purple;
-        const isPositive = stat.change >= 0;
 
         return (
           <motion.div
@@ -48,20 +80,13 @@ export function KpiCards() {
             className={`relative group rounded-xl border ${c.border} ${c.bg} p-4 overflow-hidden backdrop-blur-md
               hover:scale-[1.03] hover:shadow-lg ${c.glow} transition-all duration-300 cursor-default`}
           >
-            {/* Glow blob */}
             <div className={`absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-30 ${c.bg}`} />
-
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-3">
                 <div className={`p-2 rounded-lg ${c.bg} ring-1 ring-white/5`}>
                   <Icon size={18} className={c.icon} />
                 </div>
-                <div className={`flex items-center gap-1 text-xs font-medium ${isPositive ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {isPositive ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                  {Math.abs(stat.change)}%
-                </div>
               </div>
-
               <p className="text-2xl font-bold text-white tracking-tight">{stat.value.toLocaleString()}</p>
               <p className="text-xs text-slate-400 mt-1 font-medium">{stat.label}</p>
             </div>
