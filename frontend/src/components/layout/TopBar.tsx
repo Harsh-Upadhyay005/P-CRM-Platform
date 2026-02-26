@@ -21,7 +21,7 @@ export function TopBar() {
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.6)]" />
         </button>
         
-        <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-cyan-400 flex items-center justify-center text-white font-bold text-xs ring-2 ring-white/10 shadow-lg">
+        <div className="w-8 h-8 rounded-full bg-linear-to-tr from-purple-500 to-emerald-400 flex items-center justify-center text-white font-bold text-xs ring-2 ring-white/10 shadow-lg">
           {user?.name?.[0]?.toUpperCase() || <User size={14} />}
         </div>
       </div>

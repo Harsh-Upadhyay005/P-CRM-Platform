@@ -35,7 +35,7 @@ export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 h-full w-64 bg-slate-900/90 backdrop-blur-xl border-r border-white/10 text-white z-50 flex flex-col shadow-2xl">
       <div className="p-6 border-b border-white/10">
-        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">
+        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-linear-to-r from-purple-400 to-emerald-400">
           P-CRM
         </h1>
         <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider">{role?.replace('_', ' ')}</p>
@@ -52,11 +52,11 @@ export function Sidebar() {
               className={clsx(
                 "flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 group",
                 isActive 
-                  ? "bg-blue-600/20 text-blue-400 border border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+                  ? "bg-purple-600/20 text-purple-400 border border-purple-500/30 shadow-[0_0_15px_rgba(168,85,247,0.3)]"
                   : "text-slate-400 hover:bg-white/5 hover:text-white"
               )}
             >
-              <link.icon size={20} className={clsx(isActive ? "text-blue-400" : "text-slate-500 group-hover:text-white")} />
+              <link.icon size={20} className={clsx(isActive ? "text-purple-400" : "text-slate-500 group-hover:text-white")} />
               <span className="font-medium">{link.label}</span>
             </Link>
           );
