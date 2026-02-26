@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, Building, ArrowRight, Loader2, Sparkles, LayoutGrid } from 'lucide-react';
+import { User, Mail, Lock, Building, ArrowRight, Loader2, Sparkles, LayoutGrid, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AbstractBackground from '@/components/3d/AbstractBackground';
@@ -19,6 +19,7 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,14 +146,21 @@ export default function SignupPage() {
                 <div className="relative group">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" />
                     <input
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         required
                         minLength={8}
-                        className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-4 text-zinc-200 text-sm placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30"
+                        className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-10 text-zinc-200 text-sm placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30"
                         placeholder="Min. 8 characters"
                         value={formData.password}
                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-emerald-400 transition-colors focus:outline-none"
+                    >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                 </div>
             </div>
 
