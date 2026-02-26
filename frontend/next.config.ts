@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Fix: Turbopack infers the wrong workspace root when there are multiple
+  // lock files (backend + frontend). Point it explicitly to this directory.
+  turbopack: {
+    root: process.cwd(),
+  },
   // Setup API proxy to avoid CORS issues
   async rewrites() {
     return [
