@@ -110,7 +110,7 @@ function VerifyEmailContent() {
               </div>
               <Link
                 href="/login"
-                className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.01] text-sm uppercase tracking-wider"
+                className="w-full bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.01] text-sm uppercase tracking-wider"
               >
                 Go to Login
               </Link>
@@ -135,7 +135,7 @@ function VerifyEmailContent() {
               <div className="w-full flex flex-col gap-2">
                 <Link
                   href="/resend-verification"
-                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.01] text-sm uppercase tracking-wider"
+                  className="w-full bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.01] text-sm uppercase tracking-wider"
                 >
                   Resend Verification Email
                 </Link>
@@ -169,7 +169,7 @@ function VerifyEmailContent() {
               <div className="w-full flex flex-col gap-2">
                 <Link
                   href="/resend-verification"
-                  className="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.01] text-sm uppercase tracking-wider"
+                  className="w-full bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.01] text-sm uppercase tracking-wider"
                 >
                   Resend Verification Email
                 </Link>

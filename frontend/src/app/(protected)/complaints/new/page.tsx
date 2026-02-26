@@ -11,10 +11,10 @@ import Link from 'next/link';
 const createComplaintSchema = z.object({
   citizenName: z.string().min(2, 'Name is too short'),
   citizenPhone: z.string().regex(/^\+?[\d\s\-().]{7,20}$/, 'Invalid phone number'),
-  citizenEmail: z.string().email().optional().or(z.literal('')),
+  citizenEmail: z.union([z.string().email(), z.literal('')]).optional(),
   description: z.string().min(10, 'Description must be at least 10 characters').max(5000),
   category: z.string().optional(),
-  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
+  priority: z.preprocess(v => v === '' ? undefined : v, z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional()),
 });
 
 type ComplaintForm = z.infer<typeof createComplaintSchema>;
@@ -32,7 +32,7 @@ export default function NewComplaintPage() {
     setIsSubmitting(true);
     setSubmitError('');
     try {
-        await complaintsApi.create(formData);
+        await complaintsApi.create({ ...formData, citizenEmail: formData.citizenEmail || undefined });
         router.push('/complaints');
     } catch (e: unknown) {
         setSubmitError(getErrorMessage(e));
@@ -97,7 +97,7 @@ export default function NewComplaintPage() {
                 <label className="text-sm font-medium text-slate-300">Complaint Description <span className="text-red-400">*</span></label>
                 <textarea 
                     {...register('description')}
-                     className="w-full bg-slate-950/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all placeholder:text-slate-600 min-h-[120px]"
+                     className="w-full bg-slate-950/50 border border-white/10 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all placeholder:text-slate-600 min-h-30"
                     placeholder="Describe the issue in detail..."
                 />
                  {errors.description && <p className="text-red-400 text-xs">{errors.description.message}</p>}
@@ -136,7 +136,7 @@ export default function NewComplaintPage() {
                 <button 
                     disabled={isSubmitting}
                     type="submit"
-                    className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/40 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02]"
+                    className="flex items-center gap-2 bg-linear-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/40 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-[1.02]"
                 >
                     {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
                     Submit Complaint
