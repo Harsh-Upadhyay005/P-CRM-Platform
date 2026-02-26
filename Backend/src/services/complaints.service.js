@@ -200,6 +200,7 @@ export const getComplaintByTrackingId = async (trackingId) => {
     where: { trackingId, isDeleted: false },
     select: {
       trackingId: true,
+      description: true,
       citizenName: true,
       status: true,
       priority: true,
@@ -323,7 +324,7 @@ export const assignComplaint = async (id, data, user) => {
         isDeleted: false,
         isActive: true,
         ...forTenant(user),
-        role: { type: { in: ["OFFICER", "DEPARTMENT_HEAD"] } },
+        role: { type: { in: ["OFFICER", "DEPARTMENT_HEAD", "ADMIN", "SUPER_ADMIN"] } },
       },
       select: { id: true, departmentId: true },
     });
