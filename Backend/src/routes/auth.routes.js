@@ -1,6 +1,5 @@
 import express from "express";
 import * as controller from "../controllers/auth.controller.js";
-import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { validate } from "../middlewares/validate.middleware.js";
 import {
   loginLimiter,
@@ -30,6 +29,6 @@ router.post("/refresh",              refreshTokenLimiter,                       
 router.post("/forgot-password",      forgotPasswordLimiter,    validate(forgotPasswordSchema),        controller.forgotPassword);
 router.post("/reset-password",       resetPasswordLimiter,     validate(resetPasswordSchema),         controller.resetPassword);
 
-router.post("/logout", authMiddleware, controller.logout);
+router.post("/logout",                                                                        controller.logout);
 
 export default router;

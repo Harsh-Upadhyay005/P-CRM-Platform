@@ -18,13 +18,22 @@ api.interceptors.response.use(
     const originalRequest = error.config;
     
     // If 401 and not already retrying, try to refresh token
-    // Exclude login, refresh, and getMe endpoints to prevent infinite loops
+    // Exclude login and refresh endpoints to prevent infinite loops
+    // Also skip entirely if we're already on an auth page (no point refreshing)
+    const onAuthPage = typeof window !== 'undefined' && (
+      window.location.pathname.startsWith('/login') ||
+      window.location.pathname.startsWith('/register') ||
+      window.location.pathname.startsWith('/signup') ||
+      window.location.pathname.startsWith('/forgot-password') ||
+      window.location.pathname.startsWith('/verify-email') ||
+      window.location.pathname.startsWith('/resend-verification')
+    );
     if (
       error.response?.status === 401 && 
       originalRequest && 
+      !onAuthPage &&
       !originalRequest.url?.includes('/auth/login') &&
       !originalRequest.url?.includes('/auth/refresh') &&
-      !originalRequest.url?.includes('/users/me') &&
       !('_retry' in originalRequest)
     ) {
       (originalRequest as { _retry?: boolean })._retry = true;
@@ -33,19 +42,14 @@ api.interceptors.response.use(
         await api.post('/auth/refresh');
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed — only redirect to login if not already on an auth page
+        // Refresh failed — clear server-side cookies then go to login.
+        // Calling logout first ensures the Next.js middleware won't see a
+        // stale accessToken cookie and bounce the user back to /dashboard.
+        try {
+          await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' });
+        } catch { /* best-effort */ }
         if (typeof window !== 'undefined') {
-          const { pathname } = window.location;
-          const isAuthPage =
-            pathname.startsWith('/login') ||
-            pathname.startsWith('/register') ||
-            pathname.startsWith('/signup') ||
-            pathname.startsWith('/forgot-password') ||
-            pathname.startsWith('/verify-email') ||
-            pathname.startsWith('/resend-verification');
-          if (!isAuthPage) {
-            window.location.href = '/login';
-          }
+          window.location.href = '/login';
         }
         return Promise.reject(refreshError);
       }
