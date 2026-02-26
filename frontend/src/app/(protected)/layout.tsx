@@ -6,13 +6,16 @@ import { TopBar } from '@/components/layout/TopBar';
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   // We can add global checks or loading states here
   return (
-    <div className="flex min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-blue-500/30">
+    <div className="flex min-h-screen bg-[#0B0F19] text-slate-200 font-sans selection:bg-purple-500/30">
       <Sidebar />
       <div className="flex-1 flex flex-col ml-64 transition-all duration-300">
         <TopBar />
         <main className="flex-1 p-6 relative overflow-hidden">
-             {/* 3D Content Background Overlay could go here */}
-             <div className="absolute inset-0 pointer-events-none bg-gradient-to-br from-blue-900/5 via-transparent to-purple-900/5" />
+             {/* 3D Content Background Overlay */}
+             <div className="absolute inset-0 pointer-events-none">
+               <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-600/10 blur-[120px]" />
+               <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-emerald-600/10 blur-[120px]" />
+             </div>
              <div className="relative z-10 w-full h-full">
                {children}
              </div>
