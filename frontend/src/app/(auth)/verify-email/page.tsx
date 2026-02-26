@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CheckCircle2, XCircle, Loader2, Mail } from 'lucide-react';
 import Link from 'next/link';
@@ -11,6 +11,20 @@ import { authApi } from '@/lib/api';
 type Status = 'loading' | 'success' | 'error' | 'missing';
 
 export default function VerifyEmailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+        </div>
+      }
+    >
+      <VerifyEmailContent />
+    </Suspense>
+  );
+}
+
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
   const [status, setStatus] = useState<Status>(token ? 'loading' : 'missing');
