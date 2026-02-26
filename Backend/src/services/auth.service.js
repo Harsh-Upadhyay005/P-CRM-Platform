@@ -251,6 +251,12 @@ export const refreshTokens = async (token) => {
   };
 };
 
+// Purge a refresh token by hash alone (no userId required — used during expired-token logout)
+export const revokeRefreshToken = async (token) => {
+  const hashedToken = hashRefreshToken(token);
+  await prisma.refreshToken.deleteMany({ where: { token: hashedToken } });
+};
+
 export const logoutUser = async (token, userId, jti, exp) => {
   const hashedToken = hashRefreshToken(token);
 

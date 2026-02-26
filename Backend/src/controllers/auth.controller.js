@@ -3,7 +3,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 import * as authService from "../services/auth.service.js";
 import { env } from "../config/env.js";
-import { parseDurationToMs } from "../utils/token.utils.js";
+import { parseDurationToMs, verifyAccessToken } from "../utils/token.utils.js";
 
 const IS_PROD = env.NODE_ENV === "production";
 
@@ -67,10 +67,27 @@ export const refresh = asyncHandler(async (req, res) => {
 });
 
 export const logout = asyncHandler(async (req, res) => {
-  const refreshToken = req.cookies?.refreshToken;
-  if (refreshToken && req.user?.userId) {
-    await authService.logoutUser(refreshToken, req.user.userId, req.user.jti ?? null, req.user.exp ?? null);
+  const rawAccessToken  = req.cookies?.accessToken;
+  const refreshToken    = req.cookies?.refreshToken;
+
+  // Try to decode the access token to get userId + jti for blacklisting
+  // (don't throw — the token may be expired or absent)
+  let decoded = null;
+  if (rawAccessToken) {
+    try {
+      decoded = verifyAccessToken(rawAccessToken);
+    } catch {
+      // expired or invalid — still allow logout; just skip blacklisting
+    }
   }
+
+  if (refreshToken && decoded?.userId) {
+    await authService.logoutUser(refreshToken, decoded.userId, decoded.jti ?? null, decoded.exp ?? null);
+  } else if (refreshToken) {
+    // Best-effort: purge the refresh token row by its hash even without a verified user
+    await authService.revokeRefreshToken(refreshToken).catch(() => {});
+  }
+
   clearAuthCookies(res);
   res.json(new ApiResponse(200, null, "Logged out successfully"));
 });
