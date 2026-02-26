@@ -2,7 +2,7 @@ import { ZodError } from "zod";
 import { ApiError } from "../utils/ApiError.js";
 
 const formatZodErrors = (error) =>
-  error.errors.map((e) => ({
+  (error.issues ?? error.errors ?? []).map((e) => ({
     field:   e.path.join(".") || "root",
     message: e.message,
   }));
