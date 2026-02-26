@@ -10,7 +10,9 @@ import {
   BarChart2, 
   Bell, 
   History, 
-  ShieldCheck 
+  ShieldCheck,
+  UserCircle,
+  PlusSquare,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '@/hooks/useAuth';
@@ -20,16 +22,21 @@ export function Sidebar() {
   const { role, isSuperAdmin, isAdmin, isDeptHead, isCallOperator } = useRole();
   const { logout } = useAuth();
 
+  // isAnyUser: true for every authenticated role (CALL_OPERATOR rank is the lowest)
+  const isAnyUser = !!role;
+
   const links = [
-    { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, show: isCallOperator },
-    { label: 'Complaints', href: '/complaints', icon: FileText, show: isCallOperator },
-    { label: 'File Complaint', href: '/complaints/new', icon: FileText, show: isCallOperator },
-    { label: 'Users', href: '/users', icon: Users, show: isDeptHead },
-    { label: 'Departments', href: '/departments', icon: Building2, show: isCallOperator },
-    { label: 'Analytics', href: '/analytics', icon: BarChart2, show: isDeptHead },
-    { label: 'Notifications', href: '/notifications', icon: Bell, show: isCallOperator },
-    { label: 'Audit Logs', href: '/audit-logs', icon: History, show: isAdmin },
-    { label: 'Tenants', href: '/tenants', icon: ShieldCheck, show: isSuperAdmin },
+    { label: 'Dashboard',      href: '/dashboard',       icon: LayoutDashboard, show: isAnyUser },
+    { label: 'Complaints',     href: '/complaints',      icon: FileText,        show: isAnyUser },
+    // File Complaint: Call Operators (primary use) + Admins/SuperAdmin who may need to log manually
+    { label: 'File Complaint', href: '/complaints/new',  icon: PlusSquare,      show: isCallOperator || isAdmin },
+    { label: 'Users',          href: '/users',           icon: Users,           show: isDeptHead },
+    { label: 'Departments',    href: '/departments',     icon: Building2,       show: isAnyUser },
+    { label: 'Analytics',      href: '/analytics',       icon: BarChart2,       show: isDeptHead },
+    { label: 'Notifications',  href: '/notifications',   icon: Bell,            show: isAnyUser },
+    { label: 'Audit Logs',     href: '/audit-logs',      icon: History,         show: isAdmin },
+    { label: 'Tenants',        href: '/tenants',         icon: ShieldCheck,     show: isSuperAdmin },
+    { label: 'Profile',        href: '/profile',         icon: UserCircle,      show: isAnyUser },
   ];
 
   return (

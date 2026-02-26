@@ -28,7 +28,7 @@ export function useRole() {
     role: userRole,
     hasMinimumRole,
     isExactRole,
-    isCallOperator: hasMinimumRole("CALL_OPERATOR"),
+    isCallOperator: isExactRole("CALL_OPERATOR"),
     isOfficer: hasMinimumRole("OFFICER"),
     isDeptHead: hasMinimumRole("DEPARTMENT_HEAD"),
     isAdmin: hasMinimumRole("ADMIN"),

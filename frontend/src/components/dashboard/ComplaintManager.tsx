@@ -1,45 +1,27 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { mockComplaints, type MockComplaint } from '@/lib/dashboard-mock-data';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { complaintsApi } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Filter, LayoutList, Columns3, MoreVertical, User, Clock, Plus, UploadCloud } from 'lucide-react';
-import { ComplaintStatus, Priority } from '@/types';
+import { Search, Filter, LayoutList, Columns3, MoreVertical, User, Clock, Plus } from 'lucide-react';
+import { ComplaintStatus, Priority, Complaint } from '@/types';
+import Link from 'next/link';
 
-// ─── Status Badge ─────────────────────────────────────────────
 const statusStyles: Record<ComplaintStatus, string> = {
   OPEN:        'bg-indigo-500/15 text-indigo-400 border-indigo-500/30',
   ASSIGNED:    'bg-cyan-500/15 text-cyan-400 border-cyan-500/30',
@@ -72,51 +54,47 @@ function PriorityBadge({ priority }: { priority: Priority }) {
   );
 }
 
-// ─── SLA Timer ────────────────────────────────────────────────
 function SlaTimer({ createdAt, status }: { createdAt: string; status: ComplaintStatus }) {
   const [now] = React.useState(() => Date.now());
   if (status === 'RESOLVED' || status === 'CLOSED') {
     return <span className="text-emerald-400 text-xs">Done</span>;
   }
   const hrs = Math.floor((now - new Date(createdAt).getTime()) / 3600000);
-  const isOverdue = hrs > 48;
   return (
-    <span className={`text-xs font-mono flex items-center gap-1 ${isOverdue ? 'text-red-400' : 'text-slate-400'}`}>
-      <Clock size={12} />
-      {hrs}h
+    <span className={`text-xs font-mono flex items-center gap-1 ${hrs > 48 ? 'text-red-400' : 'text-slate-400'}`}>
+      <Clock size={12} />{hrs}h
     </span>
   );
 }
 
-// ─── Table View ───────────────────────────────────────────────
-function ComplaintsTable({ data }: { data: MockComplaint[] }) {
+function ComplaintsTable({ data }: { data: Complaint[] }) {
   return (
-    <ScrollArea className="h-[420px]">
+    <ScrollArea className="h-105">
       <Table>
         <TableHeader>
           <TableRow className="border-white/5 hover:bg-transparent">
-            <TableHead className="text-slate-400 text-xs font-semibold w-[130px]">ID</TableHead>
+            <TableHead className="text-slate-400 text-xs font-semibold w-32.5">Tracking ID</TableHead>
             <TableHead className="text-slate-400 text-xs font-semibold">Citizen</TableHead>
             <TableHead className="text-slate-400 text-xs font-semibold">Category</TableHead>
             <TableHead className="text-slate-400 text-xs font-semibold">Priority</TableHead>
             <TableHead className="text-slate-400 text-xs font-semibold">Status</TableHead>
             <TableHead className="text-slate-400 text-xs font-semibold">Assigned To</TableHead>
             <TableHead className="text-slate-400 text-xs font-semibold">SLA</TableHead>
-            <TableHead className="text-slate-400 text-xs font-semibold w-[40px]" />
+            <TableHead className="text-slate-400 text-xs font-semibold w-10" />
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((c) => (
-            <TableRow key={c.id} className="border-white/5 hover:bg-white/[0.02] group cursor-pointer">
+            <TableRow key={c.id} className="border-white/5 hover:bg-white/2 group cursor-pointer">
               <TableCell className="text-xs font-mono text-purple-400">{c.trackingId}</TableCell>
               <TableCell className="text-xs text-slate-200">{c.citizenName}</TableCell>
-              <TableCell className="text-xs text-slate-400">{c.category}</TableCell>
+              <TableCell className="text-xs text-slate-400">{c.category ?? '—'}</TableCell>
               <TableCell><PriorityBadge priority={c.priority} /></TableCell>
               <TableCell><StatusBadge status={c.status} /></TableCell>
               <TableCell>
                 <span className="text-xs text-slate-300 flex items-center gap-1.5">
                   <User size={12} className="text-slate-500" />
-                  {c.assignedTo}
+                  {c.assignedTo?.name ?? 'Unassigned'}
                 </span>
               </TableCell>
               <TableCell><SlaTimer createdAt={c.createdAt} status={c.status} /></TableCell>
@@ -127,11 +105,10 @@ function ComplaintsTable({ data }: { data: MockComplaint[] }) {
                       <MoreVertical size={14} />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-slate-900 border-white/10 text-slate-200 min-w-[140px]">
-                    <DropdownMenuItem className="text-xs cursor-pointer hover:bg-white/5">View Details</DropdownMenuItem>
-                    <DropdownMenuItem className="text-xs cursor-pointer hover:bg-white/5">Update Status</DropdownMenuItem>
-                    <DropdownMenuItem className="text-xs cursor-pointer hover:bg-white/5">Reassign</DropdownMenuItem>
-                    <DropdownMenuItem className="text-xs cursor-pointer hover:bg-white/5 text-red-400">Escalate</DropdownMenuItem>
+                  <DropdownMenuContent align="end" className="bg-slate-900 border-white/10 text-slate-200 min-w-35">
+                    <DropdownMenuItem asChild className="text-xs cursor-pointer hover:bg-white/5">
+                      <Link href={`/complaints/${c.id}`}>View Details</Link>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
@@ -143,7 +120,6 @@ function ComplaintsTable({ data }: { data: MockComplaint[] }) {
   );
 }
 
-// ─── Kanban View ──────────────────────────────────────────────
 const kanbanColumns: { key: ComplaintStatus; title: string; color: string }[] = [
   { key: 'OPEN', title: 'Open', color: 'border-indigo-500/40' },
   { key: 'ASSIGNED', title: 'Assigned', color: 'border-cyan-500/40' },
@@ -151,7 +127,7 @@ const kanbanColumns: { key: ComplaintStatus; title: string; color: string }[] = 
   { key: 'RESOLVED', title: 'Resolved', color: 'border-emerald-500/40' },
 ];
 
-function KanbanBoard({ data }: { data: MockComplaint[] }) {
+function KanbanBoard({ data }: { data: Complaint[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
       {kanbanColumns.map((col) => {
@@ -162,27 +138,27 @@ function KanbanBoard({ data }: { data: MockComplaint[] }) {
               <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">{col.title}</h4>
               <Badge variant="outline" className="text-[10px] bg-white/5 border-white/10 text-slate-400">{items.length}</Badge>
             </div>
-            <ScrollArea className="h-[350px]">
+            <ScrollArea className="h-87.5">
               <div className="space-y-2 pr-1">
                 {items.map((c) => (
-                  <div key={c.id} className="rounded-lg bg-slate-800/40 border border-white/5 p-3 hover:bg-slate-800/60 transition-colors cursor-pointer group">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[10px] font-mono text-purple-400">{c.trackingId}</span>
-                      <PriorityBadge priority={c.priority} />
+                  <Link key={c.id} href={`/complaints/${c.id}`}>
+                    <div className="rounded-lg bg-slate-800/40 border border-white/5 p-3 hover:bg-slate-800/60 transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[10px] font-mono text-purple-400">{c.trackingId}</span>
+                        <PriorityBadge priority={c.priority} />
+                      </div>
+                      <p className="text-xs text-slate-200 font-medium mb-1 truncate">{c.citizenName}</p>
+                      <p className="text-[11px] text-slate-500 truncate">{c.category ?? '—'}</p>
+                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+                        <span className="text-[10px] text-slate-500 flex items-center gap-1">
+                          <User size={10} /> {c.assignedTo?.name?.split(' ')[0] ?? 'None'}
+                        </span>
+                        <SlaTimer createdAt={c.createdAt} status={c.status} />
+                      </div>
                     </div>
-                    <p className="text-xs text-slate-200 font-medium mb-1 truncate">{c.citizenName}</p>
-                    <p className="text-[11px] text-slate-500 truncate">{c.category}</p>
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
-                      <span className="text-[10px] text-slate-500 flex items-center gap-1">
-                        <User size={10} /> {c.assignedTo.split(' ')[0]}
-                      </span>
-                      <SlaTimer createdAt={c.createdAt} status={c.status} />
-                    </div>
-                  </div>
+                  </Link>
                 ))}
-                {items.length === 0 && (
-                  <p className="text-xs text-slate-600 text-center py-8">No items</p>
-                )}
+                {items.length === 0 && <p className="text-xs text-slate-600 text-center py-8">No items</p>}
               </div>
             </ScrollArea>
           </div>
@@ -192,24 +168,24 @@ function KanbanBoard({ data }: { data: MockComplaint[] }) {
   );
 }
 
-// ─── Main Complaint Manager ──────────────────────────────────
 export function ComplaintManager() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
 
-  const filtered = useMemo(() => {
-    return mockComplaints.filter((c) => {
-      const matchesSearch =
-        !search ||
-        c.citizenName.toLowerCase().includes(search.toLowerCase()) ||
-        c.trackingId.toLowerCase().includes(search.toLowerCase()) ||
-        c.category.toLowerCase().includes(search.toLowerCase());
-      const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-      const matchesPriority = priorityFilter === 'all' || c.priority === priorityFilter;
-      return matchesSearch && matchesStatus && matchesPriority;
-    });
-  }, [search, statusFilter, priorityFilter]);
+  const { data, isLoading } = useQuery({
+    queryKey: ['complaints', 'dashboard', statusFilter, priorityFilter, search],
+    queryFn: () => complaintsApi.list({
+      limit: 50,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      priority: priorityFilter !== 'all' ? priorityFilter : undefined,
+      search: search || undefined,
+    }),
+    staleTime: 30_000,
+  });
+
+  const complaints: Complaint[] = data?.data?.data ?? [];
+  const total = data?.data?.pagination?.total ?? 0;
 
   return (
     <Card className="bg-slate-900/40 backdrop-blur-md border-white/5 shadow-lg">
@@ -217,68 +193,22 @@ export function ComplaintManager() {
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           <CardTitle className="text-sm font-medium text-slate-300">Complaint Management</CardTitle>
           <div className="flex items-center gap-2 flex-wrap">
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white text-xs gap-1.5">
-                  <Plus size={14} /> New Complaint
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-slate-900 border-white/10 text-slate-200 sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle className="text-lg font-medium text-white">File New Complaint</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-slate-400">Citizen Name</label>
-                    <Input placeholder="Enter name" className="bg-slate-800/50 border-white/10 text-sm" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-slate-400">Category</label>
-                    <Select>
-                      <SelectTrigger className="bg-slate-800/50 border-white/10 text-sm">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-slate-800 border-white/10 text-slate-200">
-                        <SelectItem value="infrastructure">Infrastructure</SelectItem>
-                        <SelectItem value="sanitation">Sanitation</SelectItem>
-                        <SelectItem value="water">Water Supply</SelectItem>
-                        <SelectItem value="electricity">Electricity</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-slate-400">Description</label>
-                    <textarea 
-                      className="w-full min-h-[80px] rounded-md bg-slate-800/50 border border-white/10 p-3 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-emerald-500/50"
-                      placeholder="Describe the issue..."
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-medium text-slate-400">Attachments</label>
-                    <div className="border-2 border-dashed border-white/10 rounded-lg p-6 flex flex-col items-center justify-center gap-2 hover:bg-white/5 transition-colors cursor-pointer">
-                      <UploadCloud size={24} className="text-slate-400" />
-                      <p className="text-xs text-slate-400">Click to upload or drag and drop</p>
-                      <p className="text-[10px] text-slate-500">PNG, JPG, PDF up to 10MB</p>
-                      <input type="file" className="hidden" multiple />
-                    </div>
-                  </div>
-                  <Button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white">
-                    Submit Complaint
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <Link href="/complaints/new">
+              <Button size="sm" className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white text-xs gap-1.5">
+                <Plus size={14} /> New Complaint
+              </Button>
+            </Link>
             <div className="relative">
               <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
               <Input
                 placeholder="Search complaints…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-8 h-8 w-[200px] bg-slate-800/50 border-white/5 text-xs text-slate-200 placeholder:text-slate-600"
+                className="pl-8 h-8 w-50 bg-slate-800/50 border-white/5 text-xs text-slate-200 placeholder:text-slate-600"
               />
             </div>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-8 w-[120px] bg-slate-800/50 border-white/5 text-xs text-slate-300">
+              <SelectTrigger className="h-8 w-30 bg-slate-800/50 border-white/5 text-xs text-slate-300">
                 <Filter size={12} className="mr-1 text-slate-500" />
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
@@ -293,7 +223,7 @@ export function ComplaintManager() {
               </SelectContent>
             </Select>
             <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-              <SelectTrigger className="h-8 w-[110px] bg-slate-800/50 border-white/5 text-xs text-slate-300">
+              <SelectTrigger className="h-8 w-27.5 bg-slate-800/50 border-white/5 text-xs text-slate-300">
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
@@ -308,27 +238,27 @@ export function ComplaintManager() {
         </div>
       </CardHeader>
       <CardContent className="pt-0">
-        <Tabs defaultValue="table" className="w-full">
-          <TabsList className="bg-slate-800/50 border border-white/5 mb-3 h-8">
-            <TabsTrigger value="table" className="text-xs data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400 gap-1.5">
-              <LayoutList size={13} /> Table
-            </TabsTrigger>
-            <TabsTrigger value="kanban" className="text-xs data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400 gap-1.5">
-              <Columns3 size={13} /> Kanban
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="table" className="mt-0">
-            <ComplaintsTable data={filtered} />
-          </TabsContent>
-          <TabsContent value="kanban" className="mt-0">
-            <KanbanBoard data={filtered} />
-          </TabsContent>
-        </Tabs>
-
+        {isLoading ? (
+          <div className="h-105 flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400" />
+          </div>
+        ) : (
+          <Tabs defaultValue="table" className="w-full">
+            <TabsList className="bg-slate-800/50 border border-white/5 mb-3 h-8">
+              <TabsTrigger value="table" className="text-xs data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400 gap-1.5">
+                <LayoutList size={13} /> Table
+              </TabsTrigger>
+              <TabsTrigger value="kanban" className="text-xs data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400 gap-1.5">
+                <Columns3 size={13} /> Kanban
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="table" className="mt-0"><ComplaintsTable data={complaints} /></TabsContent>
+            <TabsContent value="kanban" className="mt-0"><KanbanBoard data={complaints} /></TabsContent>
+          </Tabs>
+        )}
         <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-          <span>Showing {filtered.length} of {mockComplaints.length} complaints</span>
-          <span className="font-mono">Last updated: just now</span>
+          <span>Showing {complaints.length} of {total} complaints</span>
+          <Link href="/complaints" className="text-purple-400 hover:text-purple-300 transition-colors">View all →</Link>
         </div>
       </CardContent>
     </Card>

@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, ArrowRight } from 'lucide-react';
+import { User, ArrowRight, Search, FileText } from 'lucide-react';
 import Link from 'next/link';
 import AbstractBackground from '@/components/3d/AbstractBackground';
 import { useAuth } from '@/hooks/useAuth';
@@ -48,7 +48,7 @@ export default function Home() {
           Manage your political office with clarity and efficiency.
         </p>
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <Link
             href="/register"
             className="group relative w-full block bg-white text-gray-900 font-bold py-4 rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all overflow-hidden"
@@ -65,6 +65,25 @@ export default function Home() {
           >
             Sign In
           </Link>
+
+          {/* Public features — no login required */}
+          <div className="pt-3 border-t border-white/10">
+            <p className="text-xs text-slate-500 text-center mb-3 uppercase tracking-wider">Citizen Services — No Login Required</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Link
+                href="/submit"
+                className="flex items-center justify-center gap-2 bg-purple-600/15 text-purple-300 font-medium py-3 rounded-xl border border-purple-500/20 hover:bg-purple-600/25 transition-all text-sm"
+              >
+                <FileText className="w-4 h-4" /> Submit Complaint
+              </Link>
+              <Link
+                href="/track"
+                className="flex items-center justify-center gap-2 bg-white/5 text-slate-300 font-medium py-3 rounded-xl border border-white/10 hover:bg-white/10 transition-all text-sm"
+              >
+                <Search className="w-4 h-4" /> Track Complaint
+              </Link>
+            </div>
+          </div>
         </div>
         
         <div className="mt-12 text-sm text-gray-500/80">

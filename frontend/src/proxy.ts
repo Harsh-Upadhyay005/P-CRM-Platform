@@ -39,7 +39,9 @@ export default function proxy(request: NextRequest) {
   const isAuthPage = 
     request.nextUrl.pathname.startsWith('/login') || 
     request.nextUrl.pathname.startsWith('/signup') ||
-    request.nextUrl.pathname.startsWith('/register');
+    request.nextUrl.pathname.startsWith('/register') ||
+    request.nextUrl.pathname.startsWith('/forgot-password') ||
+    request.nextUrl.pathname.startsWith('/reset-password');
 
   if (isAuthPage && token) {
     return NextResponse.redirect(new URL('/dashboard', request.url));

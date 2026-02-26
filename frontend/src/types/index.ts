@@ -123,6 +123,35 @@ export interface AuditLog {
   entityType: string;
   entityId: string;
   userId: string | null;
+  /** Joined user object returned by the backend */
+  user?: { id: string; name: string; email: string } | null;
+  ipAddress?: string | null;
+  userAgent?: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: string;
+}
+
+export interface AnalyticsOverview {
+  total: number;
+  byStatus: {
+    OPEN: number;
+    ASSIGNED: number;
+    IN_PROGRESS: number;
+    ESCALATED: number;
+    RESOLVED: number;
+    CLOSED: number;
+  };
+  byPriority: {
+    LOW: number;
+    MEDIUM: number;
+    HIGH: number;
+    CRITICAL: number;
+  };
+  sla: {
+    activeComplaints: number;
+    breachedCount: number;
+    breachPercentage: number;
+  };
+  avgResolutionTime: string;
+  resolvedCount: number;
 }
