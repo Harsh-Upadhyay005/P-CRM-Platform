@@ -2,7 +2,7 @@ import SibApiV3Sdk from "sib-api-v3-sdk";
 import { env } from "../config/env.js";
 
 const client = SibApiV3Sdk.ApiClient.instance;
-client.authentications["api-key"].apiKey = env.BREVO_API_KEY;
+client.authentications["api-key"].apiKey = env.BREVO_API_KEY || "placeholder";
 
 const transactionalEmailApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
@@ -199,6 +199,11 @@ export const sendVerificationEmail = async (email, fullName, rawToken) => {
   );
 
   try {
+    if (!env.BREVO_API_KEY || env.BREVO_API_KEY.includes("your_brevo")) {
+      console.log(`[email] MOCK MODE: Verification email would be sent to ${email}`); 
+      console.log(`[email] MOCK URL: ${url}`);
+      return; 
+    }
     await transactionalEmailApi.sendTransacEmail({
       sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
       to: [{ email, name: fullName }],

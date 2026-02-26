@@ -6,14 +6,13 @@ import { env } from "../src/config/env.js";
 const adapter = new PrismaPg({ connectionString: env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
-const superAdminEmail = env.SEED_SUPER_ADMIN_EMAIL;
-const superAdminPassword = env.SEED_SUPER_ADMIN_PASSWORD;
+const superAdminEmail = env.SEED_SUPER_ADMIN_EMAIL || "admin@example.com";
+const superAdminPassword = env.SEED_SUPER_ADMIN_PASSWORD || "Admin@123";
 
-if (!superAdminEmail || !superAdminPassword) {
-  console.error(
-    "ERROR: SEED_SUPER_ADMIN_EMAIL and SEED_SUPER_ADMIN_PASSWORD must be set in your .env file before running the seed."
+if (!env.SEED_SUPER_ADMIN_EMAIL || !env.SEED_SUPER_ADMIN_PASSWORD) {
+  console.warn(
+    "WARNING: SEED_SUPER_ADMIN_EMAIL/PASSWORD not set. Using defaults: admin@example.com / Admin@123"
   );
-  process.exit(1);
 }
 
 const DEFAULT_TENANTS = [

@@ -58,6 +58,7 @@ export const registerUser = async ({ name, email, password, tenantSlug }) => {
 
   const hashedPassword = await bcrypt.hash(password, env.BCRYPT_SALT_ROUNDS);
 
+  const shouldAutoVerify = !env.BREVO_API_KEY || env.BREVO_API_KEY.includes("your_brevo");
   const { rawToken, hashedToken } = generateEmailVerificationToken();
 
   const user = await prisma.user.create({
@@ -67,19 +68,22 @@ export const registerUser = async ({ name, email, password, tenantSlug }) => {
       password: hashedPassword,
       tenantId: tenant.id,
       roleId: role.id,
-      verificationToken: hashedToken,
-      verificationExpiry: getExpiryTime(env.EMAIL_VERIFICATION_EXPIRY_MINUTES),
+      verificationToken: shouldAutoVerify ? null : hashedToken,
+      verificationExpiry: shouldAutoVerify ? null : getExpiryTime(env.EMAIL_VERIFICATION_EXPIRY_MINUTES),
+      emailVerified: shouldAutoVerify,
     },
   });
 
-  try {
-    await sendVerificationEmail(email, name, rawToken);
-  } catch {
-    await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
-    throw new ApiError(
-      500,
-      "Failed to send verification email. Please try again.",
-    );
+  if (!shouldAutoVerify) {
+    try {
+      await sendVerificationEmail(email, name, rawToken);
+    } catch {
+      await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
+      throw new ApiError(
+        500,
+        "Failed to send verification email. Please try again.",
+      );
+    }
   }
 
   const {
