@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { complaintsApi, usersApi, getErrorMessage } from '@/lib/api';
-import { Complaint, Note, Attachment, ComplaintStatus, Priority, User } from '@/types';
+import { complaintsApi, usersApi, departmentsApi, getErrorMessage } from '@/lib/api';
+import { Complaint, Note, Attachment, ComplaintStatus, Priority, User, Department, RoleType } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -16,14 +17,39 @@ import {
 import {
   ArrowLeft, FileText, User as UserIcon, Phone, Mail, Clock, Tag,
   Building2, Paperclip, MessageSquare, AlertTriangle, Send, Upload, Trash2,
-  ChevronRight, RefreshCw, Trash, Star,
+  ChevronRight, RefreshCw, Trash, Star, Edit2, Timer, Copy, ExternalLink,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useRole } from '@/hooks/useRole';
 
-const STATUS_OPTIONS: ComplaintStatus[] = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ESCALATED', 'RESOLVED', 'CLOSED'];
+// ─── Status transition map (mirrors backend statusEngine.js) ──────────────────
+const TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {
+  OPEN:        ['ASSIGNED', 'ESCALATED'],
+  ASSIGNED:    ['IN_PROGRESS', 'ESCALATED'],
+  IN_PROGRESS: ['RESOLVED', 'ESCALATED'],
+  ESCALATED:   ['ASSIGNED', 'IN_PROGRESS'],
+  RESOLVED:    ['CLOSED'],
+  CLOSED:      [],
+};
+
+const ROLE_STATUS_PERMISSIONS: Record<RoleType, ComplaintStatus[] | null> = {
+  CALL_OPERATOR:   [],
+  OFFICER:         ['IN_PROGRESS', 'RESOLVED'],
+  DEPARTMENT_HEAD: ['IN_PROGRESS', 'RESOLVED', 'ESCALATED'],
+  ADMIN:           null, // null = all allowed
+  SUPER_ADMIN:     null,
+};
+
+function validNextStatusesForRole(current: ComplaintStatus, role: RoleType): ComplaintStatus[] {
+  const permitted = ROLE_STATUS_PERMISSIONS[role];
+  const all = TRANSITIONS[current] ?? [];
+  if (permitted === null || permitted === undefined) return all;
+  return all.filter((s) => permitted.includes(s));
+}
+
+const PRIORITY_OPTIONS: Priority[] = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 const PRIORITY_COLORS: Record<Priority, string> = {
   LOW: 'bg-slate-500/15 text-slate-400 border-slate-500/20',
   MEDIUM: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
@@ -39,6 +65,12 @@ const STATUS_COLORS: Record<ComplaintStatus, string> = {
   CLOSED: 'bg-slate-500/15 text-slate-400 border-slate-500/20',
 };
 
+const SLA_COLORS = {
+  OK: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
+  WARNING: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
+  BREACHED: 'bg-red-500/15 text-red-400 border-red-500/20',
+};
+
 function fmt(ts: string) {
   return new Date(ts).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 }
@@ -51,7 +83,7 @@ function fmtBytes(b: number) {
 export default function ComplaintDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { isAdmin, isDeptHead, isCallOperator } = useRole();
+  const { isAdmin, isDeptHead, isCallOperator, role } = useRole();
   const qc = useQueryClient();
 
   const [noteText, setNoteText] = useState('');
@@ -60,8 +92,13 @@ export default function ComplaintDetailPage() {
   const [statusNote, setStatusNote] = useState('');
   const [assignDialog, setAssignDialog] = useState(false);
   const [assignOfficerId, setAssignOfficerId] = useState('');
+  const [assignDepartmentId, setAssignDepartmentId] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [editDialog, setEditDialog] = useState(false);
+  const [editDescription, setEditDescription] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editPriority, setEditPriority] = useState<Priority>('MEDIUM');
 
   const { data: complaintData, isLoading } = useQuery({
     queryKey: ['complaint', id],
@@ -91,6 +128,13 @@ export default function ComplaintDetailPage() {
   });
   const officers: User[] = officersData?.data?.data ?? [];
 
+  const { data: departmentsData } = useQuery({
+    queryKey: ['departments-list'],
+    queryFn: () => departmentsApi.list({ limit: 100 }),
+    enabled: isAdmin || isDeptHead,
+  });
+  const departments: Department[] = departmentsData?.data?.data ?? [];
+
   const addNoteMutation = useMutation({
     mutationFn: (note: string) => complaintsApi.addNote(id, note),
     onSuccess: () => { toast.success('Note added'); setNoteText(''); qc.invalidateQueries({ queryKey: ['complaint-notes', id] }); },
@@ -104,8 +148,14 @@ export default function ComplaintDetailPage() {
   });
 
   const assignMutation = useMutation({
-    mutationFn: (officerId: string) => complaintsApi.assign(id, officerId),
+    mutationFn: ({ officerId, departmentId }: { officerId?: string; departmentId?: string }) => complaintsApi.assign(id, officerId, departmentId),
     onSuccess: () => { toast.success('Complaint assigned'); setAssignDialog(false); qc.invalidateQueries({ queryKey: ['complaint', id] }); },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: (data: Record<string, unknown>) => complaintsApi.update(id, data),
+    onSuccess: () => { toast.success('Complaint updated'); setEditDialog(false); qc.invalidateQueries({ queryKey: ['complaint', id] }); },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
 
@@ -156,8 +206,27 @@ export default function ComplaintDetailPage() {
     );
   }
 
+  // Compute valid next statuses for the current user's role
+  const allowedStatuses = complaint && role ? validNextStatusesForRole(complaint.status, role) : [];
+
   return (
     <div className="space-y-6">
+      {/* Duplicate Detection Warning */}
+      {complaint.duplicateScore != null && complaint.duplicateScore > 0.7 && (
+        <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center gap-3">
+          <Copy size={16} className="text-amber-400 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-300">Potential Duplicate Detected</p>
+            <p className="text-xs text-amber-400/80 mt-0.5">
+              Similarity score: <span className="font-mono font-bold">{(complaint.duplicateScore * 100).toFixed(0)}%</span>
+              {complaint.potentialDuplicateId && (
+                <> · <Link href={`/complaints/${complaint.potentialDuplicateId}`} className="underline underline-offset-2 hover:text-amber-300 inline-flex items-center gap-1">View potential duplicate <ExternalLink size={10} /></Link></>
+              )}
+            </p>
+          </div>
+        </motion.div>
+      )}
+
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
@@ -165,22 +234,43 @@ export default function ComplaintDetailPage() {
             <ArrowLeft size={16} />
           </Button>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-xl font-bold text-white">{complaint.trackingId}</h1>
               <Badge variant="outline" className={`text-xs border ${STATUS_COLORS[complaint.status]}`}>{complaint.status.replace('_', ' ')}</Badge>
               <Badge variant="outline" className={`text-xs border ${PRIORITY_COLORS[complaint.priority]}`}>{complaint.priority}</Badge>
+              {/* SLA Badge */}
+              {complaint.slaSummary && (
+                <Badge variant="outline" className={`text-xs border gap-1 ${SLA_COLORS[complaint.slaSummary.state]}`}>
+                  <Timer size={10} />
+                  {complaint.slaSummary.remainingLabel}
+                </Badge>
+              )}
             </div>
             <p className="text-slate-500 text-xs mt-0.5">Created {fmt(complaint.createdAt)}</p>
           </div>
         </div>
         <div className="flex gap-2 flex-wrap">
+          {isAdmin && (
+            <Button size="sm" variant="outline" className="border-white/10 bg-slate-800/50 text-slate-300 hover:text-white gap-1.5 h-8" onClick={() => {
+              setEditDescription(complaint.description);
+              setEditCategory(complaint.category ?? '');
+              setEditPriority(complaint.priority);
+              setEditDialog(true);
+            }}>
+              <Edit2 size={13} /> Edit
+            </Button>
+          )}
           {(isAdmin || isDeptHead) && (
-            <Button size="sm" variant="outline" className="border-white/10 bg-slate-800/50 text-slate-300 hover:text-white gap-1.5 h-8" onClick={() => setAssignDialog(true)}>
+            <Button size="sm" variant="outline" className="border-white/10 bg-slate-800/50 text-slate-300 hover:text-white gap-1.5 h-8" onClick={() => {
+              setAssignOfficerId(complaint.assignedTo?.id ?? '');
+              setAssignDepartmentId(complaint.department?.id ?? '');
+              setAssignDialog(true);
+            }}>
               <UserIcon size={13} /> Assign
             </Button>
           )}
-          {!isCallOperator && (
-            <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white gap-1.5 h-8" onClick={() => { setNewStatus(complaint.status); setStatusDialog(true); }}>
+          {!isCallOperator && allowedStatuses.length > 0 && (
+            <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white gap-1.5 h-8" onClick={() => { setNewStatus(''); setStatusNote(''); setStatusDialog(true); }}>
               <RefreshCw size={13} /> Update Status
             </Button>
           )}
@@ -366,6 +456,24 @@ export default function ComplaintDetailPage() {
             </CardContent>
           </Card>
 
+          {/* SLA Timer */}
+          {complaint.slaSummary && (
+            <Card className={`backdrop-blur-md border ${SLA_COLORS[complaint.slaSummary.state]}`}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base text-slate-200 flex items-center gap-2"><Timer size={15} className={complaint.slaSummary.breached ? 'text-red-400' : 'text-emerald-400'} /> SLA Status</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className={`text-xs border ${SLA_COLORS[complaint.slaSummary.state]}`}>
+                    {complaint.slaSummary.state}
+                  </Badge>
+                </div>
+                <p className="text-slate-300 text-xs">{complaint.slaSummary.remainingLabel}</p>
+                <p className="text-slate-500 text-[11px]">Deadline: {fmt(complaint.slaSummary.deadline)}</p>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Tracking */}
           <Card className="bg-slate-900/40 backdrop-blur-md border-white/5">
             <CardHeader className="pb-3">
@@ -416,16 +524,20 @@ export default function ComplaintDetailPage() {
         <DialogContent className="bg-slate-900 border-white/10 text-white max-w-sm">
           <DialogHeader><DialogTitle>Update Status</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
-            <Select value={newStatus} onValueChange={(v) => setNewStatus(v as ComplaintStatus)}>
-              <SelectTrigger className="bg-slate-800/60 border-white/10 text-slate-300">
-                <SelectValue placeholder="Select new status" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/10 text-slate-300">
-                {STATUS_OPTIONS.map((s) => (
-                  <SelectItem key={s} value={s}>{s.replace('_', ' ')}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {allowedStatuses.length === 0 ? (
+              <p className="text-sm text-slate-400">No status transitions available for your role from the current status.</p>
+            ) : (
+              <Select value={newStatus} onValueChange={(v) => setNewStatus(v as ComplaintStatus)}>
+                <SelectTrigger className="bg-slate-800/60 border-white/10 text-slate-300">
+                  <SelectValue placeholder="Select new status" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10 text-slate-300">
+                  {allowedStatuses.map((s) => (
+                    <SelectItem key={s} value={s}>{s.replace('_', ' ')}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <Textarea
               placeholder="Optional note…"
               value={statusNote}
@@ -450,25 +562,44 @@ export default function ComplaintDetailPage() {
       {/* Assign Dialog */}
       <Dialog open={assignDialog} onOpenChange={setAssignDialog}>
         <DialogContent className="bg-slate-900 border-white/10 text-white max-w-sm">
-          <DialogHeader><DialogTitle>Assign to Officer</DialogTitle></DialogHeader>
-          <div className="py-2">
-            <Select value={assignOfficerId} onValueChange={setAssignOfficerId}>
-              <SelectTrigger className="bg-slate-800/60 border-white/10 text-slate-300">
-                <SelectValue placeholder="Select officer" />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/10 text-slate-300">
-                {officers.map((o) => (
-                  <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <DialogHeader><DialogTitle>Assign Complaint</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs text-slate-400 mb-1.5 block">Department</label>
+              <Select value={assignDepartmentId} onValueChange={setAssignDepartmentId}>
+                <SelectTrigger className="bg-slate-800/60 border-white/10 text-slate-300">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10 text-slate-300">
+                  {departments.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1.5 block">Officer</label>
+              <Select value={assignOfficerId} onValueChange={setAssignOfficerId}>
+                <SelectTrigger className="bg-slate-800/60 border-white/10 text-slate-300">
+                  <SelectValue placeholder="Select officer" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10 text-slate-300">
+                  {officers.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>{o.name}{o.department ? ` (${o.department.name})` : ''}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="ghost" className="text-slate-400" onClick={() => setAssignDialog(false)}>Cancel</Button>
             <Button
               className="bg-purple-600 hover:bg-purple-700 text-white"
-              disabled={!assignOfficerId || assignMutation.isPending}
-              onClick={() => assignMutation.mutate(assignOfficerId)}
+              disabled={(!assignOfficerId && !assignDepartmentId) || assignMutation.isPending}
+              onClick={() => assignMutation.mutate({
+                officerId: assignOfficerId || undefined,
+                departmentId: assignDepartmentId || undefined,
+              })}
             >
               {assignMutation.isPending ? 'Assigning…' : 'Assign'}
             </Button>
@@ -491,6 +622,60 @@ export default function ComplaintDetailPage() {
               onClick={() => deleteComplaintMutation.mutate()}
             >
               {deleteComplaintMutation.isPending ? 'Deleting…' : 'Delete Complaint'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Complaint Dialog (Admin only) */}
+      <Dialog open={editDialog} onOpenChange={setEditDialog}>
+        <DialogContent className="bg-slate-900 border-white/10 text-white max-w-md">
+          <DialogHeader><DialogTitle>Edit Complaint</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <label className="text-xs text-slate-400 mb-1.5 block">Description</label>
+              <Textarea
+                value={editDescription}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setEditDescription(e.target.value)}
+                rows={4}
+                className="bg-slate-800/60 border-white/10 text-slate-200 placeholder:text-slate-600 text-sm resize-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1.5 block">Category</label>
+              <Input
+                value={editCategory}
+                onChange={(e) => setEditCategory(e.target.value)}
+                placeholder="e.g. roads, water, electricity"
+                className="bg-slate-800/60 border-white/10 text-slate-200 placeholder:text-slate-600 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-slate-400 mb-1.5 block">Priority</label>
+              <Select value={editPriority} onValueChange={(v) => setEditPriority(v as Priority)}>
+                <SelectTrigger className="bg-slate-800/60 border-white/10 text-slate-300">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10 text-slate-300">
+                  {PRIORITY_OPTIONS.map((p) => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" className="text-slate-400" onClick={() => setEditDialog(false)}>Cancel</Button>
+            <Button
+              className="bg-purple-600 hover:bg-purple-700 text-white"
+              disabled={editMutation.isPending}
+              onClick={() => editMutation.mutate({
+                description: editDescription,
+                category: editCategory || null,
+                priority: editPriority,
+              })}
+            >
+              {editMutation.isPending ? 'Saving…' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
