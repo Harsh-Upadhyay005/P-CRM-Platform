@@ -43,6 +43,11 @@ export const env = {
   NODE_ENV: process.env.NODE_ENV,
 
   FRONTEND_URL: process.env.FRONTEND_URL,
+  // Comma-separated list parsed into an array for multi-origin CORS support
+  // e.g. "https://app.vercel.app,https://preview.vercel.app"
+  ALLOWED_ORIGINS: process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(",").map((u) => u.trim()).filter(Boolean)
+    : [],
   BACKEND_URL: process.env.BACKEND_URL,
 
   BREVO_API_KEY: process.env.BREVO_API_KEY,

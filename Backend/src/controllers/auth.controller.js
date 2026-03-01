@@ -10,8 +10,10 @@ const IS_PROD = env.NODE_ENV === "production";
 
 const baseCookieOpts = {
   httpOnly: true,
-  secure: IS_PROD,
-  sameSite: "lax",
+  secure:   IS_PROD,
+  // SameSite=None is required for cross-origin cookies (Vercel frontend → Render backend).
+  // In development both origins are localhost so Lax is fine and Secure is not required.
+  sameSite: IS_PROD ? "none" : "lax",
 };
 
 const setAuthCookies = (res, accessToken, refreshToken) => {
