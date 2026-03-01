@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 import { Notification } from '@/types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
@@ -94,7 +95,7 @@ export function TopBar() {
       await notificationsApi.markAllRead();
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     } catch (e) {
-      console.error(getErrorMessage(e));
+      toast.error(getErrorMessage(e));
     }
   };
 
@@ -103,7 +104,7 @@ export function TopBar() {
       await notificationsApi.markRead(id);
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
     } catch (e) {
-      console.error(getErrorMessage(e));
+      toast.error(getErrorMessage(e));
     }
   };
 

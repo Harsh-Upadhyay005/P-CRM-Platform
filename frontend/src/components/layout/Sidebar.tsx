@@ -75,7 +75,7 @@ export function Sidebar() {
     { label: 'Complaints',     href: '/complaints',      icon: FileText,        show: isAnyUser },
     // File Complaint: Call Operators (primary use) + Admins/SuperAdmin who may need to log manually
     { label: 'File Complaint', href: '/complaints/new',  icon: PlusSquare,      show: isCallOperator || isAdmin },
-    { label: 'Users',          href: '/users',           icon: Users,           show: isDeptHead },
+    { label: 'Users',          href: '/users',           icon: Users,           show: isAdmin },
     { label: 'Departments',    href: '/departments',     icon: Building2,       show: isAnyUser },
     { label: 'Analytics',      href: '/analytics',       icon: BarChart2,       show: isDeptHead },
     { label: 'Notifications',  href: '/notifications',   icon: Bell,            show: isAnyUser },

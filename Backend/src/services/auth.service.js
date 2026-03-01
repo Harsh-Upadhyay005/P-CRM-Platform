@@ -209,7 +209,7 @@ export const refreshTokens = async (token) => {
 
   const storedToken = await prisma.refreshToken.findUnique({
     where: { token: hashedIncoming },
-    include: { user: { include: { role: true } } },
+    include: { user: { include: { role: true, tenant: true } } },
   });
 
   if (!storedToken) {
@@ -229,6 +229,13 @@ export const refreshTokens = async (token) => {
       .delete({ where: { id: storedToken.id } })
       .catch(() => {});
     throw new ApiError(401, "Account is inactive");
+  }
+
+  if (!refreshUser.tenant?.isActive) {
+    await prisma.refreshToken
+      .delete({ where: { id: storedToken.id } })
+      .catch(() => {});
+    throw new ApiError(401, "Tenant is inactive");
   }
 
   const newRawRefreshToken = generateRefreshToken();
@@ -289,7 +296,16 @@ export const forgotPassword = async (email) => {
     },
   });
 
-  await sendResetPasswordEmail(email, user.name, rawToken);
+  try {
+    await sendResetPasswordEmail(email, user.name, rawToken);
+  } catch {
+    // Email failure is non-fatal: clear saved token so the stale hash
+    // doesn't block a future attempt, then swallow the error (anti-enumeration).
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { resetToken: null, resetTokenExpiry: null },
+    }).catch(() => {});
+  }
 
   return true;
 };

@@ -38,6 +38,7 @@ export const assignComplaintSchema = z
 
 export const updateStatusSchema = z.object({
   newStatus: Status,
+  note: z.string().max(500).optional(),
 });
 
 export const addNoteSchema = z.object({

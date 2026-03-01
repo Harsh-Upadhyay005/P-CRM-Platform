@@ -10,7 +10,7 @@ import { usersApi, getErrorMessage } from '@/lib/api';
 import toast from 'react-hot-toast';
 
 export default function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { role } = useRole();
   const qc = useQueryClient();
 
@@ -29,6 +29,7 @@ export default function ProfilePage() {
     onSuccess: () => {
       toast.success('Profile updated');
       setEditingName(false);
+      refreshUser(); // update name in header/sidebar immediately
       qc.invalidateQueries({ queryKey: ['me'] });
     },
     onError: (e) => toast.error(getErrorMessage(e)),
