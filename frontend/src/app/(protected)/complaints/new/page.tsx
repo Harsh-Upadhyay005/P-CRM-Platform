@@ -14,7 +14,7 @@ const createComplaintSchema = z.object({
   citizenEmail: z.union([z.string().email(), z.literal('')]).optional(),
   description: z.string().min(10, 'Description must be at least 10 characters').max(5000),
   category: z.string().optional(),
-  priority: z.preprocess(v => v === '' ? undefined : v, z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional()),
+  priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
 });
 
 type ComplaintForm = z.infer<typeof createComplaintSchema>;
@@ -120,7 +120,7 @@ export default function NewComplaintPage() {
                  <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300">Priority</label>
                      <select 
-                         {...register('priority')}
+                         {...register('priority', { setValueAs: (v) => v === '' ? undefined : v })}
                         className="w-full bg-slate-950/50 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
                     >
                         <option value="">Auto-Detect (AI)</option>
