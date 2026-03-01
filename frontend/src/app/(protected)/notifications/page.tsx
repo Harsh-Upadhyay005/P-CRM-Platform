@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi, getErrorMessage } from '@/lib/api';
 import { Notification } from '@/types';
@@ -11,9 +11,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Bell, CheckCheck, Check, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { useAuth } from '@/hooks/useAuth';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 function timeAgo(ts: string) {
   const diff = Date.now() - new Date(ts).getTime();
@@ -26,9 +23,7 @@ function timeAgo(ts: string) {
 }
 
 export default function NotificationsPage() {
-  const { user } = useAuth();
   const qc = useQueryClient();
-  const sseRef = useRef<EventSource | null>(null);
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
@@ -40,17 +35,6 @@ export default function NotificationsPage() {
   const notifications: Notification[] = data?.data?.data ?? [];
   const pagination = data?.data?.pagination;
   const unread = notifications.filter((n) => !n.isRead).length;
-
-  // SSE live connection
-  useEffect(() => {
-    if (!user) return;
-    sseRef.current = new EventSource(`${API_BASE_URL}/notifications/stream`, { withCredentials: true });
-    sseRef.current.addEventListener('notification', () => {
-      qc.invalidateQueries({ queryKey: ['notifications'] });
-    });
-    sseRef.current.onerror = () => sseRef.current?.close();
-    return () => sseRef.current?.close();
-  }, [user, qc]);
 
   const markOneMutation = useMutation({
     mutationFn: (id: string) => notificationsApi.markRead(id),

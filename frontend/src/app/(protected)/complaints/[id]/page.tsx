@@ -143,7 +143,7 @@ export default function ComplaintDetailPage() {
 
   const updateStatusMutation = useMutation({
     mutationFn: ({ status, note }: { status: string; note?: string }) => complaintsApi.updateStatus(id, status, note),
-    onSuccess: () => { toast.success('Status updated'); setStatusDialog(false); qc.invalidateQueries({ queryKey: ['complaint', id] }); },
+    onSuccess: () => { toast.success('Status updated'); setStatusDialog(false); qc.invalidateQueries({ queryKey: ['complaint', id] }); qc.invalidateQueries({ queryKey: ['complaints', 'list'] }); },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
 

@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios';
 import { User, Complaint, Department, Notification, Tenant, AuditLog, Note, Attachment, PaginatedResponse } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -47,7 +47,7 @@ api.interceptors.response.use(
         // Calling logout first ensures the Next.js middleware won't see a
         // stale accessToken cookie and bounce the user back to /dashboard.
         try {
-          await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' });
+          await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
         } catch { /* best-effort */ }
         if (typeof window !== 'undefined') {
           window.location.href = '/login';

@@ -51,7 +51,7 @@ export default function ComplaintsPage() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['complaints', 'list', statusFilter, priorityFilter, departmentFilter, search, page],
     queryFn: () => complaintsApi.list({
       page,
@@ -190,6 +190,12 @@ export default function ComplaintsPage() {
                   ))}
                 </tr>
               ))
+            ) : isError ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-12 text-center">
+                  <span className="text-red-400 text-sm">Failed to load complaints. Please try refreshing the page.</span>
+                </td>
+              </tr>
             ) : complaints.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-6 py-12 text-center text-slate-500">

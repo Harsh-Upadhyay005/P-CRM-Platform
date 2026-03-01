@@ -289,8 +289,9 @@ export const updateComplaint = async (id, data, user) => {
 export const assignComplaint = async (id, data, user) => {
   const { assignedToId, departmentId } = data;
 
+  const abacFilter = await getABACFilter(user);
   const complaint = await prisma.complaint.findFirst({
-    where: { id, isDeleted: false, ...forTenant(user) },
+    where: { id, isDeleted: false, ...forTenant(user), ...abacFilter },
     select: { id: true, status: true, departmentId: true },
   });
 
@@ -372,7 +373,7 @@ export const assignComplaint = async (id, data, user) => {
   return updated;
 };
 
-export const updateComplaintStatus = async (id, { newStatus }, user) => {
+export const updateComplaintStatus = async (id, { newStatus, note }, user) => {
   const complaint = await prisma.complaint.findFirst({
     where: { id, isDeleted: false, ...forTenant(user) },
     select: {
@@ -425,6 +426,13 @@ export const updateComplaintStatus = async (id, { newStatus }, user) => {
         changedById: user.userId,
       },
     }),
+    ...(note?.trim()
+      ? [
+          prisma.internalNote.create({
+            data: { complaintId: id, userId: user.userId, note: note.trim() },
+          }),
+        ]
+      : []),
   ]);
 
   notifyStatusChange(

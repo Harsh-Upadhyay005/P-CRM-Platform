@@ -245,8 +245,10 @@ export const changePassword = async (userId, { currentPassword, newPassword }, u
 };
 
 export const createUser = async ({ name, email, password, roleType = "CALL_OPERATOR", departmentId }, user) => {
-  // Only ADMIN+ can create users
-  const { canAssignRole: _unused, ..._ } = {};
+  // Only ADMIN+ can create users; enforce role hierarchy so no privilege escalation
+  if (!canAssignRole(user.role, roleType)) {
+    throw new ApiError(403, `You cannot create a user with role ${roleType}`);
+  }
 
   const passwordErr = validatePassword(password);
   if (passwordErr) throw new ApiError(400, passwordErr);
