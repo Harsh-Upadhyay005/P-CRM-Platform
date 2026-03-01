@@ -169,6 +169,8 @@ Leadership and department heads have access to seven live analytics views, all s
 | **Escalation Trends**      | Are escalations going up or down over time?                                        |
 | **Category Distribution**  | Which complaint types are most common                                              |
 
+All seven reports are available for **CSV export** — download any analytics report as a spreadsheet for offline analysis, reporting, or auditing.
+
 **Benefit for Government:** Real data to answer real questions. Which department is underperforming? Which complaint type is increasing? Is the office getting faster or slower? No more guessing.
 
 ---
@@ -187,6 +189,12 @@ P-CRM is designed to serve multiple political offices or government units from a
 
 **Benefit for Government:** A single platform can be operated centrally (e.g. by a state IT department) while serving dozens of district offices, constituencies, or departments — each with full data isolation and independent configuration.
 
+### 13. CSV Data Exports
+
+Admins and Department Heads can export complaint data and analytics reports as CSV files. Exports are fully ABAC-scoped (Department Heads get only their department’s data). All exports include a UTF-8 BOM for correct rendering in Excel. Maximum 10,000 rows per export.
+
+**Benefit for Government:** Compliance reports, leadership briefings, and cross-system integrations without needing database access.
+
 ---
 
 ## Who Uses P-CRM
@@ -198,6 +206,20 @@ P-CRM is designed to serve multiple political offices or government units from a
 | **Department Head** | HOD, section chief                   | Assign complaints within department, view department analytics, manage SLA |
 | **Admin**           | Office administrator, IT manager     | Full office management — users, departments, all complaints                |
 | **Super Admin**     | Central IT / platform operator       | Cross-office management, tenant provisioning, platform-wide audit          |
+
+---
+
+## Frontend Application
+
+The dashboard is a full-featured **Next.js 16** single-page application with:
+
+- **3D Command Center** — Three.js globe visualisation of complaint activity
+- **India Choropleth Map** — D3-geo complaint density heatmap by state
+- **Real-time badge** — TopBar shows live unread notification count via SSE
+- **Animated transitions** — Framer Motion + GSAP for polished UX
+- **Dark glassmorphism theme** — premium, government-grade visual design
+- **Public portal** (`/submit`) — citizen complaint filing page, zero friction
+- **Public tracker** (`/track/[trackingId]`) — status + feedback, no login
 
 ---
 
@@ -331,9 +353,9 @@ P-CRM is designed to serve multiple political offices or government units from a
 
 ## Deployment & Integration
 
-- **Deployment**: Node.js backend deployable on any cloud (AWS, Azure, GCP, DigitalOcean, on-premises)
+- **Deployment**: Backend deployable on Render, Railway, Heroku, AWS, DigitalOcean, or any Node.js host. Step-by-step guide in [DEPLOYMENT.md](../DEPLOYMENT.md).
+- **Frontend**: Next.js 16 — deployable to Vercel in minutes. Step-by-step guide in [DEPLOYMENT.md](../DEPLOYMENT.md).
 - **Database**: PostgreSQL — widely supported, government-approved in most jurisdictions
-- **Frontend**: Next.js — works in any modern browser, no mobile app required
 - **Email**: Brevo SMTP integration — swappable for any SMTP provider
 - **File storage**: Supabase Storage (S3-compatible) — swappable for AWS S3 or any S3-compatible store
 - **No vendor lock-in**: All infrastructure components are replaceable
@@ -355,5 +377,7 @@ The platform is not a pilot or an experiment. It is a production-grade system bu
 
 ---
 
-_For technical integration details, see [Backend/Readme.md](../Readme.md)_
-_For implementation internals, see [Backend/docs/implementation.md](./implementation.md)_
+_For technical integration details, see [Readme.md](../Readme.md)_
+_For implementation internals, see [implementation.md](./implementation.md)_
+_For deployment instructions, see [DEPLOYMENT.md](../DEPLOYMENT.md)_
+_For the end-user citizen guide, see [CITIZEN_GUIDE.md](../CITIZEN_GUIDE.md)_

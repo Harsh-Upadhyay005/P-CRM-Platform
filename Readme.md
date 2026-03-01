@@ -1,16 +1,23 @@
-# P-CRM Platform — Backend
+# P-CRM Platform
 
 > **Smart Political CRM — Citizen Grievance Management System**
-> Production-grade multi-tenant backend for government and political offices to receive, track, assign, escalate, and resolve citizen complaints. Includes full ABAC enforcement, atomic role-gated status transitions, SLA monitoring, an AI intelligence layer, real-time SSE notifications, file attachments (Supabase Storage), Redis token blacklisting, executive analytics, and a complete audit trail.
+>
+> Production-grade, multi-tenant, full-stack platform for government and political offices to receive, track, assign, escalate, and resolve citizen complaints. Ships with a **Next.js 16 dashboard** (React Query, Tailwind, shadcn/ui, Framer Motion, Three.js) and a **Node.js/Express 5 REST API** (Prisma 7, PostgreSQL, Redis, Supabase Storage, Brevo email). Features full ABAC enforcement, atomic role-gated status transitions, SLA monitoring, an in-process AI intelligence layer, real-time SSE notifications, CSV data exports, and a complete audit trail.
+
+[![Frontend](https://img.shields.io/badge/Frontend-Next.js%2016-black?logo=next.js)](https://nextjs.org)
+[![Backend](https://img.shields.io/badge/Backend-Express%205%20ESM-green?logo=node.js)](https://expressjs.com)
+[![Database](https://img.shields.io/badge/Database-PostgreSQL-blue?logo=postgresql)](https://postgresql.org)
+
+> **Deploying?** See [DEPLOYMENT.md](DEPLOYMENT.md) for step-by-step Vercel + Render instructions.
 
 ---
 
 ## Table of Contents
 
-1. [Tech Stack](#tech-stack)
-2. [Project Structure](#project-structure)
-3. [Environment Variables](#environment-variables)
-4. [Getting Started](#getting-started)
+1. [Quick Start](#quick-start)
+2. [Tech Stack](#tech-stack)
+3. [Project Structure](#project-structure)
+4. [Environment Variables](#environment-variables)
 5. [Architecture Overview](#architecture-overview)
 6. [Role Permission Matrix](#role-permission-matrix)
 7. [Status Transition Engine](#status-transition-engine)
@@ -27,7 +34,48 @@
 
 ---
 
+## Quick Start
+
+```bash
+# 1 — Install dependencies
+cd Backend && npm install
+cd ../frontend && npm install
+
+# 2 — Configure backend environment
+cd ../Backend
+# Create Backend/.env using the template in the Environment Variables section below
+
+# 3 — Apply database migrations and generate Prisma client
+npx prisma migrate dev
+npx prisma generate
+
+# 4 — Seed the 5 required system roles (run once per new database)
+node --input-type=module --eval "
+import { prisma } from './src/config/db.js';
+for (const type of ['SUPER_ADMIN','ADMIN','DEPARTMENT_HEAD','OFFICER','CALL_OPERATOR'])
+  await prisma.role.upsert({ where: { type }, update: {}, create: { type } });
+await prisma.\$disconnect();
+console.log('Roles seeded');
+"
+
+# 5 — Start backend dev server
+npm run dev                        # http://localhost:5000
+# Health check: GET http://localhost:5000/health
+
+# 6 — Start frontend dev server (new terminal)
+cd ../frontend
+echo "NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1" > .env.local
+npm run dev                        # http://localhost:3000
+
+# 7 — Build frontend for production (verify before deploying)
+npm run build
+```
+
+---
+
 ## Tech Stack
+
+### Backend
 
 | Layer        | Technology                                                    |
 | ------------ | ------------------------------------------------------------- |
@@ -44,19 +92,38 @@
 | Password     | bcrypt                                                        |
 | Real-Time    | SSE (Server-Sent Events) — native Node.js HTTP, no extra deps |
 | Security     | helmet, cors, express-rate-limit, cookie-parser               |
-| Background   | Custom interval-based SLA monitor job                         |
+| Background   | Custom interval-based SLA monitor job (every 30 min)          |
+| Validation   | Zod v4                                                        |
+
+### Frontend
+
+| Layer         | Technology                                     |
+| ------------- | ---------------------------------------------- |
+| Framework     | Next.js 16 (App Router, `"use client"`)        |
+| Language      | TypeScript                                     |
+| State & Fetch | TanStack React Query v5                        |
+| HTTP Client   | Axios (with 401 → auto-refresh interceptor)    |
+| Styling       | Tailwind CSS v4 + shadcn/ui                    |
+| Animation     | Framer Motion + GSAP                           |
+| 3D            | Three.js via `@react-three/fiber` + Drei       |
+| Charts        | Recharts                                       |
+| Maps          | D3-geo (India SVG chloropleth map)             |
+| Forms         | React Hook Form + Zod                          |
+| Notifications | react-hot-toast + SSE EventSource (live badge) |
+| Icons         | lucide-react                                   |
 
 ---
 
 ## Project Structure
 
 ```
-Backend/
-├── prisma/
-│   └── schema.prisma                 # Database schema (12 models)
-├── src/
-│   ├── app.js                        # Express app — global middleware + route mounting
-│   ├── server.js                     # Entry point — graceful start/shutdown + SSE heartbeat
+P-CRM-Platform/
+├── Backend/
+│   ├── prisma/
+│   │   └── schema.prisma                 # Database schema (12 models)
+│   └── src/
+│       ├── app.js                        # Express app — global middleware + route mounting
+│       ├── server.js                     # Entry point — graceful start/shutdown + SSE heartbeat
 │   ├── config/
 │   │   ├── db.js                     # Prisma client + PrismaPg adapter singleton
 │   │   ├── env.js                    # Validated environment variables (throws on missing)
@@ -107,10 +174,49 @@ Backend/
 │   │   ├── statusEngine.js           # Transition graph + role-gated assertRoleCanTransition
 │   │   ├── slaEngine.js              # SLA deadline calculation, state classification, summary
 │   │   └── tenantScope.js            # forTenant, assertTenant, isAssignedOfficer, isInDepartment
-│   └── validators/
-│       ├── complaints.validators.js  # Zod schemas: create, update, assign, status, note, feedback
-│       ├── tenant.validators.js      # Zod schemas: createTenant, updateTenant
-│       └── auth.validators.js        # (password strength, email format)
+│       └── validators/
+│           ├── auth.validators.js        # Zod: login, register, forgot/reset password
+│           ├── complaints.validators.js  # Zod: create, update, assign, status, note, feedback
+│           ├── users.validators.js       # Zod: createUser, assignRole, setStatus, changePassword
+│           └── tenant.validators.js      # Zod: createTenant, updateTenant
+│
+├── frontend/
+│   └── src/
+│       ├── app/
+│       │   ├── (auth)/             # login, register, verify-email, forgot/reset-password
+│       │   ├── (protected)/        # authenticated pages
+│       │   │   ├── dashboard/      # KPI cards, 3D HQ, India map, charts, team performance
+│       │   │   ├── complaints/     # list (status+priority+dept filters) + new + [id] detail
+│       │   │   ├── users/          # staff list + create user + role assignment
+│       │   │   ├── departments/    # department CRUD
+│       │   │   ├── analytics/      # 7 analytics panels + CSV export
+│       │   │   ├── notifications/  # paginated list + SSE live updates
+│       │   │   ├── audit-logs/     # SUPER_ADMIN audit trail
+│       │   │   ├── tenants/        # SUPER_ADMIN tenant management
+│       │   │   └── profile/        # name edit + change password
+│       │   ├── submit/             # Public citizen complaint portal (no login)
+│       │   └── track/[trackingId]/ # Public complaint tracker + feedback form
+│       ├── components/
+│       │   ├── dashboard/          # KpiCards, TrendsChart, CategoryChart, TeamPerformance,
+│       │   │                       #   ComplaintManager (table+kanban), AlertsPanel, IndiaMapView
+│       │   ├── layout/             # Sidebar, TopBar (SSE unread badge + dropdown)
+│       │   ├── 3d/                 # CommandCenter3D (Three.js)
+│       │   └── ui/                 # shadcn/ui components
+│       ├── hooks/                  # useAuth, useRole
+│       ├── lib/
+│       │   └── api.ts              # Typed Axios instance + all API function groups
+│       └── types/
+│           └── index.ts            # TypeScript types: User, Complaint, SlaSummary, etc.
+│
+├── docs/
+│   ├── PLATFORM_OVERVIEW.md
+│   ├── USER_GUIDE.md
+│   ├── implementation.md
+│   └── frontend-implementation-plan.md
+├── DEPLOYMENT.md                   # Step-by-step Vercel + Render deployment
+├── CITIZEN_GUIDE.md                # End-user guide for citizens filing complaints
+├── docker-compose.yml
+└── Readme.md
 ```
 
 ---
@@ -160,25 +266,6 @@ SUPABASE_STORAGE_BUCKET=complaint-attachments
 All variables are validated at startup — the server will throw and refuse to start if any are missing or invalid.
 
 ---
-
-## Getting Started
-
-```bash
-# Install dependencies
-npm install
-
-# Apply database migrations
-npx prisma migrate dev
-
-# Generate Prisma client
-npx prisma generate
-
-# Seed roles (run once)
-# SUPER_ADMIN, ADMIN, DEPARTMENT_HEAD, OFFICER, CALL_OPERATOR must exist in the Role table
-
-# Start development server
-npm run dev
-```
 
 ---
 
@@ -436,14 +523,14 @@ Every notification is written to the `Notification` table via `createManyAndRetu
 
 ### Exported Functions
 
-| Function                                                                                                | Description                                      |
-| ------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `notifyAssignment(complaintId, assignedToId, actorId, trackingId)`                                      | DB write + SSE push to assigned officer          |
-| `notifyStatusChange(complaintId, oldStatus, newStatus, createdById, assignedToId, actorId, trackingId)` | Fan-out: DB write + SSE push to all stakeholders |
-| `getUserNotifications(user, query)`                                                                     | Paginated — newest first                         |
-| `markNotificationRead(notificationId, user)`                                                            | Ownership-verified single mark-as-read           |
-| `markAllNotificationsRead(user)`                                                                        | Bulk mark-as-read                                |
-| `getUnreadCount(user)`                                                                                  | Integer count for badge indicators               |
+| Function                                                                                                | Description                                                       |
+| ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `notifyAssignment(complaintId, assignedToId, actorId, trackingId)`                                      | DB write + SSE push to assigned officer                           |
+| `notifyStatusChange(complaintId, oldStatus, newStatus, createdById, assignedToId, actorId, trackingId)` | Fan-out: DB write + SSE push to all stakeholders (actor excluded) |
+| `getUserNotifications(user, query)`                                                                     | Paginated — newest first                                          |
+| `markNotificationRead(notificationId, user)`                                                            | Ownership-verified single mark-as-read                            |
+| `markAllNotificationsRead(user)`                                                                        | Bulk mark-as-read                                                 |
+| `getUnreadCount(user)`                                                                                  | Integer count for badge indicators                                |
 
 ---
 
@@ -649,15 +736,17 @@ Attachments are stored in **Supabase Storage**. Multer buffers the upload in mem
 
 ### Users — `/api/v1/users`
 
-| Method   | Endpoint      | Auth | Min Role        | Description                                           |
-| -------- | ------------- | ---- | --------------- | ----------------------------------------------------- |
-| `GET`    | `/me`         | ✅   | CALL_OPERATOR   | Get own profile                                       |
-| `PATCH`  | `/me`         | ✅   | CALL_OPERATOR   | Update own profile (name, phone)                      |
-| `GET`    | `/`           | ✅   | DEPARTMENT_HEAD | List users (DEPT_HEAD scoped to own department)       |
-| `GET`    | `/:id`        | ✅   | DEPARTMENT_HEAD | Get user by ID (DEPT_HEAD scoped to own department)   |
-| `PATCH`  | `/:id/role`   | ✅   | ADMIN           | Assign role (cannot escalate above own rank)          |
-| `PATCH`  | `/:id/status` | ✅   | ADMIN           | Activate / deactivate user (self-protection enforced) |
-| `DELETE` | `/:id`        | ✅   | ADMIN           | Soft delete user (cannot delete self or higher rank)  |
+| Method   | Endpoint       | Auth | Min Role        | Description                                               |
+| -------- | -------------- | ---- | --------------- | --------------------------------------------------------- |
+| `GET`    | `/me`          | ✅   | CALL_OPERATOR   | Get own profile                                           |
+| `PATCH`  | `/me`          | ✅   | CALL_OPERATOR   | Update own profile (name)                                 |
+| `PATCH`  | `/me/password` | ✅   | CALL_OPERATOR   | Change password (requires currentPassword + newPassword)  |
+| `POST`   | `/`            | ✅   | ADMIN           | Create new user (admin-created, email pre-verified)       |
+| `GET`    | `/`            | ✅   | DEPARTMENT_HEAD | List users (DEPT_HEAD scoped to own department)           |
+| `GET`    | `/:id`         | ✅   | DEPARTMENT_HEAD | Get user by ID                                            |
+| `PATCH`  | `/:id/role`    | ✅   | ADMIN           | Assign role + department (cannot escalate above own rank) |
+| `PATCH`  | `/:id/status`  | ✅   | ADMIN           | Activate / deactivate user                                |
+| `DELETE` | `/:id`         | ✅   | ADMIN           | Soft delete user                                          |
 
 ---
 
@@ -677,15 +766,16 @@ Attachments are stored in **Supabase Storage**. Multer buffers the upload in mem
 
 All endpoints require minimum `DEPARTMENT_HEAD`. Results are ABAC-scoped (DEPT_HEAD → own department only; ADMIN → full tenant; SUPER_ADMIN → all tenants).
 
-| Method | Endpoint                 | Description                                                  |
-| ------ | ------------------------ | ------------------------------------------------------------ |
-| `GET`  | `/overview`              | Status/priority breakdown, resolution time, SLA breach count |
-| `GET`  | `/trends`                | Daily complaint volume + resolution volume over a date range |
-| `GET`  | `/departments`           | Per-department open/resolved counts + avg resolution time    |
-| `GET`  | `/officers`              | Officer leaderboard — resolved count + avg resolution time   |
-| `GET`  | `/sla-heatmap`           | SLA breach rate by department + priority matrix              |
-| `GET`  | `/escalation-trends`     | Daily escalation counts over a configurable date range       |
-| `GET`  | `/category-distribution` | Complaint count grouped by category                          |
+| Method | Endpoint                 | Description                                                                  |
+| ------ | ------------------------ | ---------------------------------------------------------------------------- |
+| `GET`  | `/overview`              | Status/priority breakdown, resolution time, SLA breach count                 |
+| `GET`  | `/trends`                | Daily complaint volume + resolution volume over a date range                 |
+| `GET`  | `/departments`           | Per-department open/resolved counts + avg resolution time                    |
+| `GET`  | `/officers`              | Officer leaderboard — resolved count + avg resolution time                   |
+| `GET`  | `/sla-heatmap`           | SLA breach rate by department + priority matrix                              |
+| `GET`  | `/escalation-trends`     | Daily escalation counts over a configurable date range                       |
+| `GET`  | `/category-distribution` | Complaint count grouped by category                                          |
+| `GET`  | `/export`                | Export analytics CSV — `?report=overview\|departments\|officers\|categories` |
 
 ---
 
@@ -718,6 +808,20 @@ All endpoints require `SUPER_ADMIN`.
 ### Audit Logs — `/api/v1/audit-logs`
 
 Requires `SUPER_ADMIN`. Returns paginated audit events filterable by `action`, `entityType`, `userId`, and date range.
+
+---
+
+## Complaints — CSV Export
+
+`GET /api/v1/complaints/export` — requires minimum `DEPARTMENT_HEAD`.
+
+- Results are **ABAC-scoped** (same rules as the list endpoint)
+- Accepts the same query filters: `status`, `priority`, `departmentId`, `search`, `startDate`, `endDate`
+- Capped at **10,000 rows** per export
+- Returns UTF-8 BOM CSV with `Content-Disposition: attachment; filename=complaints-YYYY-MM-DD.csv`
+- Columns: `trackingId`, `citizenName`, `phone`, `email`, `category`, `priority`, `status`, `department`, `assignedTo`, `aiScore`, `sentimentScore`, `duplicateScore`, `resolvedAt`, `createdAt`
+
+`GET /api/v1/analytics/export?report=overview|departments|officers|categories` — requires minimum `DEPARTMENT_HEAD`.
 
 ---
 
@@ -839,3 +943,16 @@ Requires `SUPER_ADMIN`. Returns paginated audit events filterable by `action`, `
 | Notification isolation      | Users can only read/mark their own notifications (ownership verified per operation)      |
 | File upload safety          | Supabase signed URLs (1-hour expiry) — no permanent public object links                  |
 | SLA auto-escalation         | Background job removes human dependency for critical deadline enforcement                |
+
+---
+
+## Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for the complete step-by-step guide covering:
+
+- Backend deployment to **Render** (build command, env vars, DB migration, role seeding)
+- Frontend deployment to **Vercel** (root directory, env vars, CORS update)
+- Full environment variable reference
+- Post-deployment checklist
+- Troubleshooting common issues
+- Bootstrapping the first tenant and admin user
