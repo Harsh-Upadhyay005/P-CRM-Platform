@@ -1,6 +1,7 @@
-# P-CRM Platform — Backend Implementation Reference
+# P-CRM Platform — Implementation Reference
 
-> **Stack**: Node.js v22+ (ESM) · Express 5.2.1 · Prisma 7.4.1 + PrismaPg adapter · PostgreSQL · Redis (Upstash) · Brevo Email · Supabase Storage · JWT + httpOnly Cookies · SSE Real-time
+> **Backend Stack**: Node.js v22+ (ESM) · Express 5.2.1 · Prisma 7.4.1 + PrismaPg adapter · PostgreSQL · Redis (Upstash) · Brevo Email · Supabase Storage · JWT + httpOnly Cookies · SSE Real-time  
+> **Frontend Stack**: Next.js 16 (App Router) · React 19 · TanStack Query v5 · TypeScript · Tailwind CSS v4 · shadcn/ui · Framer Motion · GSAP · Three.js · Recharts · D3-geo · Axios
 
 ---
 
@@ -32,10 +33,28 @@
 24. [Helpers & Utilities](#helpers--utilities)
 25. [Error Handling](#error-handling)
 26. [Security Patterns](#security-patterns)
+27. [Users API](#users-api)
+28. [CSV Exports](#csv-exports)
+29. [Frontend Application](#frontend-application)
 
 ---
 
 ## Project Structure
+
+**Monorepo layout**:
+
+```
+P-CRM-Platform/
+├── Backend/          # Node.js/Express API
+├── frontend/         # Next.js 16 App Router
+├── docs/             # All documentation
+├── DEPLOYMENT.md     # Vercel + Render deployment guide
+├── CITIZEN_GUIDE.md  # Citizen-facing usage guide
+├── Readme.md         # Full-stack quick-start reference
+└── docker-compose.yml
+```
+
+**Backend directory**:
 
 ```
 Backend/
@@ -92,28 +111,28 @@ Backend/
 
 All variables are validated at startup. Missing required variables throw immediately — fail-fast pattern prevents silent misconfiguration.
 
-| Variable                            | Required | Description                                          |
-| ----------------------------------- | -------- | ---------------------------------------------------- |
-| `DATABASE_URL`                      | ✅       | PostgreSQL connection string                         |
-| `DIRECT_URL`                        | ✅       | Direct DB connection for Prisma migrations           |
-| `JWT_SECRET`                        | ✅       | Access token signing secret                          |
-| `JWT_REFRESH_SECRET`                | ✅       | Refresh token signing secret                         |
-| `JWT_ACCESS_EXPIRY`                 | ✅       | Access token duration (e.g. `"15m"`)                 |
-| `JWT_REFRESH_EXPIRY`                | ✅       | Refresh token duration (e.g. `"7d"`)                 |
-| `BREVO_API_KEY`                     | ✅       | Brevo email API key                                  |
-| `EMAIL_FROM`                        | ✅       | Sender email address                                 |
-| `FRONTEND_URL`                      | ✅       | CORS allow-list + email action links                 |
-| `PORT`                              | ✅       | HTTP port                                            |
-| `NODE_ENV`                          | ✅       | `development` or `production`                        |
-| `BCRYPT_SALT_ROUNDS`                | ✅       | Salt rounds (NaN-guarded, falls back to 12)          |
-| `EMAIL_VERIFICATION_EXPIRY_MINUTES` | ✅       | NaN-guarded, falls back to 1440 (24 h)               |
-| `RESET_PASSWORD_EXPIRY_MINUTES`     | ✅       | NaN-guarded, falls back to 60                        |
-| `UPSTASH_REDIS_REST_URL`            | ✅       | Upstash Redis REST URL                               |
-| `UPSTASH_REDIS_REST_TOKEN`          | ✅       | Upstash Redis REST token                             |
-| `SUPABASE_URL`                      | ✅       | Supabase project URL                                 |
-| `SUPABASE_SERVICE_ROLE_KEY`         | ✅       | Supabase service-role key (server-side only)         |
-| `SUPABASE_STORAGE_BUCKET`           | ✅       | Supabase Storage bucket name for attachments         |
-| `GEMINI_API_KEY`                    | ⬜       | Google Gemini key (AI layer falls back gracefully)   |
+| Variable                            | Required | Description                                        |
+| ----------------------------------- | -------- | -------------------------------------------------- |
+| `DATABASE_URL`                      | ✅       | PostgreSQL connection string                       |
+| `DIRECT_URL`                        | ✅       | Direct DB connection for Prisma migrations         |
+| `JWT_SECRET`                        | ✅       | Access token signing secret                        |
+| `JWT_REFRESH_SECRET`                | ✅       | Refresh token signing secret                       |
+| `JWT_ACCESS_EXPIRY`                 | ✅       | Access token duration (e.g. `"15m"`)               |
+| `JWT_REFRESH_EXPIRY`                | ✅       | Refresh token duration (e.g. `"7d"`)               |
+| `BREVO_API_KEY`                     | ✅       | Brevo email API key                                |
+| `EMAIL_FROM`                        | ✅       | Sender email address                               |
+| `FRONTEND_URL`                      | ✅       | CORS allow-list + email action links               |
+| `PORT`                              | ✅       | HTTP port                                          |
+| `NODE_ENV`                          | ✅       | `development` or `production`                      |
+| `BCRYPT_SALT_ROUNDS`                | ✅       | Salt rounds (NaN-guarded, falls back to 12)        |
+| `EMAIL_VERIFICATION_EXPIRY_MINUTES` | ✅       | NaN-guarded, falls back to 1440 (24 h)             |
+| `RESET_PASSWORD_EXPIRY_MINUTES`     | ✅       | NaN-guarded, falls back to 60                      |
+| `UPSTASH_REDIS_REST_URL`            | ✅       | Upstash Redis REST URL                             |
+| `UPSTASH_REDIS_REST_TOKEN`          | ✅       | Upstash Redis REST token                           |
+| `SUPABASE_URL`                      | ✅       | Supabase project URL                               |
+| `SUPABASE_SERVICE_ROLE_KEY`         | ✅       | Supabase service-role key (server-side only)       |
+| `SUPABASE_STORAGE_BUCKET`           | ✅       | Supabase Storage bucket name for attachments       |
+| `GEMINI_API_KEY`                    | ⬜       | Google Gemini key (AI layer falls back gracefully) |
 
 **NaN guard pattern** (used for every numeric env var):
 
@@ -142,19 +161,19 @@ export const prisma = new PrismaClient({ adapter });
 
 ### Schema Models (summary)
 
-| Model                    | Key Fields                                                                                   |
-| ------------------------ | -------------------------------------------------------------------------------------------- |
-| `Tenant`                 | id, name, slug (unique), isActive, contactEmail, contactPhone, address, createdAt           |
-| `Role`                   | id, type (RoleType enum) — global, not per-tenant                                            |
-| `User`                   | id, email, password (hashed), emailVerified, isActive, isDeleted, tenantId, roleId, departmentId |
-| `RefreshToken`           | id, tokenHash (SHA-256), userId, expiresAt                                                   |
-| `Department`             | id, name, slug (unique per tenant), slaHours, isActive, isDeleted, tenantId                  |
+| Model                    | Key Fields                                                                                                                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Tenant`                 | id, name, slug (unique), isActive, contactEmail, contactPhone, address, createdAt                                                                                                     |
+| `Role`                   | id, type (RoleType enum) — global, not per-tenant                                                                                                                                     |
+| `User`                   | id, email, password (hashed), emailVerified, isActive, isDeleted, tenantId, roleId, departmentId                                                                                      |
+| `RefreshToken`           | id, tokenHash (SHA-256), userId, expiresAt                                                                                                                                            |
+| `Department`             | id, name, slug (unique per tenant), slaHours, isActive, isDeleted, tenantId                                                                                                           |
 | `Complaint`              | id, trackingId (PCRM-YYYYMMDD-XXXXXXXX), status, priority, tenantId, createdById, assignedToId, departmentId, isDeleted, aiScore, resolvedAt, slaDeadline, isPublic, feedback, rating |
-| `ComplaintStatusHistory` | id, complaintId, oldStatus, newStatus, changedById (null for system), changedAt              |
-| `ComplaintAttachment`    | id, complaintId, fileName, storagePath, mimeType, size, uploadedById, createdAt              |
-| `InternalNote`           | id, complaintId, userId, note, createdAt                                                     |
-| `Notification`           | id, userId, complaintId?, title, message, isRead, createdAt                                  |
-| `AuditLog`               | id, tenantId, userId?, action, entityType, entityId, metadata (JSON), createdAt              |
+| `ComplaintStatusHistory` | id, complaintId, oldStatus, newStatus, changedById (null for system), changedAt                                                                                                       |
+| `ComplaintAttachment`    | id, complaintId, fileName, storagePath, mimeType, size, uploadedById, createdAt                                                                                                       |
+| `InternalNote`           | id, complaintId, userId, note, createdAt                                                                                                                                              |
+| `Notification`           | id, userId, complaintId?, title, message, isRead, createdAt                                                                                                                           |
+| `AuditLog`               | id, tenantId, userId?, action, entityType, entityId, metadata (JSON), createdAt                                                                                                       |
 
 ### DB Indexes
 
@@ -238,16 +257,16 @@ Register ──► verifyEmail ──► Login ──► [access cookie + refres
 
 **File**: `src/utils/token.utils.js`
 
-| Export                             | Description                                                         |
-| ---------------------------------- | ------------------------------------------------------------------- |
-| `generateAccessToken(payload)`     | Signs JWT with `JWT_SECRET`; payload includes `jti` (UUID v4)     |
-| `generateRefreshToken()`           | 64-char hex opaque string — not a JWT                               |
-| `generateEmailVerificationToken()` | 64-char hex opaque token                                            |
-| `generateResetPasswordToken()`     | 64-char hex opaque token                                            |
-| `verifyAccessToken(token)`         | Verifies JWT, returns decoded payload or throws                     |
-| `getExpiryTime(minutes)`           | Returns `new Date(now + minutes * 60000)`                           |
-| `parseDurationToDate(duration)`    | `"7d"` → `Date` 7 days from now                                    |
-| `parseDurationToMs(duration)`      | `"7d"` → `604800000` ms                                            |
+| Export                             | Description                                                   |
+| ---------------------------------- | ------------------------------------------------------------- |
+| `generateAccessToken(payload)`     | Signs JWT with `JWT_SECRET`; payload includes `jti` (UUID v4) |
+| `generateRefreshToken()`           | 64-char hex opaque string — not a JWT                         |
+| `generateEmailVerificationToken()` | 64-char hex opaque token                                      |
+| `generateResetPasswordToken()`     | 64-char hex opaque token                                      |
+| `verifyAccessToken(token)`         | Verifies JWT, returns decoded payload or throws               |
+| `getExpiryTime(minutes)`           | Returns `new Date(now + minutes * 60000)`                     |
+| `parseDurationToDate(duration)`    | `"7d"` → `Date` 7 days from now                               |
+| `parseDurationToMs(duration)`      | `"7d"` → `604800000` ms                                       |
 
 **JWT Payload shape**:
 
@@ -310,12 +329,12 @@ This guarantees immediate token invalidation without requiring short-lived acces
 
 All emails use production-quality HTML templates: government-style branding (navy `#1a3a6e`, saffron accent), table-based layout (Outlook-compatible), tricolor footer divider.
 
-| Function                                       | Trigger                                        |
-| ---------------------------------------------- | ---------------------------------------------- |
-| `sendVerificationEmail(user, token)`           | After register / resend-verification           |
-| `sendPasswordResetEmail(user, token)`          | After forgot-password                          |
-| `sendStatusChangeEmail(user, complaint)`       | When complaint status changes                  |
-| `sendSlaBreachAlertEmail(complaint, officer)`  | When SLA monitor detects a breach              |
+| Function                                      | Trigger                              |
+| --------------------------------------------- | ------------------------------------ |
+| `sendVerificationEmail(user, token)`          | After register / resend-verification |
+| `sendPasswordResetEmail(user, token)`         | After forgot-password                |
+| `sendStatusChangeEmail(user, complaint)`      | When complaint status changes        |
+| `sendSlaBreachAlertEmail(complaint, officer)` | When SLA monitor detects a breach    |
 
 All email calls are **fire-and-forget** (non-blocking) except in the registration/resend flows where a failure triggers a rollback.
 
@@ -333,15 +352,15 @@ SUPER_ADMIN  (5)
                             └── CALL_OPERATOR  (1)
 ```
 
-| Export                                  | Description                                    |
-| --------------------------------------- | ---------------------------------------------- |
-| `ROLE_RANK`                             | Frozen object: role name → numeric rank        |
-| `getRank(role)`                         | Returns rank, throws on unknown role           |
-| `canAssignRole(actorRole, targetRole)`  | `true` if actor rank > target rank             |
-| `canManageUser(actorRole, subjectRole)` | `true` if actor rank > subject rank            |
-| `isHigherThan(roleA, roleB)`            | `roleA rank > roleB rank`                      |
-| `isHigherOrEqual(roleA, roleB)`         | `roleA rank >= roleB rank`                     |
-| `assignableRoles(actorRole)`            | Sorted array of roles the actor may assign     |
+| Export                                  | Description                                |
+| --------------------------------------- | ------------------------------------------ |
+| `ROLE_RANK`                             | Frozen object: role name → numeric rank    |
+| `getRank(role)`                         | Returns rank, throws on unknown role       |
+| `canAssignRole(actorRole, targetRole)`  | `true` if actor rank > target rank         |
+| `canManageUser(actorRole, subjectRole)` | `true` if actor rank > subject rank        |
+| `isHigherThan(roleA, roleB)`            | `roleA rank > roleB rank`                  |
+| `isHigherOrEqual(roleA, roleB)`         | `roleA rank >= roleB rank`                 |
+| `assignableRoles(actorRole)`            | Sorted array of roles the actor may assign |
 
 **Escalation protection**: An actor can only assign/manage users with a strictly lower rank. Lateral and upward assignments are always blocked.
 
@@ -353,11 +372,11 @@ SUPER_ADMIN  (5)
 
 Every Prisma query touching tenant-owned data uses these helpers. Direct construction of `{ tenantId: X }` is avoided to keep isolation auditable.
 
-| Export                                | Usage                        | Description                                              |
-| ------------------------------------- | ---------------------------- | -------------------------------------------------------- |
-| `forTenant(user)`                     | Spread into `where:`         | Returns `{ tenantId }`, throws 500 if tenantId missing   |
-| `inTenant(user)`                      | Spread into `data:`          | Semantic alias for creates                               |
-| `assertTenant(resource, user, label)` | After lookup by unique field | Throws 404 if null or wrong tenant (IDOR prevention)     |
+| Export                                | Usage                        | Description                                            |
+| ------------------------------------- | ---------------------------- | ------------------------------------------------------ |
+| `forTenant(user)`                     | Spread into `where:`         | Returns `{ tenantId }`, throws 500 if tenantId missing |
+| `inTenant(user)`                      | Spread into `data:`          | Semantic alias for creates                             |
+| `assertTenant(resource, user, label)` | After lookup by unique field | Throws 404 if null or wrong tenant (IDOR prevention)   |
 
 `assertTenant` always throws `404` (never `403`) — prevents confirming a resource exists to a user from a different tenant.
 
@@ -427,14 +446,14 @@ Controls which roles may drive a complaint to which target statuses:
 }
 ```
 
-| Export                                           | Description                                          |
-| ------------------------------------------------ | ---------------------------------------------------- |
-| `isValidTransition(from, to)`                   | `boolean` — does not throw                          |
-| `assertValidTransition(from, to)`               | Throws `ApiError(422)` with allowed next states     |
-| `assertRoleCanTransition(role, newStatus)`       | Throws `ApiError(403)` if role isn't allowed        |
-| `validNextStatuses(current)`                    | Array of valid next statuses (for frontend dropdowns)|
-| `TERMINAL_STATUSES`                             | Frozen array `["CLOSED"]`                           |
-| `isTerminal(status)`                            | `boolean`                                           |
+| Export                                     | Description                                           |
+| ------------------------------------------ | ----------------------------------------------------- |
+| `isValidTransition(from, to)`              | `boolean` — does not throw                            |
+| `assertValidTransition(from, to)`          | Throws `ApiError(422)` with allowed next states       |
+| `assertRoleCanTransition(role, newStatus)` | Throws `ApiError(403)` if role isn't allowed          |
+| `validNextStatuses(current)`               | Array of valid next statuses (for frontend dropdowns) |
+| `TERMINAL_STATUSES`                        | Frozen array `["CLOSED"]`                             |
+| `isTerminal(status)`                       | `boolean`                                             |
 
 ---
 
@@ -491,6 +510,7 @@ Keyword-based lexicon scoring across positive and negative word sets. Returns `{
 ### Engine 2 — Priority Prediction
 
 Multi-factor scoring:
+
 - Urgency keyword detection (+40 per hit)
 - Sentiment-to-priority mapping
 - Category-to-priority mapping (e.g., `infrastructure` → `HIGH`)
@@ -531,19 +551,19 @@ Request
 
 ### Key Functions
 
-| Function                        | Notes                                                                                    |
-| ------------------------------- | ---------------------------------------------------------------------------------------- |
-| `createComplaint(data, user)`   | Validates dept, generates trackingId, runs AI analysis async, stores aiScore             |
-| `createPublicComplaint(data)`   | No auth required, sets `isPublic: true`, minimal fields stored                         |
-| `listComplaints(query, user)`   | ABAC filter, filter params, pagination, `$transaction([findMany, count])`              |
-| `getComplaint(id, user)`        | ABAC check, strips raw FK IDs, returns relations                                         |
-| `getComplaintByTrackingId(id)`  | Public — returns minimal status info for citizen tracking                                |
-| `assignComplaint(id, data, user)`| Validates dept + officer eligibility, auto-advances OPEN→ASSIGNED, writes status history |
-| `updateComplaintStatus`         | Calls `assertValidTransition` + `assertRoleCanTransition`, sets `resolvedAt`, writes history |
-| `softDeleteComplaint`           | Sets `isDeleted: true` — never hard DELETE                                             |
-| `addInternalNote / getNotes`    | OFFICER: assigned only; DEPT_HEAD: dept only                                             |
-| `addFeedback(trackingId, data)` | Citizen submits rating (1-5) + feedback text post-resolution                             |
-| `searchComplaints(query, user)` | Full-text search across trackingId, citizenName, citizenPhone, description               |
+| Function                          | Notes                                                                                        |
+| --------------------------------- | -------------------------------------------------------------------------------------------- |
+| `createComplaint(data, user)`     | Validates dept, generates trackingId, runs AI analysis async, stores aiScore                 |
+| `createPublicComplaint(data)`     | No auth required, sets `isPublic: true`, minimal fields stored                               |
+| `listComplaints(query, user)`     | ABAC filter, filter params, pagination, `$transaction([findMany, count])`                    |
+| `getComplaint(id, user)`          | ABAC check, strips raw FK IDs, returns relations                                             |
+| `getComplaintByTrackingId(id)`    | Public — returns minimal status info for citizen tracking                                    |
+| `assignComplaint(id, data, user)` | Validates dept + officer eligibility, auto-advances OPEN→ASSIGNED, writes status history     |
+| `updateComplaintStatus`           | Calls `assertValidTransition` + `assertRoleCanTransition`, sets `resolvedAt`, writes history |
+| `softDeleteComplaint`             | Sets `isDeleted: true` — never hard DELETE                                                   |
+| `addInternalNote / getNotes`      | OFFICER: assigned only; DEPT_HEAD: dept only                                                 |
+| `addFeedback(trackingId, data)`   | Citizen submits rating (1-5) + feedback text post-resolution                                 |
+| `searchComplaints(query, user)`   | Full-text search across trackingId, citizenName, citizenPhone, description                   |
 
 ---
 
@@ -577,7 +597,7 @@ export function sendToUser(userId, event, data) {
   const userConnections = connections.get(userId);
   if (!userConnections) return;
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
-  userConnections.forEach(res => res.write(payload));
+  userConnections.forEach((res) => res.write(payload));
 }
 ```
 
@@ -649,15 +669,16 @@ await prisma.complaintAttachment.delete({ where: { id } });
 
 All analytics functions apply the same ABAC filter as the complaint queries (DEPT_HEAD → department scope, ADMIN/SUPER_ADMIN → tenant scope). A **row cap of 10,000** is enforced on raw queries to prevent runaway aggregations.
 
-| Endpoint                       | Function                  | Description                                              |
-| ------------------------------ | ------------------------- | -------------------------------------------------------- |
-| `GET /analytics/overview`       | `getOverview`             | Total, open, resolved, closed, avg resolution time       |
-| `GET /analytics/trends`         | `getTrends`               | Complaints filed per day (last N days, default 30)       |
-| `GET /analytics/by-department`  | `getByDepartment`         | Complaint count + avg resolution time per department     |
-| `GET /analytics/by-category`    | `getByCategory`           | Distribution by complaint category                       |
-| `GET /analytics/sla-heatmap`    | `getSlaHeatmap`           | SLA breach/at-risk/on-track count per department         |
-| `GET /analytics/officer-performance` | `getOfficerPerformance` | Per-officer: assigned, resolved, avg resolution time  |
-| `GET /analytics/priority-breakdown` | `getPriorityBreakdown`   | Count by priority level                                  |
+| Endpoint                             | Function                | Description                                                              |
+| ------------------------------------ | ----------------------- | ------------------------------------------------------------------------ |
+| `GET /analytics/overview`            | `getOverview`           | Total, open, resolved, closed, avg resolution time                       |
+| `GET /analytics/trends`              | `getTrends`             | Complaints filed per day (last N days, default 30)                       |
+| `GET /analytics/by-department`       | `getByDepartment`       | Complaint count + avg resolution time per department                     |
+| `GET /analytics/by-category`         | `getByCategory`         | Distribution by complaint category                                       |
+| `GET /analytics/sla-heatmap`         | `getSlaHeatmap`         | SLA breach/at-risk/on-track count per department                         |
+| `GET /analytics/officer-performance` | `getOfficerPerformance` | Per-officer: assigned, resolved, avg resolution time                     |
+| `GET /analytics/priority-breakdown`  | `getPriorityBreakdown`  | Count by priority level                                                  |
+| `GET /analytics/export`              | `exportAnalytics`       | CSV export of any analytics report (ABAC-scoped, UTF-8 BOM, 10k row cap) |
 
 ---
 
@@ -669,16 +690,22 @@ All analytics functions apply the same ABAC filter as the complaint queries (DEP
 All sensitive mutations write an audit log record **fire-and-forget** (non-blocking, never fails the main operation):
 
 ```js
-prisma.auditLog.create({
-  data: {
-    tenantId: user.tenantId,
-    userId: user.userId,
-    action: "COMPLAINT_STATUS_UPDATED",
-    entityType: "Complaint",
-    entityId: complaint.id,
-    metadata: { oldStatus: complaint.status, newStatus, complaintId: complaint.id },
-  },
-}).catch(() => {}); // fire and forget
+prisma.auditLog
+  .create({
+    data: {
+      tenantId: user.tenantId,
+      userId: user.userId,
+      action: "COMPLAINT_STATUS_UPDATED",
+      entityType: "Complaint",
+      entityId: complaint.id,
+      metadata: {
+        oldStatus: complaint.status,
+        newStatus,
+        complaintId: complaint.id,
+      },
+    },
+  })
+  .catch(() => {}); // fire and forget
 ```
 
 Queryable fields: `tenantId`, `userId`, `entityType`, `entityId`, `action`, `createdAt`.
@@ -690,13 +717,13 @@ Compound index on `[tenantId, entityType]` and `[tenantId, userId]` for fast adm
 
 **Routes**: `/api/v1/tenants` (SUPER_ADMIN only)
 
-| Endpoint                  | Action                                                              |
-| ------------------------- | ------------------------------------------------------------------- |
-| `POST /tenants`           | Create tenant with slug (auto-slugified from name if not provided)  |
-| `GET /tenants`            | List all tenants (paginated)                                        |
-| `GET /tenants/:id`        | Get single tenant with user/complaint counts                        |
-| `PATCH /tenants/:id`      | Update name, contactEmail, contactPhone, address, isActive          |
-| `DELETE /tenants/:id`     | Soft deactivate (`isActive: false`) — does NOT delete data          |
+| Endpoint              | Action                                                             |
+| --------------------- | ------------------------------------------------------------------ |
+| `POST /tenants`       | Create tenant with slug (auto-slugified from name if not provided) |
+| `GET /tenants`        | List all tenants (paginated)                                       |
+| `GET /tenants/:id`    | Get single tenant with user/complaint counts                       |
+| `PATCH /tenants/:id`  | Update name, contactEmail, contactPhone, address, isActive         |
+| `DELETE /tenants/:id` | Soft deactivate (`isActive: false`) — does NOT delete data         |
 
 **Slug pattern**: `district-collector-north` — unique, URL-safe identifier used in public-facing tracking URLs.
 
@@ -754,12 +781,12 @@ startSlaMonitor(); // boots immediately, then every 30 min
 
 ### Per-Route
 
-| Middleware              | Purpose                                                           |
-| ----------------------- | ----------------------------------------------------------------- |
-| `authenticate`          | Verifies JWT, checks JTI blacklist, attaches `req.user`          |
-| `authorize(...roles)`   | Exact role allow-list check                                       |
-| `authorizeMinimum(role)`| Rank-based minimum check (inclusive)                             |
-| `upload.array("files")` | Multer memory-storage, 10 MB limit, 5 file max                    |
+| Middleware               | Purpose                                                 |
+| ------------------------ | ------------------------------------------------------- |
+| `authenticate`           | Verifies JWT, checks JTI blacklist, attaches `req.user` |
+| `authorize(...roles)`    | Exact role allow-list check                             |
+| `authorizeMinimum(role)` | Rank-based minimum check (inclusive)                    |
+| `upload.array("files")`  | Multer memory-storage, 10 MB limit, 5 file max          |
 
 ---
 
@@ -796,15 +823,24 @@ Checks domain against a `Set` of ~400+ known disposable/throwaway email provider
 
 ### Complaint Validators (Zod — `src/utils/validators.js`)
 
-| Schema                        | Key Fields                                                       |
-| ----------------------------- | ---------------------------------------------------------------- |
-| `createComplaintSchema`       | title, description, category, priority?, citizenName, phone      |
-| `updateComplaintSchema`       | description?, category?, priority? (all optional)               |
-| `assignComplaintSchema`       | assignedToId?, departmentId? (at least one required)            |
-| `updateStatusSchema`          | newStatus (enum ComplaintStatus)                                 |
-| `addNoteSchema`               | note (min 1 char)                                               |
-| `feedbackSchema`              | rating (1–5), feedback? (optional text)                         |
-| `searchSchema`                | q (search query), page?, limit?                                  |
+**User Validators** (`src/validators/users.validators.js` — Zod):
+
+| Schema                 | Key Fields                                                                                              |
+| ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| `createUserSchema`     | name (min 2), email (lowercase), password (strength-validated), roleType (RoleType enum), departmentId? |
+| `changePasswordSchema` | currentPassword, newPassword (strength-validated), must differ                                          |
+
+**Complaint Validators** (`src/utils/validators.js` — Zod):
+
+| Schema                  | Key Fields                                                  |
+| ----------------------- | ----------------------------------------------------------- |
+| `createComplaintSchema` | title, description, category, priority?, citizenName, phone |
+| `updateComplaintSchema` | description?, category?, priority? (all optional)           |
+| `assignComplaintSchema` | assignedToId?, departmentId? (at least one required)        |
+| `updateStatusSchema`    | newStatus (enum ComplaintStatus)                            |
+| `addNoteSchema`         | note (min 1 char)                                           |
+| `feedbackSchema`        | rating (1–5), feedback? (optional text)                     |
+| `searchSchema`          | q (search query), page?, limit?                             |
 
 ---
 
@@ -812,13 +848,94 @@ Checks domain against a `Set` of ~400+ known disposable/throwaway email provider
 
 **File**: `src/utils/helpers.js`
 
-| Function                                  | Description                                                    |
-| ----------------------------------------- | -------------------------------------------------------------- |
-| `generateTrackingId()`                   | `PCRM-YYYYMMDD-XXXXXXXX` — date + 4 random crypto bytes (hex) |
-| `getPagination(query)`                   | Parses `?page&limit`; max limit 100; returns `{ page, limit, skip }` |
+| Function                                      | Description                                                                                   |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `generateTrackingId()`                        | `PCRM-YYYYMMDD-XXXXXXXX` — date + 4 random crypto bytes (hex)                                 |
+| `getPagination(query)`                        | Parses `?page&limit`; max limit 100; returns `{ page, limit, skip }`                          |
 | `paginatedResponse(data, total, page, limit)` | Standard `{ data, pagination: { total, page, limit, totalPages, hasNextPage, hasPrevPage } }` |
-| `slugify(text)`                          | `"Mayor's Office, Delhi"` → `"mayors-office-delhi"`          |
-| `sanitizeUser(user)`                     | Strips password, tokens, expiry fields from user object        |
+| `slugify(text)`                               | `"Mayor's Office, Delhi"` → `"mayors-office-delhi"`                                           |
+| `sanitizeUser(user)`                          | Strips password, tokens, expiry fields from user object                                       |
+
+---
+
+## Users API
+
+**Service**: `src/services/users.service.js`  
+**Controller**: `src/controllers/users.controller.js`  
+**Routes**: `src/routes/users.routes.js`
+
+### `POST /api/v1/users` — Admin Create User
+
+**Minimum role**: `ADMIN`
+
+Allows admins to create staff accounts directly without requiring email verification. The created account is immediately active.
+
+```
+1. Validate body with createUserSchema (name, email, password, roleType, departmentId?)
+2. Enforce role hierarchy — actor rank must be > target roleType rank
+3. Check email uniqueness within tenant
+4. Hash password with bcrypt
+5. Resolve roleId from roleType enum
+6. Validate departmentId belongs to same tenant (if provided)
+7. Create user with emailVerified: true (skip verification flow)
+8. Return 201 with sanitized user object
+```
+
+Key difference from self-registration: `emailVerified` is **set to `true` immediately** — the new user can log in right away, no email link required.
+
+### `PATCH /api/v1/users/me/password` — Change Own Password
+
+**Minimum role**: any authenticated user
+
+```
+1. Validate body with changePasswordSchema (currentPassword, newPassword)
+2. Fetch user record (include password hash)
+3. bcrypt.compare(currentPassword, hash) — throw 401 if mismatch
+4. Validate newPassword strength
+5. Assert newPassword !== currentPassword (throw 400 if same)
+6. Hash newPassword, update DB record
+7. Return 200 with success message
+```
+
+### Other User Endpoints (existing)
+
+| Endpoint                      | Min Role | Description                                               |
+| ----------------------------- | -------- | --------------------------------------------------------- |
+| `GET /users`                  | ADMIN    | List all users in tenant (paginated, filter by role/dept) |
+| `GET /users/me`               | Any      | Get own profile                                           |
+| `PATCH /users/me`             | Any      | Update own profile (name, phone, etc.)                    |
+| `GET /users/:id`              | ADMIN    | Get user by ID (tenant-scoped)                            |
+| `PATCH /users/:id/role`       | ADMIN    | Change user role (hierarchy-checked)                      |
+| `PATCH /users/:id/deactivate` | ADMIN    | Soft-deactivate user                                      |
+
+---
+
+## CSV Exports
+
+Both export endpoints produce valid CSV files with a **UTF-8 BOM** prefix (`\uFEFF`) for correct Excel rendering, a **10,000 row cap** to prevent runaway responses, and the same ABAC scope as the corresponding list/analytics queries.
+
+### `GET /api/v1/complaints/export`
+
+**Min role**: `CALL_OPERATOR` (any authenticated staff)
+
+Accepts the same query parameters as `GET /complaints` (status, priority, departmentId, search, dateFrom, dateTo). Returns `Content-Type: text/csv; charset=utf-8` with `Content-Disposition: attachment; filename="complaints-export.csv"`.
+
+**CSV columns**: Tracking ID, Title, Status, Priority, Category, Department, Assigned Officer, Citizen Name, Citizen Phone, Created At, Resolved At, SLA Deadline, Rating, Feedback
+
+### `GET /api/v1/analytics/export`
+
+**Min role**: `DEPARTMENT_HEAD`
+
+Query param: `?report=overview|departments|officers|categories` (defaults to `overview`).
+
+| `report` value | CSV contents                                                           |
+| -------------- | ---------------------------------------------------------------------- |
+| `overview`     | Single-row summary: total, open, resolved, closed, avg resolution time |
+| `departments`  | Per-department: name, total, resolved, breach count, avg res. time     |
+| `officers`     | Per-officer: name, assigned, resolved, avg resolution time             |
+| `categories`   | Per-category: name, count                                              |
+
+Returns `Content-Disposition: attachment; filename="analytics-{report}-export.csv"`.
 
 ---
 
@@ -837,7 +954,12 @@ Extends `Error`. Sets `isOperational = true` so the error middleware distinguish
 Standard success shape:
 
 ```json
-{ "statusCode": 200, "data": {}, "message": "Fetched successfully", "success": true }
+{
+  "statusCode": 200,
+  "data": {},
+  "message": "Fetched successfully",
+  "success": true
+}
 ```
 
 ### `asyncHandler` — `src/utils/asyncHandler.js`
@@ -895,5 +1017,58 @@ SLA monitor writes `ComplaintStatusHistory` with `changedById: null`. Human-init
 
 ---
 
-*For API endpoint reference and request/response shapes, see [Readme.md](../Readme.md).*
-*For a stakeholder/government overview of what P-CRM offers, see [PLATFORM_OVERVIEW.md](./PLATFORM_OVERVIEW.md).*
+---
+
+## Frontend Application
+
+**Location**: `frontend/` (Next.js 16 App Router, TypeScript)
+
+### Route Structure
+
+| Route                        | Access     | Description                                            |
+| ---------------------------- | ---------- | ------------------------------------------------------ |
+| `/`                          | Public     | Landing page — 3D globe HQ, feature showcase           |
+| `/submit`                    | Public     | Citizen complaint submission portal                    |
+| `/track/[trackingId]`        | Public     | Real-time complaint status tracker (no login required) |
+| `/login`                     | Public     | Staff login                                            |
+| `/(protected)/dashboard`     | Any staff  | Overview widgets, recent complaints                    |
+| `/(protected)/complaints`    | Any staff  | Complaint list with filters, CSV export                |
+| `/(protected)/analytics`     | DEPT_HEAD+ | Charts, heatmaps, India D3-geo map, CSV export         |
+| `/(protected)/users`         | ADMIN+     | User management, + Add User dialog                     |
+| `/(protected)/notifications` | Any staff  | Notification inbox                                     |
+| `/(protected)/profile`       | Any staff  | Profile edit, change password                          |
+
+### Data Fetching
+
+All server-state is managed by **TanStack React Query v5**. Query keys follow the pattern `["resource", params]`. Mutations use `useMutation` with `onSuccess` cache invalidation.
+
+### API Client (`frontend/src/lib/api.ts`)
+
+- Base URL: `process.env.NEXT_PUBLIC_API_URL`
+- Axios instance with `withCredentials: true` (cookie transport)
+- **401 interceptor**: automatically calls `POST /auth/refresh-token` on stale access token, retries original request once, redirects to `/login` on second failure
+- Exported API groups: `authApi`, `complaintsApi`, `analyticsApi`, `usersApi`, `departmentsApi`, `notificationsApi`
+
+### Real-time Badge (SSE)
+
+`useNotifications` hook connects to `GET /api/v1/notifications/stream` via the browser `EventSource` API. Incoming events trigger React Query cache invalidation for `["notifications", "unreadCount"]`, updating the bell icon badge without a page reload.
+
+### Key UI Libraries
+
+| Library               | Version | Usage                                       |
+| --------------------- | ------- | ------------------------------------------- |
+| `shadcn/ui`           | latest  | Component primitives (Dialog, Select, etc.) |
+| `tailwindcss`         | v4      | Utility-first dark-theme styling            |
+| `framer-motion`       | latest  | Page transitions and micro-interactions     |
+| `gsap`                | 3.x     | Landing page scroll-triggered animations    |
+| `@react-three/fiber`  | latest  | 3D HQ globe on landing page                 |
+| `recharts`            | 2.x     | Dashboard and analytics charts              |
+| `d3-geo` + `topojson` | latest  | India state choropleth map on analytics     |
+| `react-hot-toast`     | latest  | Success/error toast notifications           |
+
+---
+
+_For API endpoint reference and request/response shapes, see [Readme.md](../Readme.md)._
+_For a stakeholder/government overview of what P-CRM offers, see [PLATFORM_OVERVIEW.md](./PLATFORM_OVERVIEW.md)._
+_For deployment steps (Render + Vercel), see [DEPLOYMENT.md](../DEPLOYMENT.md)._
+_For citizen usage instructions, see [CITIZEN_GUIDE.md](../CITIZEN_GUIDE.md)._

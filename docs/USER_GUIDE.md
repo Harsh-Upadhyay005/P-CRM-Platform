@@ -87,7 +87,9 @@ Citizens can check the real-time status of their complaint without signing in.
 
 - Go to **Complaints** in the sidebar
 - Use the **search bar** to find by Tracking ID or citizen name
-- Filter by **Status**, **Priority**, or **Department**
+- Filter by **Status** — All / Open / Assigned / In Progress / Escalated / Resolved / Closed
+- Filter by **Priority** — All / Low / Medium / High / Critical
+- Filter by **Department** — select any active department from the dropdown
 - Click any row to open the **Complaint Detail** page
 
 ### Complaint Detail Page
@@ -147,6 +149,8 @@ Navigate to **Analytics** to see your department's performance:
 | **Escalations**     | Escalation trend line chart over time                    |
 | **Categories**      | Bar/Pie chart of complaint volume by category            |
 
+Click the **Export CSV** button on any analytics tab to download the report as a spreadsheet.
+
 ### Managing Complaints (Dept Head Scope)
 
 - **Assign** a complaint to any officer within the department
@@ -161,14 +165,16 @@ Admins manage all users and departments within their tenant.
 
 ### User Management (`/users`)
 
-| Action                  | How                                                                            |
-| ----------------------- | ------------------------------------------------------------------------------ |
-| View all users          | Navigate to **Users** page                                                     |
-| Search & filter         | Use the search bar and Role/Status filters                                     |
-| Create a user           | Click **+ Add User** → fill in name, email, role, department, password         |
-| Edit a user             | Click the **⋮** menu → **Edit** → change name, role, department, active status |
-| Deactivate / reactivate | Toggle the active status in the edit dialog                                    |
-| Delete a user           | Click the **⋮** menu → **Delete**                                              |
+| Action                  | How                                                                     |
+| ----------------------- | ----------------------------------------------------------------------- |
+| View all users          | Navigate to **Users** page                                              |
+| Search & filter         | Use the search bar and Role/Status filters                              |
+| Create a user           | Click **+ Add User** → fill in name, email, role, department, password  |
+| Change role / dept      | Click the **⋮** menu → **Change Role** → select new role and department |
+| Deactivate / reactivate | Click the **⋮** menu → **Deactivate / Activate**                        |
+| Delete a user           | Click the **⋮** menu → **Delete**                                       |
+
+> **Admin-created users**: When you create a user via the **+ Add User** button, their email is automatically verified — they can log in immediately without needing to check their inbox.
 
 > Deleted users are soft-deleted and cannot log in.
 
@@ -186,7 +192,9 @@ Admins manage all users and departments within their tenant.
 
 ### Complaint Management
 
-- Admins can view, assign, update, and **permanently delete** any complaint
+- Admins can view, assign, update, and **permanently delete** any complaint within their tenant
+- Use the **Status**, **Priority**, and **Department** filters on the Complaints list to narrow down
+- Click **Export CSV** to download all filtered complaints (up to 10,000 rows) as a spreadsheet
 - The **Delete** button appears on the Complaint Detail page (Admin only)
 
 ### Audit Logs (`/audit-logs`)
@@ -229,7 +237,10 @@ Available to every logged-in user.
 
 - View your name, email, department, role, and account status
 - **Edit your name** inline — click the pencil icon, type a new name, press Enter or click ✓
+- **Change password** — click **Change Password**, enter your current password and a new one (min. 8 characters), confirm and save
 - **Sign Out** — click the red Sign Out button at the bottom
+
+> Note: If you were created by an Admin, your email is pre-verified and you can log in and change your password immediately.
 
 ### Notifications (`/notifications`)
 
@@ -311,4 +322,4 @@ OPEN → ASSIGNED → IN_PROGRESS → RESOLVED → CLOSED
 
 ---
 
-_Last updated: February 2026_
+_Last updated: March 2026_
