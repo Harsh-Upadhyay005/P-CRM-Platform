@@ -7,6 +7,7 @@ import {
   assignRoleSchema,
   setUserStatusSchema,
   updateMyProfileSchema,
+  changePasswordSchema,
 } from "../validators/users.validators.js";
 
 const router = express.Router();
@@ -16,6 +17,12 @@ router.use(authMiddleware);
 router.get("/me", controller.getMe);
 
 router.patch("/me", validate(updateMyProfileSchema), controller.updateMyProfile);
+
+router.patch(
+  "/me/password",
+  validate(changePasswordSchema),
+  controller.changePassword,
+);
 
 router.get(
   "/",

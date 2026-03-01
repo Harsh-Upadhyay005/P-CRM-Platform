@@ -68,3 +68,38 @@ export const getFeedback = asyncHandler(async (req, res) => {
   const feedback = await service.getFeedback(req.params.id, req.user);
   res.json(new ApiResponse(200, feedback, "Feedback retrieved"));
 });
+
+// ── CSV helper ────────────────────────────────────────────────────────────
+const csvCell = (v) => {
+  if (v === null || v === undefined) return "";
+  const s = String(v);
+  return /[,"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+const toCsv = (headers, rows) =>
+  [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
+
+export const exportComplaints = asyncHandler(async (req, res) => {
+  const rows = await service.exportComplaints(req.query, req.user);
+
+  const headers = [
+    "Tracking ID", "Citizen Name", "Phone", "Email", "Category",
+    "Priority", "Status", "Department", "Assigned Officer", "Created By",
+    "AI Score", "Sentiment Score", "Duplicate Score",
+    "Created At", "Resolved At", "Description",
+  ];
+
+  const data = rows.map((c) => [
+    c.trackingId,       c.citizenName,      c.citizenPhone,
+    c.citizenEmail,     c.category,         c.priority,
+    c.status,           c.department?.name, c.assignedTo?.name,
+    c.createdBy?.name,  c.aiScore,          c.sentimentScore,
+    c.duplicateScore,   c.createdAt,        c.resolvedAt,
+    c.description,
+  ]);
+
+  const csv      = toCsv(headers, data);
+  const filename = `complaints-${new Date().toISOString().slice(0, 10)}.csv`;
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+  res.send("\uFEFF" + csv); // UTF-8 BOM for Excel compatibility
+});

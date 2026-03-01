@@ -1,8 +1,11 @@
+import bcrypt from "bcrypt";
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/ApiError.js";
 import { forTenant } from "../utils/tenantScope.js";
 import { getPagination, paginatedResponse } from "../utils/helpers.js";
 import { canAssignRole, canManageUser } from "../utils/roleHierarchy.js";
+import { validatePassword } from "../utils/validators.js";
+import { env } from "../config/env.js";
 
 const userSelect = {
   id: true,
@@ -212,4 +215,31 @@ export const softDeleteUser = async (targetId, user) => {
     where: { id: targetId },
     data: { isDeleted: true, isActive: false },
   });
+};
+
+export const changePassword = async (userId, { currentPassword, newPassword }, user) => {
+  if (userId !== user.userId) {
+    throw new ApiError(403, "You can only change your own password");
+  }
+
+  const passwordErr = validatePassword(newPassword);
+  if (passwordErr) throw new ApiError(400, passwordErr);
+
+  const dbUser = await prisma.user.findFirst({
+    where: { id: userId, isDeleted: false, ...forTenant(user) },
+    select: { id: true, password: true },
+  });
+  if (!dbUser) throw new ApiError(404, "User not found");
+
+  const matches = await bcrypt.compare(currentPassword, dbUser.password);
+  if (!matches) throw new ApiError(400, "Current password is incorrect");
+
+  const hashedPassword = await bcrypt.hash(newPassword, env.BCRYPT_SALT_ROUNDS);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data:  { password: hashedPassword },
+  });
+
+  return true;
 };
