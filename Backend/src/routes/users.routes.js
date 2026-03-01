@@ -8,6 +8,7 @@ import {
   setUserStatusSchema,
   updateMyProfileSchema,
   changePasswordSchema,
+  createUserSchema,
 } from "../validators/users.validators.js";
 
 const router = express.Router();
@@ -28,6 +29,13 @@ router.get(
   "/",
   authorizeMinimum("DEPARTMENT_HEAD"),
   controller.listUsers,
+);
+
+router.post(
+  "/",
+  authorizeMinimum("ADMIN"),
+  validate(createUserSchema),
+  controller.createUser,
 );
 
 router.get(

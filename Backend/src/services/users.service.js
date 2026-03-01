@@ -243,3 +243,49 @@ export const changePassword = async (userId, { currentPassword, newPassword }, u
 
   return true;
 };
+
+export const createUser = async ({ name, email, password, roleType = "CALL_OPERATOR", departmentId }, user) => {
+  // Only ADMIN+ can create users
+  const { canAssignRole: _unused, ..._ } = {};
+
+  const passwordErr = validatePassword(password);
+  if (passwordErr) throw new ApiError(400, passwordErr);
+
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) throw new ApiError(400, "Email already registered");
+
+  // If departmentId provided, verify it belongs to the tenant
+  if (departmentId) {
+    const dept = await prisma.department.findFirst({
+      where: { id: departmentId, isDeleted: false, isActive: true, ...forTenant(user) },
+    });
+    if (!dept) throw new ApiError(404, "Department not found");
+  }
+
+  const role = await prisma.role.findUnique({ where: { type: roleType } });
+  if (!role) throw new ApiError(400, `Role "${roleType}" does not exist`);
+
+  // Resolve tenantId from caller
+  const caller = await prisma.user.findUnique({
+    where: { id: user.userId },
+    select: { tenantId: true },
+  });
+  if (!caller?.tenantId) throw new ApiError(400, "Could not determine tenant");
+
+  const hashedPassword = await bcrypt.hash(password, env.BCRYPT_SALT_ROUNDS);
+
+  const newUser = await prisma.user.create({
+    data: {
+      name,
+      email,
+      password: hashedPassword,
+      tenantId: caller.tenantId,
+      roleId: role.id,
+      ...(departmentId ? { departmentId } : {}),
+      emailVerified: true, // admin-created accounts skip email verification
+    },
+    select: userSelect,
+  });
+
+  return newUser;
+};

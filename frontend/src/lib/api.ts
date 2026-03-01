@@ -218,6 +218,10 @@ export const usersApi = {
     const response = await api.get<ApiResponse<PaginatedResponse<User>>>('/users', { params });
     return response.data;
   },
+  create: async (data: { name: string; email: string; password: string; roleType?: string; departmentId?: string | null }) => {
+    const response = await api.post<ApiResponse<User>>('/users', data);
+    return response.data;
+  },
   getById: async (id: string) => {
     const response = await api.get<ApiResponse<User>>(`/users/${id}`);
     return response.data;
