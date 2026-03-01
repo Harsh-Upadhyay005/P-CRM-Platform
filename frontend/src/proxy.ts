@@ -4,8 +4,15 @@ import type { NextRequest } from 'next/server';
 /** Decode JWT payload without a library (works in Edge runtime). */
 function isTokenExpired(token: string): boolean {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    return !payload.exp || payload.exp * 1000 < Date.now();
+    const [, rawPayload] = token.split('.');
+    if (!rawPayload) return true;
+
+    // JWT uses base64url; normalize before decoding.
+    const base64 = rawPayload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const payload = JSON.parse(atob(padded));
+
+    return typeof payload.exp !== 'number' || payload.exp * 1000 < Date.now();
   } catch {
     return true;
   }

@@ -34,6 +34,7 @@ api.interceptors.response.use(
       !onAuthPage &&
       !originalRequest.url?.includes('/auth/login') &&
       !originalRequest.url?.includes('/auth/refresh') &&
+      !originalRequest.url?.includes('/users/me') &&
       !('_retry' in originalRequest)
     ) {
       (originalRequest as { _retry?: boolean })._retry = true;
@@ -49,7 +50,7 @@ api.interceptors.response.use(
           await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' });
         } catch { /* best-effort */ }
         if (typeof window !== 'undefined') {
-          window.location.href = '/login';
+          window.location.href = '/';
         }
         return Promise.reject(refreshError);
       }
