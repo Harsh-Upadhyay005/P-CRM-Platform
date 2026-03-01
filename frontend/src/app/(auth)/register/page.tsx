@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, Building, ArrowRight, Loader2, Sparkles, LayoutGrid, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, Building, ArrowRight, ArrowLeft, Loader2, Sparkles, LayoutGrid, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AbstractBackground from '@/components/3d/AbstractBackground';
@@ -90,6 +90,12 @@ export default function SignupPage() {
           {/* Decorative Elements */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-teal-500/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+
+          {/* Back to Home */}
+          <Link href="/" className="absolute top-4 left-4 z-20 flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors">
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Home
+          </Link>
 
           <div className="mb-8 relative z-10 flex items-center justify-between">
             <div>
