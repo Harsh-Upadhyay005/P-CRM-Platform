@@ -50,7 +50,7 @@ api.interceptors.response.use(
           await fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'include' });
         } catch { /* best-effort */ }
         if (typeof window !== 'undefined') {
-          window.location.href = '/';
+          window.location.href = '/login';
         }
         return Promise.reject(refreshError);
       }
