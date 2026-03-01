@@ -147,12 +147,12 @@ export default function TrackPage() {
                         className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold border ${
                           i <= Math.min(currentStatusIdx, 4)
                             ? 'bg-purple-600 border-purple-500 text-white'
-                            : 'bg-slate-800 border-white/10 text-slate-600'
+                            : 'bg-slate-800 border-white/10 text-slate-400'
                         }`}
                       >
                         {i + 1}
                       </div>
-                      <span className={`text-[9px] hidden sm:block ${i <= Math.min(currentStatusIdx, 4) ? 'text-slate-400' : 'text-slate-700'}`}>
+                      <span className={`text-[9px] hidden sm:block ${i <= Math.min(currentStatusIdx, 4) ? 'text-slate-400' : 'text-slate-500'}`}>
                         {STATUS_CONFIG[s].label}
                       </span>
                     </div>
@@ -169,20 +169,20 @@ export default function TrackPage() {
               {/* Details */}
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <p className="text-slate-600 mb-0.5">Department</p>
+                  <p className="text-slate-400 mb-0.5">Department</p>
                   <p className="text-slate-300">{complaint.department?.name ?? 'Pending assignment'}</p>
                 </div>
                 <div>
-                  <p className="text-slate-600 mb-0.5">Submitted</p>
+                  <p className="text-slate-400 mb-0.5">Submitted</p>
                   <p className="text-slate-300">{fmt(complaint.createdAt)}</p>
                 </div>
                 <div>
-                  <p className="text-slate-600 mb-0.5">Priority</p>
+                  <p className="text-slate-400 mb-0.5">Priority</p>
                   <p className="text-slate-300">{complaint.priority}</p>
                 </div>
                 {complaint.resolvedAt && (
                   <div>
-                    <p className="text-slate-600 mb-0.5">Resolved</p>
+                    <p className="text-slate-400 mb-0.5">Resolved</p>
                     <p className="text-emerald-400">{fmt(complaint.resolvedAt)}</p>
                   </div>
                 )}
@@ -203,8 +203,8 @@ export default function TrackPage() {
                       <div className="flex-1 pb-1">
                         <div className="flex items-center gap-1.5">
                           <span className={`text-xs font-medium ${STATUS_CONFIG[h.newStatus]?.color ?? 'text-slate-400'}`}>{h.newStatus.replace('_', ' ')}</span>
-                          <ChevronRight size={9} className="text-slate-600" />
-                          <span className="text-[11px] text-slate-600">{fmt(h.changedAt)}</span>
+                          <ChevronRight size={9} className="text-slate-500" />
+                          <span className="text-[11px] text-slate-400">{fmt(h.changedAt)}</span>
                         </div>
                       </div>
                     </div>

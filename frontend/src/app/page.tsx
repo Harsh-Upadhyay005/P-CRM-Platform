@@ -5,7 +5,6 @@ import { motion, useInView, useScroll, useTransform } from "framer-motion";
 import {
   ArrowRight,
   ShieldCheck,
-  Activity,
   Sparkles,
   Users,
   BarChart2,
@@ -24,10 +23,13 @@ import {
   Paperclip,
   MessageSquare,
   TrendingUp,
-  AlertTriangle,
   ChevronRight,
   Menu,
   X,
+  Inbox,
+  Clock,
+  Loader,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -323,7 +325,7 @@ export default function Home() {
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6, duration: 0.65 }}
-              className="mt-14 flex items-center justify-center gap-8 sm:gap-16"
+              className="mt-14 flex flex-wrap items-center justify-center gap-x-6 gap-y-6 sm:gap-x-14 sm:gap-y-0"
             >
               {[
                 ["5", "User roles"],
@@ -332,12 +334,12 @@ export default function Home() {
                 ["3", "AI engines"],
               ].map(([val, lbl], i) => (
                 <React.Fragment key={lbl}>
-                  {i > 0 && <div className="w-px h-10 bg-white/[0.15]" />}
+                  {i > 0 && <div className="hidden sm:block w-px h-10 bg-white/[0.15]" />}
                   <div className="text-center">
-                    <p className="text-[36px] sm:text-[42px] font-light text-white tracking-tight leading-none">
+                    <p className="text-[32px] sm:text-[42px] font-light text-white tracking-tight leading-none">
                       {val}
                     </p>
-                    <p className="text-[11px] uppercase tracking-[0.18em] text-zinc-400 font-medium mt-2">
+                    <p className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] text-zinc-400 font-medium mt-2">
                       {lbl}
                     </p>
                   </div>
@@ -349,132 +351,73 @@ export default function Home() {
 
         <Reveal className="px-5 sm:px-8 pb-10 sm:pb-14">
           <div className="max-w-6xl mx-auto group perspective-[2000px]">
-            <div className="rounded-3xl border border-white/[0.14] bg-linear-to-b from-slate-900/60 via-[#020617]/80 to-[#020617]/95 p-1 shadow-[0_40px_160px_rgba(0,0,0,0.75)] overflow-hidden transition-all duration-700 ease-out hover:shadow-[0_40px_160px_rgba(16,185,129,0.15)] hover:border-white/[0.2] hover:-translate-y-2">
+            <div className="rounded-3xl border border-white/[0.14] bg-linear-to-b from-slate-900/60 via-[#020617]/80 to-[#020617]/95 p-1 shadow-[0_40px_160px_rgba(0,0,0,0.75)] overflow-hidden transition-all duration-700 ease-out hover:shadow-[0_40px_160px_rgba(16,185,129,0.15)] hover:border-white/20 hover:-translate-y-2">
               <div className="rounded-[22px] bg-[#020617]/50 p-5 sm:p-7">
-                {/* Header row */}
-                <div className="flex items-center justify-between mb-6">
+
+                {/* Header */}
+                <div className="flex items-center justify-between mb-5">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-400">
-                      Live dashboard
-                    </p>
-                    <p className="text-sm font-medium text-white mt-1">
-                      Real-time complaint overview
-                    </p>
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-400">Live dashboard</p>
+                    <p className="text-sm font-medium text-white mt-1">Real-time complaint overview</p>
                   </div>
-                  <span className="inline-flex items-center rounded-full bg-emerald-500/[0.08] border border-emerald-500/20 px-3 py-1 text-[10px] text-emerald-300">
+                  <span className="inline-flex items-center rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-[10px] text-emerald-300">
                     <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
                     Live
                   </span>
                 </div>
 
-                {/* KPIs */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                {/* KPI Cards — matches actual dashboard style */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                   {[
-                    {
-                      icon: (
-                        <Activity className="h-3.5 w-3.5 text-emerald-400" />
-                      ),
-                      label: "Total Open",
-                      value: "243",
-                      sub: "+18 today",
-                      color: "text-emerald-400",
-                    },
-                    {
-                      icon: (
-                        <AlertTriangle className="h-3.5 w-3.5 text-amber-400" />
-                      ),
-                      label: "SLA Breached",
-                      value: "12",
-                      sub: "Auto-escalated",
-                      color: "text-amber-400/70",
-                    },
-                    {
-                      icon: <Users className="h-3.5 w-3.5 text-teal-300" />,
-                      label: "Active Officers",
-                      value: "38",
-                      sub: "92% on track",
-                      color: "text-zinc-500",
-                    },
-                    {
-                      icon: (
-                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                      ),
-                      label: "Resolved MTD",
-                      value: "1,847",
-                      sub: "Avg 34h",
-                      color: "text-zinc-500",
-                    },
+                    { label: 'Total Complaints', value: '1,284', icon: <Inbox className="h-[18px] w-[18px] text-orange-400" />, bg: 'bg-orange-500/10', border: 'border-orange-500/20', glow: 'bg-orange-500/10' },
+                    { label: 'Open',             value: '243',   icon: <Clock className="h-[18px] w-[18px] text-blue-300" />,   bg: 'bg-blue-800/10',   border: 'border-blue-800/20',   glow: 'bg-blue-800/10' },
+                    { label: 'In Progress',      value: '389',   icon: <Loader className="h-[18px] w-[18px] text-indigo-400" />, bg: 'bg-indigo-500/10', border: 'border-indigo-500/20', glow: 'bg-indigo-500/10' },
+                    { label: 'Resolved',         value: '617',   icon: <CheckCircle2 className="h-[18px] w-[18px] text-emerald-400" />, bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', glow: 'bg-emerald-500/10' },
+                    { label: 'SLA Breached',     value: '12',    icon: <AlertTriangle className="h-[18px] w-[18px] text-red-400" />,    bg: 'bg-red-500/10',     border: 'border-red-500/20',     glow: 'bg-red-500/10' },
+                    { label: 'Escalated',        value: '23',    icon: <Zap className="h-[18px] w-[18px] text-amber-400" />,          bg: 'bg-amber-500/10',   border: 'border-amber-500/20',   glow: 'bg-amber-500/10' },
                   ].map((kpi) => (
                     <div
                       key={kpi.label}
-                      className="rounded-2xl bg-white/[0.075] border border-white/[0.1] px-4 py-3.5 transition-all duration-300 hover:border-white/[0.2] hover:bg-white/[0.09] hover:shadow-[0_8px_30px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 ease-out"
+                      className={`relative rounded-xl border ${kpi.border} ${kpi.bg} p-4 overflow-hidden backdrop-blur-md hover:scale-[1.03] transition-all duration-300 cursor-default`}
                     >
-                      <p className="flex items-center gap-1.5 text-zinc-400 text-[11px] mb-1.5">
-                        {kpi.icon}
-                        {kpi.label}
-                      </p>
-                      <p className="text-[26px] font-light text-white tracking-tight">
-                        {kpi.value}
-                      </p>
-                      <p className={`text-[10px] mt-1 ${kpi.color}`}>
-                        {kpi.sub}
-                      </p>
+                      <div className={`absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-30 ${kpi.glow}`} />
+                      <div className="relative z-10">
+                        <div className="mb-3">
+                          <div className={`inline-flex p-2 rounded-lg ${kpi.bg} ring-1 ring-white/5`}>
+                            {kpi.icon}
+                          </div>
+                        </div>
+                        <p className="text-2xl font-bold text-white tracking-tight">{kpi.value}</p>
+                        <p className="text-xs text-slate-400 mt-1 font-medium">{kpi.label}</p>
+                      </div>
                     </div>
                   ))}
                 </div>
 
-                {/* Pipeline */}
-                <div className="rounded-2xl bg-white/[0.05] border border-white/[0.1] p-4 transition-all duration-300 hover:border-white/[0.15] hover:bg-white/[0.07] hover:shadow-[0_8px_20px_rgba(0,0,0,0.2)] hover:-translate-y-0.5 ease-out">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400 mb-3">
-                    Lifecycle pipeline
-                  </p>
-                  <div className="flex items-center gap-2.5">
+                {/* Lifecycle Pipeline */}
+                <div className="mt-4 rounded-2xl bg-white/5 border border-white/10 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400 mb-3">Lifecycle pipeline</p>
+                  <div className="flex items-center gap-2 overflow-x-auto pb-1">
                     {[
-                      { stage: "Open", count: 67, w: 75, color: "bg-blue-500" },
-                      {
-                        stage: "Assigned",
-                        count: 43,
-                        w: 48,
-                        color: "bg-indigo-400",
-                      },
-                      {
-                        stage: "In Progress",
-                        count: 89,
-                        w: 100,
-                        color: "bg-amber-500",
-                      },
-                      {
-                        stage: "Resolved",
-                        count: 31,
-                        w: 35,
-                        color: "bg-emerald-500",
-                      },
-                      {
-                        stage: "Closed",
-                        count: 13,
-                        w: 15,
-                        color: "bg-zinc-500",
-                      },
+                      { stage: 'Open',        count: 243,  w: 60,  color: 'bg-blue-500' },
+                      { stage: 'Assigned',    count: 156,  w: 38,  color: 'bg-indigo-400' },
+                      { stage: 'In Progress', count: 389,  w: 96,  color: 'bg-amber-500' },
+                      { stage: 'Resolved',    count: 617,  w: 100, color: 'bg-emerald-500' },
+                      { stage: 'Closed',      count: 412,  w: 67,  color: 'bg-slate-500' },
                     ].map((s) => (
-                      <div key={s.stage} className="flex-1 min-w-0">
+                      <div key={s.stage} className="flex-1 min-w-[70px]">
                         <div className="flex items-center justify-between text-[10px] mb-1.5">
-                          <span className="text-zinc-400 truncate">
-                            {s.stage}
-                          </span>
-                          <span className="text-zinc-300 font-medium">
-                            {s.count}
-                          </span>
+                          <span className="text-zinc-400 truncate">{s.stage}</span>
+                          <span className="text-zinc-300 font-medium">{s.count}</span>
                         </div>
-                        <div className="h-1.5 rounded-full bg-white/[0.04]">
-                          <div
-                            className={`h-full rounded-full ${s.color} opacity-60`}
-                            style={{ width: `${s.w}%` }}
-                          />
+                        <div className="h-1.5 rounded-full bg-white/5">
+                          <div className={`h-full rounded-full ${s.color} opacity-60`} style={{ width: `${s.w}%` }} />
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
+
               </div>
             </div>
           </div>

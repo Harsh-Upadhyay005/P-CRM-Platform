@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { complaintsApi, getErrorMessage } from '@/lib/api';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Loader2, Send } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, Send, Paperclip } from 'lucide-react';
 import AbstractBackground from '@/components/3d/AbstractBackground';
 import toast from 'react-hot-toast';
 
@@ -126,7 +126,7 @@ export default function PublicSubmitPage() {
                 placeholder="e.g. city-municipal-corp"
                 className="w-full bg-slate-800/60 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-purple-500/50"
               />
-              <p className="text-slate-600 text-xs mt-1">The slug of the government office you are filing with.</p>
+              <p className="text-slate-500 text-xs mt-1">The slug of the government office you are filing with.</p>
             </div>
           )}
 
@@ -169,7 +169,7 @@ export default function PublicSubmitPage() {
               placeholder="you@example.com"
               className="w-full bg-slate-800/60 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-purple-500/50"
             />
-            <p className="text-slate-600 text-xs mt-1">You&apos;ll receive updates about your complaint on this email.</p>
+            <p className="text-slate-500 text-xs mt-1">You&apos;ll receive updates about your complaint on this email.</p>
             {errors.citizenEmail && <p className="text-red-400 text-xs mt-1">{errors.citizenEmail.message}</p>}
           </div>
 
@@ -213,6 +213,18 @@ export default function PublicSubmitPage() {
             {errors.description && <p className="text-red-400 text-xs mt-1">{errors.description.message}</p>}
           </div>
 
+          {/* Attachments note */}
+          <div className="flex items-start gap-2.5 bg-slate-800/40 border border-white/8 rounded-xl px-4 py-3">
+            <Paperclip size={14} className="text-slate-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-slate-400">
+              Want to attach photos or documents?{' '}
+              <Link href="/login" className="text-purple-400 hover:text-purple-300 transition-colors">
+                Sign in
+              </Link>{' '}
+              to file with attachments using the staff portal.
+            </p>
+          </div>
+
           {submitError && (
             <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
               {submitError}
@@ -228,7 +240,7 @@ export default function PublicSubmitPage() {
             {isSubmitting ? 'Submitting…' : 'Submit Complaint'}
           </button>
 
-          <p className="text-center text-xs text-slate-600">
+          <p className="text-center text-xs text-slate-500">
             Want to track an existing complaint?{' '}
             <Link href="/track" className="text-purple-400 hover:text-purple-300">
               Track here

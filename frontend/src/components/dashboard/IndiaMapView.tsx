@@ -254,7 +254,7 @@ function TopStates({ states }: { states: StateData[] }) {
           <div key={state.id} className="state-bar-item group">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono text-slate-600 w-4">{String(i + 1).padStart(2, '0')}</span>
+                <span className="text-[10px] font-mono text-slate-400 w-4">{String(i + 1).padStart(2, '0')}</span>
                 <span className="text-xs text-slate-300 group-hover:text-white transition-colors">{state.name}</span>
               </div>
               <div className="flex items-center gap-3">
@@ -401,7 +401,7 @@ export function IndiaMapView() {
           <div ref={containerRef} className="lg:col-span-8 relative">
             <div className="relative bg-slate-900/50 rounded-xl border border-white/5 p-4 overflow-hidden">
               {/* Background grid pattern */}
-              <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+              <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
 
               <svg
                 ref={mapRef}
@@ -539,15 +539,8 @@ export function IndiaMapView() {
           {/* ── Side Panel ── */}
           <div className="lg:col-span-4 flex flex-col gap-4">
             {/* Selected State Detail */}
-            <AnimatePresence mode="wait">
-              {selectedData ? (
-                <motion.div
-                  key={selectedData.id}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  className="bg-white/3 rounded-xl border border-white/5 p-4"
-                >
+            {selectedData ? (
+              <div className="bg-white/[0.03] rounded-xl border border-white/5 p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <div className="w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-bold font-mono text-white" style={{ background: getHeatColor(selectedData.complaints, maxComplaints) }}>
                       {selectedData.id}
@@ -594,22 +587,17 @@ export function IndiaMapView() {
                       );
                     })}
                   </div>
-                </motion.div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="bg-white/3 rounded-xl border border-white/5 p-4 flex items-center justify-center"
-                >
-                  <p className="text-xs text-slate-600 text-center py-4">
-                    Click a state on the map<br />to view detailed breakdown
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
+              </div>
+            ) : (
+              <div className="bg-white/[0.03] rounded-xl border border-white/5 p-4 flex items-center justify-center">
+                <p className="text-xs text-slate-400 text-center py-4">
+                  Click a state on the map<br />to view detailed breakdown
+                </p>
+              </div>
+            )}
 
             {/* Top States List */}
-            <div className="bg-white/3 rounded-xl border border-white/5 p-4 flex-1 overflow-auto">
+            <div className="bg-white/[0.03] rounded-xl border border-white/5 p-4 flex-1 overflow-auto">
               <TopStates states={INDIA_STATES} />
             </div>
           </div>
@@ -623,7 +611,7 @@ export function IndiaMapView() {
 
       {/* Footer */}
       <div className="px-5 py-3 border-t border-white/5 flex items-center justify-between">
-        <p className="text-[10px] text-slate-600 font-mono uppercase tracking-widest">
+        <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">
           Bharat Complaint Resolution System • State-wise Heatmap
         </p>
         <div className="flex items-center gap-1.5">

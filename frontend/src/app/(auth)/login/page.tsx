@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ArrowRight, Loader2, UserCircle, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, ArrowRight, ArrowLeft, Loader2, UserCircle, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AbstractBackground from '@/components/3d/AbstractBackground';
@@ -58,6 +58,12 @@ export default function LoginPage() {
             {/* Subtle Gradient Glows */}
             <div className="absolute -top-10 -left-10 w-40 h-40 bg-emerald-500/20 rounded-full blur-[60px] pointer-events-none" />
             <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-teal-500/20 rounded-full blur-[60px] pointer-events-none" />
+
+            {/* Back to Home */}
+            <Link href="/" className="absolute top-4 left-4 z-20 flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors">
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Home
+            </Link>
 
             <div className="text-center mb-8 relative z-10">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/5 mb-4 ring-1 ring-white/10 shadow-lg backdrop-blur-sm">

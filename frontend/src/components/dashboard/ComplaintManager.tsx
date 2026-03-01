@@ -69,16 +69,16 @@ function SlaTimer({ createdAt, status }: { createdAt: string; status: ComplaintS
 
 function ComplaintsTable({ data }: { data: Complaint[] }) {
   return (
-    <ScrollArea className="h-105">
-      <Table>
+    <div className="h-[420px] overflow-auto rounded-md [scrollbar-width:thin] [scrollbar-color:theme(colors.slate.700)_transparent]">
+      <Table className="min-w-[680px]">
         <TableHeader>
           <TableRow className="border-white/5 hover:bg-transparent">
-            <TableHead className="text-slate-400 text-xs font-semibold w-32.5">Tracking ID</TableHead>
+            <TableHead className="text-slate-400 text-xs font-semibold w-32">Tracking ID</TableHead>
             <TableHead className="text-slate-400 text-xs font-semibold">Citizen</TableHead>
-            <TableHead className="text-slate-400 text-xs font-semibold">Category</TableHead>
+            <TableHead className="text-slate-400 text-xs font-semibold hidden sm:table-cell">Category</TableHead>
             <TableHead className="text-slate-400 text-xs font-semibold">Priority</TableHead>
             <TableHead className="text-slate-400 text-xs font-semibold">Status</TableHead>
-            <TableHead className="text-slate-400 text-xs font-semibold">Assigned To</TableHead>
+            <TableHead className="text-slate-400 text-xs font-semibold hidden md:table-cell">Assigned To</TableHead>
             <TableHead className="text-slate-400 text-xs font-semibold">SLA</TableHead>
             <TableHead className="text-slate-400 text-xs font-semibold w-10" />
           </TableRow>
@@ -87,11 +87,11 @@ function ComplaintsTable({ data }: { data: Complaint[] }) {
           {data.map((c) => (
             <TableRow key={c.id} className="border-white/5 hover:bg-white/2 group cursor-pointer">
               <TableCell className="text-xs font-mono text-purple-400">{c.trackingId}</TableCell>
-              <TableCell className="text-xs text-slate-200">{c.citizenName}</TableCell>
-              <TableCell className="text-xs text-slate-400">{c.category ?? '—'}</TableCell>
+              <TableCell className="text-xs text-slate-200 max-w-[120px] truncate">{c.citizenName}</TableCell>
+              <TableCell className="text-xs text-slate-400 hidden sm:table-cell">{c.category ?? '—'}</TableCell>
               <TableCell><PriorityBadge priority={c.priority} /></TableCell>
               <TableCell><StatusBadge status={c.status} /></TableCell>
-              <TableCell>
+              <TableCell className="hidden md:table-cell">
                 <span className="text-xs text-slate-300 flex items-center gap-1.5">
                   <User size={12} className="text-slate-500" />
                   {c.assignedTo?.name ?? 'Unassigned'}
@@ -116,7 +116,7 @@ function ComplaintsTable({ data }: { data: Complaint[] }) {
           ))}
         </TableBody>
       </Table>
-    </ScrollArea>
+    </div>
   );
 }
 
@@ -158,7 +158,7 @@ function KanbanBoard({ data }: { data: Complaint[] }) {
                     </div>
                   </Link>
                 ))}
-                {items.length === 0 && <p className="text-xs text-slate-600 text-center py-8">No items</p>}
+                {items.length === 0 && <p className="text-xs text-slate-400 text-center py-8">No items</p>}
               </div>
             </ScrollArea>
           </div>
@@ -245,10 +245,10 @@ export function ComplaintManager() {
         ) : (
           <Tabs defaultValue="table" className="w-full">
             <TabsList className="bg-slate-800/50 border border-white/5 mb-3 h-8">
-              <TabsTrigger value="table" className="text-xs data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400 gap-1.5">
+              <TabsTrigger value="table" className="text-xs text-slate-400 data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400 gap-1.5">
                 <LayoutList size={13} /> Table
               </TabsTrigger>
-              <TabsTrigger value="kanban" className="text-xs data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400 gap-1.5">
+              <TabsTrigger value="kanban" className="text-xs text-slate-400 data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400 gap-1.5">
                 <Columns3 size={13} /> Kanban
               </TabsTrigger>
             </TabsList>

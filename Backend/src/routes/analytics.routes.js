@@ -9,13 +9,13 @@ router.use(authMiddleware);
 
 router.get(
   "/overview",
-  authorizeMinimum("DEPARTMENT_HEAD"),
+  authorizeMinimum("CALL_OPERATOR"),
   controller.getOverview,
 );
 
 router.get(
   "/trends",
-  authorizeMinimum("DEPARTMENT_HEAD"),
+  authorizeMinimum("CALL_OPERATOR"),
   controller.getTrends,
 );
 
@@ -45,7 +45,7 @@ router.get(
 
 router.get(
   "/category-distribution",
-  authorizeMinimum("DEPARTMENT_HEAD"),
+  authorizeMinimum("CALL_OPERATOR"),
   controller.getCategoryDistribution,
 );
 

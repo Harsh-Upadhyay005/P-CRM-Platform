@@ -4,8 +4,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { complaintsApi, getErrorMessage } from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { ArrowLeft, Loader2, Save, Paperclip, X, FileText, Image } from 'lucide-react';
 import Link from 'next/link';
 
 const createComplaintSchema = z.object({
@@ -27,17 +27,38 @@ export default function NewComplaintPage() {
   });
 
   const [submitError, setSubmitError] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    setAttachments((prev) => {
+      const existing = new Set(prev.map((f) => f.name + f.size));
+      const newFiles = files.filter((f) => !existing.has(f.name + f.size));
+      return [...prev, ...newFiles].slice(0, 5);
+    });
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeFile = (index: number) =>
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
 
   const onSubmit = async (formData: ComplaintForm) => {
     setIsSubmitting(true);
     setSubmitError('');
     try {
-        await complaintsApi.create({ ...formData, citizenEmail: formData.citizenEmail || undefined });
-        router.push('/complaints');
+      const res = await complaintsApi.create({ ...formData, citizenEmail: formData.citizenEmail || undefined });
+      const complaintId = (res.data as { id: string }).id;
+      if (attachments.length > 0 && complaintId) {
+        await Promise.allSettled(
+          attachments.map((file) => complaintsApi.uploadAttachment(complaintId, file))
+        );
+      }
+      router.push('/complaints');
     } catch (e: unknown) {
-        setSubmitError(getErrorMessage(e));
+      setSubmitError(getErrorMessage(e));
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -131,6 +152,56 @@ export default function NewComplaintPage() {
                     </select>
                 </div>
              </div>
+
+            {/* Attachments */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                <Paperclip size={14} className="text-slate-400" />
+                Attachments <span className="text-slate-500 font-normal">(optional, max 5 files)</span>
+              </label>
+              <div
+                className="w-full border-2 border-dashed border-white/10 rounded-lg px-4 py-4 hover:border-blue-500/40 transition-colors cursor-pointer bg-slate-950/30"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx,.txt"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                {attachments.length === 0 ? (
+                  <p className="text-slate-500 text-sm text-center">
+                    Click to attach photos, PDFs or documents
+                  </p>
+                ) : (
+                  <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+                    {attachments.map((file, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 bg-slate-800/60 rounded-lg px-3 py-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {file.type.startsWith('image/') ? (
+                            <Image size={14} className="text-blue-400 shrink-0" />
+                          ) : (
+                            <FileText size={14} className="text-slate-400 shrink-0" />
+                          )}
+                          <span className="text-xs text-slate-300 truncate">{file.name}</span>
+                          <span className="text-xs text-slate-500 shrink-0">({(file.size / 1024).toFixed(0)} KB)</span>
+                        </div>
+                        <button type="button" onClick={() => removeFile(i)} className="text-slate-500 hover:text-red-400 transition-colors shrink-0">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                    {attachments.length < 5 && (
+                      <button type="button" onClick={() => fileInputRef.current?.click()} className="text-xs text-blue-400 hover:text-blue-300 transition-colors mt-1">
+                        + Add more files
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
 
              <div className="pt-4 flex justify-end">
                 <button 

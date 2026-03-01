@@ -75,7 +75,7 @@ export function AlertsPanel() {
               ))}
             </div>
           ) : alerts.length === 0 ? (
-            <p className="text-xs text-slate-600 text-center py-8">No active alerts</p>
+            <p className="text-xs text-slate-400 text-center py-8">No active alerts</p>
           ) : (
             <div className="space-y-2.5">
               {alerts.map((alert, i) => {

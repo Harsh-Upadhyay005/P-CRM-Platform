@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationsApi, getErrorMessage } from '@/lib/api';
-import { Bell, User, Check, CheckCheck } from 'lucide-react';
+import { Bell, User, Check, CheckCheck, Menu } from 'lucide-react';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
@@ -13,6 +13,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { Notification } from '@/types';
+import { useSidebar } from '@/lib/sidebar-context';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
@@ -28,6 +29,7 @@ function timeAgo(ts: string) {
 
 export function TopBar() {
   const { user } = useAuth();
+  const { toggle } = useSidebar();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const sseRef = useRef<EventSource | null>(null);
@@ -112,8 +114,16 @@ export function TopBar() {
     <header className="h-16 flex items-center justify-between px-6 bg-slate-900/90 backdrop-blur-xl border-b border-[#138808]/20 sticky top-0 z-40 shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
       <div className="absolute top-0 right-0 left-0 h-0.5 bg-linear-to-r from-transparent via-[#138808]/50 to-transparent opacity-50" />
       
-      <div className="flex items-center gap-4">
-        <span className="text-slate-400 text-sm">Welcome back,</span>
+      <div className="flex items-center gap-3">
+        {/* Mobile hamburger */}
+        <button
+          onClick={toggle}
+          className="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors"
+          aria-label="Toggle sidebar"
+        >
+          <Menu size={20} />
+        </button>
+        <span className="text-slate-400 text-sm hidden sm:block">Welcome back,</span>
         <span className="text-white font-semibold transform hover:scale-105 transition-transform cursor-default flex items-center gap-2">
           {user?.name}
           <div className="h-1.5 w-1.5 rounded-full bg-[#138808] shadow-[0_0_8px_#138808]" />
@@ -167,7 +177,7 @@ export function TopBar() {
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-semibold text-white">{n.title}</p>
                           <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">{n.message}</p>
-                          <p className="text-[10px] text-slate-600 mt-1">{timeAgo(n.createdAt)}</p>
+                          <p className="text-[10px] text-slate-500 mt-1">{timeAgo(n.createdAt)}</p>
                         </div>
                         {!n.isRead && (
                           <button

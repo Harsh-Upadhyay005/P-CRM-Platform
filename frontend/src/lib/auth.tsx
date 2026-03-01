@@ -49,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Check api.ts LoginResponse interface: { user: User }
       setUser(response.data.user);
       router.push('/dashboard');
+      router.refresh();
     } else {
         throw new Error(response.message || 'Login failed');
     }
@@ -62,7 +63,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(null);
     queryClient.clear();
-    router.push('/');
+    // Use hard navigation so the protected layout's redirect-to-login
+    // effect cannot race and override the destination.
+    window.location.href = '/';
   };
 
   const refreshUser = async () => {
