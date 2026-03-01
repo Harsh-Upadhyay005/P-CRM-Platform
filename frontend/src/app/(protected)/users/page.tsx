@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { usersApi, getErrorMessage } from '@/lib/api';
+import { usersApi, departmentsApi, getErrorMessage } from '@/lib/api';
 import { useRole } from '@/hooks/useRole';
-import { User, RoleType } from '@/types';
+import { User, RoleType, Department } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -55,6 +55,7 @@ export default function UsersPage() {
   const [confirmDelete, setConfirmDelete] = useState<User | null>(null);
   const [assignRoleUser, setAssignRoleUser] = useState<User | null>(null);
   const [newRole, setNewRole] = useState<RoleType>('OFFICER');
+  const [newDepartmentId, setNewDepartmentId] = useState<string>('');
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['users', 'list', page, roleFilter, search],
@@ -70,8 +71,16 @@ export default function UsersPage() {
   const users: User[] = data?.data?.data ?? [];
   const pagination = data?.data?.pagination;
 
+  const { data: departmentsData } = useQuery({
+    queryKey: ['departments-list'],
+    queryFn: () => departmentsApi.list({ limit: 100 }),
+    staleTime: 60_000,
+  });
+  const departments: Department[] = departmentsData?.data?.data ?? [];
+
   const assignRoleMutation = useMutation({
-    mutationFn: ({ id, role }: { id: string; role: RoleType }) => usersApi.assignRole(id, role),
+    mutationFn: ({ id, role, departmentId }: { id: string; role: RoleType; departmentId?: string | null }) =>
+      usersApi.assignRole(id, role, departmentId),
     onSuccess: () => {
       toast.success('Role updated successfully');
       qc.invalidateQueries({ queryKey: ['users'] });
@@ -234,7 +243,7 @@ export default function UsersPage() {
                         <DropdownMenuContent align="end" className="bg-slate-900 border-white/10 text-slate-200 min-w-40">
                           <DropdownMenuItem
                             className="text-xs cursor-pointer hover:bg-white/5 gap-2"
-                            onClick={() => { setAssignRoleUser(u); setNewRole(u.role.type); }}
+                            onClick={() => { setAssignRoleUser(u); setNewRole(u.role.type); setNewDepartmentId(u.department?.id ?? ''); }}
                           >
                             <ShieldCheck size={12} /> Change Role
                           </DropdownMenuItem>
@@ -312,13 +321,25 @@ export default function UsersPage() {
                 <SelectItem value="ADMIN">Admin</SelectItem>
               </SelectContent>
             </Select>
+            {(newRole === 'OFFICER' || newRole === 'DEPARTMENT_HEAD') && (
+              <Select value={newDepartmentId} onValueChange={setNewDepartmentId}>
+                <SelectTrigger className="bg-slate-800/50 border-white/10">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
+                  {departments.map((d) => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <div className="flex gap-2 justify-end">
               <Button variant="ghost" size="sm" onClick={() => setAssignRoleUser(null)}>Cancel</Button>
               <Button
                 size="sm"
                 className="bg-purple-600 hover:bg-purple-500"
                 disabled={assignRoleMutation.isPending}
-                onClick={() => assignRoleUser && assignRoleMutation.mutate({ id: assignRoleUser.id, role: newRole })}
+                onClick={() => assignRoleUser && assignRoleMutation.mutate({ id: assignRoleUser.id, role: newRole, departmentId: newDepartmentId || undefined })}
               >
                 {assignRoleMutation.isPending ? 'Saving…' : 'Save'}
               </Button>
