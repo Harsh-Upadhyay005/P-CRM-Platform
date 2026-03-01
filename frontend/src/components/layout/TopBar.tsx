@@ -108,11 +108,14 @@ export function TopBar() {
   };
 
   return (
-    <header className="h-16 flex items-center justify-between px-6 bg-slate-900/90 backdrop-blur-xl border-b border-white/10 sticky top-0 z-40 shadow-sm">
+    <header className="h-16 flex items-center justify-between px-6 bg-slate-900/90 backdrop-blur-xl border-b border-[#138808]/20 sticky top-0 z-40 shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+      <div className="absolute top-0 right-0 left-0 h-0.5 bg-linear-to-r from-transparent via-[#138808]/50 to-transparent opacity-50" />
+      
       <div className="flex items-center gap-4">
         <span className="text-slate-400 text-sm">Welcome back,</span>
-        <span className="text-white font-semibold transform hover:scale-105 transition-transform cursor-default">
+        <span className="text-white font-semibold transform hover:scale-105 transition-transform cursor-default flex items-center gap-2">
           {user?.name}
+          <div className="h-1.5 w-1.5 rounded-full bg-[#138808] shadow-[0_0_8px_#138808]" />
         </span>
       </div>
 
@@ -120,7 +123,7 @@ export function TopBar() {
         {/* Notification Bell */}
         <DropdownMenu open={open} onOpenChange={setOpen}>
           <DropdownMenuTrigger asChild>
-            <button className="relative p-2 text-slate-400 hover:text-white transition-colors rounded-full hover:bg-white/5">
+            <button className="relative p-2 text-slate-400 hover:text-[#FF9933] transition-colors rounded-full hover:bg-[#FF9933]/10">
               <Bell size={20} />
               {unreadCount > 0 && (
                 <span className="absolute top-1 right-1 min-w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center px-0.75 shadow-[0_0_8px_rgba(239,68,68,0.6)]">
