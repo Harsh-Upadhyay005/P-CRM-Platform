@@ -18,7 +18,7 @@ function isTokenExpired(token: string): boolean {
   }
 }
 
-export default function proxy(request: NextRequest) {
+export default function middleware(request: NextRequest) {
   const rawToken = request.cookies.get('accessToken');
   // Treat an expired token the same as no token
   const token = rawToken && !isTokenExpired(rawToken.value) ? rawToken : null;
