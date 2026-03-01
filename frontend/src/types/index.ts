@@ -116,6 +116,7 @@ export interface Note {
   note: string;
   createdAt: string;
   createdBy: { id: string; name: string } | null;
+  user?: { id: string; name: string } | null;
 }
 
 export interface Attachment {

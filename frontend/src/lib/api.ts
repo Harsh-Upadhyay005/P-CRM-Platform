@@ -163,7 +163,7 @@ export const complaintsApi = {
     return response.data;
   },
   updateStatus: async (id: string, status: string, note?: string) => {
-    const response = await api.patch<ApiResponse<Complaint>>(`/complaints/${id}/status`, { status, note });
+    const response = await api.patch<ApiResponse<Complaint>>(`/complaints/${id}/status`, { newStatus: status, note });
     return response.data;
   },
   addNote: async (id: string, note: string) => {
