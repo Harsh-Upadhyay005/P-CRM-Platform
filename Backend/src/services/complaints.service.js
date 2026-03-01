@@ -661,3 +661,63 @@ export const getFeedback = async (complaintId, user) => {
 
   return feedback;
 };
+
+// ─── CSV Export ───────────────────────────────────────────────────────────────
+const EXPORT_CAP = 10_000;
+
+export const exportComplaints = async (query, user) => {
+  const { status, priority, category, search, startDate, endDate, departmentId } = query;
+
+  const abacFilter = await getABACFilter(user);
+
+  const where = {
+    isDeleted: false,
+    ...forTenant(user),
+    ...abacFilter,
+    ...(status       && { status }),
+    ...(priority     && { priority }),
+    ...(category     && { category }),
+    ...(departmentId && { departmentId }),
+    ...((startDate || endDate) && {
+      createdAt: {
+        ...(startDate && { gte: new Date(startDate) }),
+        ...(endDate   && { lte: new Date(endDate)   }),
+      },
+    }),
+    ...(search && {
+      OR: [
+        { trackingId:   { contains: search, mode: "insensitive" } },
+        { citizenName:  { contains: search, mode: "insensitive" } },
+        { citizenPhone: { contains: search, mode: "insensitive" } },
+        { description:  { contains: search, mode: "insensitive" } },
+      ],
+    }),
+  };
+
+  const complaints = await prisma.complaint.findMany({
+    where,
+    select: {
+      trackingId:     true,
+      citizenName:    true,
+      citizenPhone:   true,
+      citizenEmail:   true,
+      category:       true,
+      priority:       true,
+      status:         true,
+      description:    true,
+      aiScore:        true,
+      sentimentScore: true,
+      duplicateScore: true,
+      resolvedAt:     true,
+      createdAt:      true,
+      updatedAt:      true,
+      department: { select: { name: true } },
+      assignedTo: { select: { name: true } },
+      createdBy:  { select: { name: true } },
+    },
+    orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
+    take: EXPORT_CAP,
+  });
+
+  return complaints;
+};

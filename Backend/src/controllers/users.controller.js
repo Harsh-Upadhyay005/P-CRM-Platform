@@ -36,3 +36,8 @@ export const deleteUser = asyncHandler(async (req, res) => {
   await service.softDeleteUser(req.params.id, req.user);
   res.json(new ApiResponse(200, null, "User deleted"));
 });
+
+export const changePassword = asyncHandler(async (req, res) => {
+  await service.changePassword(req.user.userId, req.body, req.user);
+  res.json(new ApiResponse(200, null, "Password changed successfully"));
+});
