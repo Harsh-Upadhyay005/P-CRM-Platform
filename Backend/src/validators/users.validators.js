@@ -22,3 +22,16 @@ export const updateMyProfileSchema = z
     name: z.string().min(2, "Name must be at least 2 characters").max(100).optional(),
   })
   .refine((d) => d.name !== undefined, { message: "At least one field must be provided" });
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword:     z
+      .string()
+      .min(8,  "Password must be at least 8 characters")
+      .max(64, "Password must be at most 64 characters"),
+  })
+  .refine((d) => d.currentPassword !== d.newPassword, {
+    message: "New password must be different from the current password",
+    path:    ["newPassword"],
+  });

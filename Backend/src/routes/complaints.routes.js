@@ -57,6 +57,12 @@ router.get(
 );
 
 router.get(
+  "/export",
+  authorizeMinimum("DEPARTMENT_HEAD"),
+  controller.exportComplaints,
+);
+
+router.get(
   "/:id",
   authorizeMinimum("CALL_OPERATOR"),
   controller.getComplaint,

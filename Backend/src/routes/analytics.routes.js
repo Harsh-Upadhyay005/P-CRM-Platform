@@ -49,4 +49,10 @@ router.get(
   controller.getCategoryDistribution,
 );
 
+router.get(
+  "/export",
+  authorizeMinimum("DEPARTMENT_HEAD"),
+  controller.exportAnalytics,
+);
+
 export default router;
