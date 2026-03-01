@@ -155,8 +155,11 @@ export const complaintsApi = {
     const response = await api.patch<ApiResponse<Complaint>>(`/complaints/${id}`, data);
     return response.data;
   },
-  assign: async (id: string, officerId: string) => {
-    const response = await api.patch<ApiResponse<Complaint>>(`/complaints/${id}/assign`, { assignedToId: officerId });
+  assign: async (id: string, officerId?: string, departmentId?: string) => {
+    const response = await api.patch<ApiResponse<Complaint>>(`/complaints/${id}/assign`, {
+      ...(officerId && { assignedToId: officerId }),
+      ...(departmentId && { departmentId }),
+    });
     return response.data;
   },
   updateStatus: async (id: string, status: string, note?: string) => {
@@ -223,8 +226,12 @@ export const usersApi = {
     const response = await api.patch<ApiResponse<User>>('/users/me', data);
     return response.data;
   },
-  assignRole: async (id: string, role: string) => {
-    const response = await api.patch<ApiResponse<User>>(`/users/${id}/role`, { role });
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    const response = await api.patch<ApiResponse<null>>('/users/me/password', { currentPassword, newPassword });
+    return response.data;
+  },
+  assignRole: async (id: string, roleType: string, departmentId?: string | null) => {
+    const response = await api.patch<ApiResponse<User>>(`/users/${id}/role`, { roleType, departmentId: departmentId ?? null });
     return response.data;
   },
   setStatus: async (id: string, isActive: boolean) => {
@@ -322,7 +329,7 @@ export const notificationsApi = {
     return response.data;
   },
   getUnreadCount: async () => {
-    const response = await api.get<ApiResponse<{ count: number }>>('/notifications/unread-count');
+    const response = await api.get<ApiResponse<{ unreadCount: number }>>('/notifications/unread-count');
     return response.data;
   },
   markRead: async (id: string) => {
