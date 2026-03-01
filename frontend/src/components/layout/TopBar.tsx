@@ -45,7 +45,7 @@ export function TopBar() {
     enabled: open && !!user,
   });
 
-  const unreadCount = countData?.data?.count ?? 0;
+  const unreadCount = countData?.data?.unreadCount ?? 0;
   const notifications: Notification[] = notifData?.data?.data ?? [];
 
   // SSE connection for live updates with exponential-backoff reconnect

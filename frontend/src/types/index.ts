@@ -16,6 +16,15 @@ export type ComplaintStatus =
 export type Priority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type SlaState = "OK" | "WARNING" | "BREACHED";
 
+export interface SlaSummary {
+  state: SlaState;
+  deadline: string;
+  breached: boolean;
+  remainingMs: number;
+  overdueMs: number;
+  remainingLabel: string;
+}
+
 export interface User {
   id: string;
   name: string;
@@ -41,6 +50,8 @@ export interface Complaint {
   aiScore: number | null;
   sentimentScore: number | null;
   duplicateScore: number | null;
+  potentialDuplicateId: string | null;
+  slaSummary: SlaSummary | null;
   resolvedAt: string | null;
   createdAt: string;
   updatedAt: string;
