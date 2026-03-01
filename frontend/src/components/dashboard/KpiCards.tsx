@@ -18,10 +18,10 @@ import {
 } from 'lucide-react';
 
 const colorMap: Record<string, { bg: string; border: string; text: string; glow: string; icon: string }> = {
-  blue:    { bg: 'bg-blue-500/10',    border: 'border-blue-500/20',    text: 'text-blue-400',    glow: 'shadow-blue-500/20',    icon: 'text-blue-400' },
-  indigo:  { bg: 'bg-indigo-500/10',  border: 'border-indigo-500/20',  text: 'text-indigo-400',  glow: 'shadow-indigo-500/20',  icon: 'text-indigo-400' },
+  saffron: { bg: 'bg-orange-500/10',  border: 'border-orange-500/20',  text: 'text-orange-400',  glow: 'shadow-orange-500/20',  icon: 'text-orange-400' },
+  navy:    { bg: 'bg-blue-800/10',    border: 'border-blue-800/20',    text: 'text-blue-300',    glow: 'shadow-blue-800/20',    icon: 'text-blue-300' },
   amber:   { bg: 'bg-amber-500/10',   border: 'border-amber-500/20',   text: 'text-amber-400',   glow: 'shadow-amber-500/20',   icon: 'text-amber-400' },
-  purple:  { bg: 'bg-purple-500/10',  border: 'border-purple-500/20',  text: 'text-purple-400',  glow: 'shadow-purple-500/20',  icon: 'text-purple-400' },
+  indigo:  { bg: 'bg-indigo-500/10',  border: 'border-indigo-500/20',  text: 'text-indigo-400',  glow: 'shadow-indigo-500/20',  icon: 'text-indigo-400' },
   emerald: { bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', text: 'text-emerald-400', glow: 'shadow-emerald-500/20', icon: 'text-emerald-400' },
   red:     { bg: 'bg-red-500/10',     border: 'border-red-500/20',     text: 'text-red-400',     glow: 'shadow-red-500/20',     icon: 'text-red-400' },
 };
@@ -46,9 +46,9 @@ export function KpiCards() {
   // getOverview returns { total, byStatus, byPriority, sla, avgResolutionTime, resolvedCount }
   const stats: KpiStatItem[] = overview
     ? [
-        { label: 'Total Complaints', value: overview.total ?? 0, icon: Inbox, color: 'blue' },
-        { label: 'Open', value: overview.byStatus?.OPEN ?? 0, icon: Clock, color: 'indigo' },
-        { label: 'In Progress', value: (overview.byStatus?.IN_PROGRESS ?? 0) + (overview.byStatus?.ASSIGNED ?? 0), icon: Loader, color: 'purple' },
+        { label: 'Total Complaints', value: overview.total ?? 0, icon: Inbox, color: 'saffron' },
+        { label: 'Open', value: overview.byStatus?.OPEN ?? 0, icon: Clock, color: 'navy' },
+        { label: 'In Progress', value: (overview.byStatus?.IN_PROGRESS ?? 0) + (overview.byStatus?.ASSIGNED ?? 0), icon: Loader, color: 'indigo' },
         { label: 'Resolved', value: overview.resolvedCount ?? 0, icon: CheckCircle, color: 'emerald' },
         { label: 'SLA Breached', value: overview.sla?.breachedCount ?? 0, icon: AlertTriangle, color: 'red' },
         { label: 'Escalated', value: overview.byStatus?.ESCALATED ?? 0, icon: Zap, color: 'amber' },
