@@ -3,9 +3,9 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { complaintsApi } from '@/lib/api';
-import { Complaint, ComplaintStatus } from '@/types';
+import { Complaint, ComplaintStatus, Priority } from '@/types';
 import Link from 'next/link';
-import { Plus, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
 
 const STATUS_FILTERS: { label: string; value: ComplaintStatus | '' }[] = [
   { label: 'All', value: '' },
@@ -15,6 +15,14 @@ const STATUS_FILTERS: { label: string; value: ComplaintStatus | '' }[] = [
   { label: 'Escalated', value: 'ESCALATED' },
   { label: 'Resolved', value: 'RESOLVED' },
   { label: 'Closed', value: 'CLOSED' },
+];
+
+const PRIORITY_FILTERS: { label: string; value: Priority | '' }[] = [
+  { label: 'All', value: '' },
+  { label: 'Low', value: 'LOW' },
+  { label: 'Medium', value: 'MEDIUM' },
+  { label: 'High', value: 'HIGH' },
+  { label: 'Critical', value: 'CRITICAL' },
 ];
 
 function StatusBadge({ status }: { status: ComplaintStatus }) {
@@ -35,15 +43,17 @@ function StatusBadge({ status }: { status: ComplaintStatus }) {
 
 export default function ComplaintsPage() {
   const [statusFilter, setStatusFilter] = useState<ComplaintStatus | ''>('');
+  const [priorityFilter, setPriorityFilter] = useState<Priority | ''>('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['complaints', 'list', statusFilter, search, page],
+    queryKey: ['complaints', 'list', statusFilter, priorityFilter, search, page],
     queryFn: () => complaintsApi.list({
       page,
       limit: 20,
       ...(statusFilter ? { status: statusFilter } : {}),
+      ...(priorityFilter ? { priority: priorityFilter } : {}),
       ...(search ? { search } : {}),
     }),
     staleTime: 15_000,
@@ -72,31 +82,63 @@ export default function ComplaintsPage() {
       </div>
 
       {/* Search + Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1 max-w-xs">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Search by citizen name, phone…"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            className="w-full bg-slate-900/60 border border-white/10 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-purple-500/50"
-          />
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1 max-w-xs">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Search by citizen name, phone…"
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              className="w-full bg-slate-900/60 border border-white/10 rounded-lg pl-8 pr-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-purple-500/50"
+            />
+          </div>
+          <div className="flex gap-1 p-1 bg-slate-900/40 rounded-xl border border-white/5 flex-wrap">
+            {STATUS_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => { setStatusFilter(f.value); setPage(1); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  statusFilter === f.value
+                    ? 'bg-white/10 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-1 p-1 bg-slate-900/40 rounded-xl border border-white/5 flex-wrap">
-          {STATUS_FILTERS.map((f) => (
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <Filter size={12} />
+            <span>Priority:</span>
+          </div>
+          <div className="flex gap-1 p-1 bg-slate-900/40 rounded-xl border border-white/5 flex-wrap">
+            {PRIORITY_FILTERS.map((f) => (
+              <button
+                key={f.value}
+                onClick={() => { setPriorityFilter(f.value); setPage(1); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  priorityFilter === f.value
+                    ? 'bg-white/10 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          {(statusFilter || priorityFilter || search) && (
             <button
-              key={f.value}
-              onClick={() => { setStatusFilter(f.value); setPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                statusFilter === f.value
-                  ? 'bg-white/10 text-white shadow-sm'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
+              onClick={() => { setStatusFilter(''); setPriorityFilter(''); setSearch(''); setPage(1); }}
+              className="flex items-center gap-1 text-xs text-slate-500 hover:text-white transition-colors ml-auto"
             >
-              {f.label}
+              <X size={12} />
+              Clear filters
             </button>
-          ))}
+          )}
         </div>
       </div>
 
