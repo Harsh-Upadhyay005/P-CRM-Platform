@@ -14,7 +14,7 @@ export default function SignupPage() {
     name: '',
     email: '',
     password: '',
-    tenantSlug: process.env.NODE_ENV === 'development' ? 'main-office' : '',
+    tenantSlug: 'main-office',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -162,6 +162,7 @@ export default function SignupPage() {
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                 </div>
+                <p className="text-[10px] text-zinc-500 mt-1">Must be 8-64 chars with uppercase, lowercase, number &amp; special character.</p>
             </div>
 
             <div className="space-y-1">

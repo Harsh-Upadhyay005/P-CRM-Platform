@@ -173,7 +173,18 @@ export default function ComplaintDetailPage() {
 
   const { data: feedbackData } = useQuery({
     queryKey: ['complaint-feedback', id],
-    queryFn: () => complaintsApi.getFeedback(id),
+    queryFn: async () => {
+      try {
+        return await complaintsApi.getFeedback(id);
+      } catch (e: unknown) {
+        // 404 means no feedback submitted yet — not an error
+        if (e && typeof e === 'object' && 'response' in e) {
+          const axiosErr = e as { response?: { status?: number } };
+          if (axiosErr.response?.status === 404) return { data: null };
+        }
+        throw e;
+      }
+    },
     enabled: !!id && (complaint?.status === 'RESOLVED' || complaint?.status === 'CLOSED'),
   });
   const feedback = feedbackData?.data;
@@ -353,7 +364,7 @@ export default function ComplaintDetailPage() {
                   {notes.map((n) => (
                     <div key={n.id} className="bg-slate-800/40 rounded-lg p-3 border border-white/5">
                       <p className="text-slate-300 text-sm leading-relaxed">{n.note}</p>
-                      <p className="text-[11px] text-slate-600 mt-1.5">{n.createdBy?.name ?? 'Unknown'} · {fmt(n.createdAt)}</p>
+                      <p className="text-[11px] text-slate-600 mt-1.5">{(n.createdBy ?? n.user)?.name ?? 'Unknown'} · {fmt(n.createdAt)}</p>
                     </div>
                   ))}
                 </div>
