@@ -41,3 +41,8 @@ export const changePassword = asyncHandler(async (req, res) => {
   await service.changePassword(req.user.userId, req.body, req.user);
   res.json(new ApiResponse(200, null, "Password changed successfully"));
 });
+
+export const createUser = asyncHandler(async (req, res) => {
+  const user = await service.createUser(req.body, req.user);
+  res.status(201).json(new ApiResponse(201, user, "User created successfully"));
+});

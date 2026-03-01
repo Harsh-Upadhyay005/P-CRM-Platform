@@ -22,7 +22,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { Search, MoreVertical, Users, ShieldCheck, UserX, Trash2, RefreshCw } from 'lucide-react';
+import { Search, MoreVertical, Users, ShieldCheck, UserX, Trash2, RefreshCw, UserPlus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -56,6 +56,14 @@ export default function UsersPage() {
   const [assignRoleUser, setAssignRoleUser] = useState<User | null>(null);
   const [newRole, setNewRole] = useState<RoleType>('OFFICER');
   const [newDepartmentId, setNewDepartmentId] = useState<string>('');
+
+  // Create user state
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createEmail, setCreateEmail] = useState('');
+  const [createPassword, setCreatePassword] = useState('');
+  const [createRole, setCreateRole] = useState<RoleType>('CALL_OPERATOR');
+  const [createDeptId, setCreateDeptId] = useState<string>('');
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['users', 'list', page, roleFilter, search],
@@ -111,6 +119,23 @@ export default function UsersPage() {
     },
   });
 
+  const createUserMutation = useMutation({
+    mutationFn: () => usersApi.create({
+      name: createName.trim(),
+      email: createEmail.trim(),
+      password: createPassword,
+      roleType: createRole,
+      departmentId: createDeptId || null,
+    }),
+    onSuccess: () => {
+      toast.success('User created successfully');
+      qc.invalidateQueries({ queryKey: ['users'] });
+      setShowCreateDialog(false);
+      setCreateName(''); setCreateEmail(''); setCreatePassword(''); setCreateRole('CALL_OPERATOR'); setCreateDeptId('');
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
   if (!isAdmin) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -129,6 +154,12 @@ export default function UsersPage() {
           </h1>
           <p className="text-slate-400 text-sm mt-1">Manage team members, roles and access</p>
         </div>
+        <Button
+          className="bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-2"
+          onClick={() => setShowCreateDialog(true)}
+        >
+          <UserPlus size={15} /> Add User
+        </Button>
       </motion.div>
 
       {/* Filters */}
@@ -367,6 +398,86 @@ export default function UsersPage() {
                 onClick={() => confirmDelete && deleteMutation.mutate(confirmDelete.id)}
               >
                 {deleteMutation.isPending ? 'Deleting…' : 'Delete'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create User Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={(o) => { if (!o) { setShowCreateDialog(false); setCreateName(''); setCreateEmail(''); setCreatePassword(''); setCreateRole('CALL_OPERATOR'); setCreateDeptId(''); } }}>
+        <DialogContent className="bg-slate-900 border-white/10 text-slate-200 max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-white">Add New User</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <p className="text-xs text-slate-400 font-medium">Full Name</p>
+              <Input
+                placeholder="e.g. Priya Sharma"
+                value={createName}
+                onChange={(e) => setCreateName(e.target.value)}
+                className="bg-slate-800/50 border-white/10 text-slate-200 placeholder:text-slate-600"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-slate-400 font-medium">Email Address</p>
+              <Input
+                type="email"
+                placeholder="officer@example.com"
+                value={createEmail}
+                onChange={(e) => setCreateEmail(e.target.value)}
+                className="bg-slate-800/50 border-white/10 text-slate-200 placeholder:text-slate-600"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-slate-400 font-medium">Password</p>
+              <Input
+                type="password"
+                placeholder="Min. 8 characters"
+                value={createPassword}
+                onChange={(e) => setCreatePassword(e.target.value)}
+                className="bg-slate-800/50 border-white/10 text-slate-200 placeholder:text-slate-600"
+              />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-slate-400 font-medium">Role</p>
+              <Select value={createRole} onValueChange={(v) => setCreateRole(v as RoleType)}>
+                <SelectTrigger className="bg-slate-800/50 border-white/10 text-slate-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
+                  <SelectItem value="CALL_OPERATOR">Call Operator</SelectItem>
+                  <SelectItem value="OFFICER">Officer</SelectItem>
+                  <SelectItem value="DEPARTMENT_HEAD">Department Head</SelectItem>
+                  <SelectItem value="ADMIN">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {(createRole === 'OFFICER' || createRole === 'DEPARTMENT_HEAD') && (
+              <div className="space-y-1">
+                <p className="text-xs text-slate-400 font-medium">Department</p>
+                <Select value={createDeptId} onValueChange={setCreateDeptId}>
+                  <SelectTrigger className="bg-slate-800/50 border-white/10 text-slate-200">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="flex gap-2 justify-end pt-1">
+              <Button variant="ghost" size="sm" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
+              <Button
+                size="sm"
+                className="bg-purple-600 hover:bg-purple-500"
+                disabled={createUserMutation.isPending || !createName.trim() || !createEmail.trim() || !createPassword}
+                onClick={() => createUserMutation.mutate()}
+              >
+                {createUserMutation.isPending ? 'Creating…' : 'Create User'}
               </Button>
             </div>
           </div>

@@ -35,3 +35,11 @@ export const changePasswordSchema = z
     message: "New password must be different from the current password",
     path:    ["newPassword"],
   });
+
+export const createUserSchema = z.object({
+  name:         z.string().min(2, "Name must be at least 2 characters").max(100),
+  email:        z.string().email("Invalid email address"),
+  password:     z.string().min(8, "Password must be at least 8 characters").max(64),
+  roleType:     RoleType.optional().default("CALL_OPERATOR"),
+  departmentId: z.string().uuid("Invalid department ID").optional().nullable(),
+});

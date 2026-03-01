@@ -2,10 +2,13 @@
 
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { complaintsApi } from '@/lib/api';
-import { Complaint, ComplaintStatus, Priority } from '@/types';
+import { complaintsApi, departmentsApi } from '@/lib/api';
+import { Complaint, ComplaintStatus, Priority, Department } from '@/types';
 import Link from 'next/link';
 import { Plus, Search, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 
 const STATUS_FILTERS: { label: string; value: ComplaintStatus | '' }[] = [
   { label: 'All', value: '' },
@@ -44,20 +47,29 @@ function StatusBadge({ status }: { status: ComplaintStatus }) {
 export default function ComplaintsPage() {
   const [statusFilter, setStatusFilter] = useState<ComplaintStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<Priority | ''>('');
+  const [departmentFilter, setDepartmentFilter] = useState<string>('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['complaints', 'list', statusFilter, priorityFilter, search, page],
+    queryKey: ['complaints', 'list', statusFilter, priorityFilter, departmentFilter, search, page],
     queryFn: () => complaintsApi.list({
       page,
       limit: 20,
       ...(statusFilter ? { status: statusFilter } : {}),
       ...(priorityFilter ? { priority: priorityFilter } : {}),
+      ...(departmentFilter ? { departmentId: departmentFilter } : {}),
       ...(search ? { search } : {}),
     }),
     staleTime: 15_000,
   });
+
+  const { data: deptsData } = useQuery({
+    queryKey: ['departments-list'],
+    queryFn: () => departmentsApi.list({ limit: 100 }),
+    staleTime: 60_000,
+  });
+  const departments: Department[] = deptsData?.data?.data ?? [];
 
   const complaints: Complaint[] = data?.data?.data ?? [];
   const pagination = data?.data?.pagination;
@@ -130,9 +142,23 @@ export default function ComplaintsPage() {
               </button>
             ))}
           </div>
-          {(statusFilter || priorityFilter || search) && (
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 ml-2">
+            <span>Dept:</span>
+          </div>
+          <Select value={departmentFilter || '__all'} onValueChange={(v) => { setDepartmentFilter(v === '__all' ? '' : v); setPage(1); }}>
+            <SelectTrigger className="h-8 text-xs w-44 bg-slate-900/40 border-white/5 text-slate-300 rounded-xl">
+              <SelectValue placeholder="All Departments" />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-900 border-white/10 text-slate-200 text-xs">
+              <SelectItem value="__all">All Departments</SelectItem>
+              {departments.map((d) => (
+                <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(statusFilter || priorityFilter || departmentFilter || search) && (
             <button
-              onClick={() => { setStatusFilter(''); setPriorityFilter(''); setSearch(''); setPage(1); }}
+              onClick={() => { setStatusFilter(''); setPriorityFilter(''); setDepartmentFilter(''); setSearch(''); setPage(1); }}
               className="flex items-center gap-1 text-xs text-slate-500 hover:text-white transition-colors ml-auto"
             >
               <X size={12} />
