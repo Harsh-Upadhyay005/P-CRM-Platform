@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setUser(null);
     queryClient.clear();
-    router.push('/login');
+    router.push('/');
   };
 
   return (

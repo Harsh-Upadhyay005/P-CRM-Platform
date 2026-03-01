@@ -16,7 +16,7 @@ const submitSchema = z.object({
   citizenEmail: z.string().email('A valid email is required to receive updates'),
   description:  z.string().min(10, 'Description must be at least 10 characters').max(5000),
   category:     z.string().max(100).optional(),
-  priority:     z.preprocess(v => v === '' ? undefined : v, z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional()),
+  priority:     z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
 });
 
 type SubmitForm = z.infer<typeof submitSchema>;
@@ -187,7 +187,7 @@ export default function PublicSubmitPage() {
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">Priority</label>
               <select
-                {...register('priority')}
+                {...register('priority', { setValueAs: (v) => v === '' ? undefined : v })}
                 className="w-full bg-slate-800/60 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-purple-500/50"
               >
                 <option value="">Auto-Detect (AI)</option>
