@@ -103,8 +103,8 @@ export function CategoryChart() {
         ) : (
           <Tabs defaultValue="bar" className="w-full">
             <TabsList className="bg-slate-800/50 border border-white/5 mb-2 h-8">
-              <TabsTrigger value="bar" className="text-xs data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400">Bar</TabsTrigger>
-              <TabsTrigger value="pie" className="text-xs data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400">Pie</TabsTrigger>
+              <TabsTrigger value="bar" className="text-xs text-slate-400 data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400">Bar</TabsTrigger>
+              <TabsTrigger value="pie" className="text-xs text-slate-400 data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400">Pie</TabsTrigger>
             </TabsList>
             <TabsContent value="bar" className="mt-0">
               <ResponsiveContainer width="100%" height={220}>

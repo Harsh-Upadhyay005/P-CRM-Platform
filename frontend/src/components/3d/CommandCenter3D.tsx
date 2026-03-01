@@ -206,6 +206,16 @@ export function CommandCenter3D() {
       <div className="absolute inset-0 bg-linear-to-r from-[#FF9933]/5 via-transparent to-[#138808]/5 pointer-events-none z-10" />
       <div className="absolute inset-0 bg-linear-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none z-10" />
 
+      {/* Title overlay — responsive HTML (replaces Three.js FloatingLabels) */}
+      <div className="absolute top-3 left-4 z-10 flex flex-col gap-0.5">
+        <p className="text-[11px] sm:text-xs text-slate-300 font-mono tracking-[0.18em] uppercase leading-tight">
+          Bharat Complaint
+        </p>
+        <p className="text-[9px] sm:text-[10px] text-slate-500 font-mono tracking-[0.22em] uppercase">
+          Resolution Platform
+        </p>
+      </div>
+
       {/* Footer label */}
       <div className="absolute bottom-3 left-4 z-10 flex items-center gap-2">
         <div className="flex items-center gap-1">
@@ -213,7 +223,7 @@ export function CommandCenter3D() {
           <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
           <span className="w-1.5 h-1.5 rounded-full bg-[#138808]" />
         </div>
-        <p className="text-[10px] text-slate-600 font-mono uppercase tracking-widest">
+        <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">
           Government CRM Platform • National Command Center
         </p>
       </div>
@@ -235,8 +245,6 @@ export function CommandCenter3D() {
             <AshokaChakra />
             <DataOrbit />
           </Float>
-          <FloatingLabels />
-          <TricolorAccents />
           <Sparkles count={60} scale={8} size={1.2} speed={0.2} opacity={0.15} color="#FF9933" />
           <Sparkles count={40} scale={6} size={0.8} speed={0.15} opacity={0.1} color="#138808" />
         </React.Suspense>
