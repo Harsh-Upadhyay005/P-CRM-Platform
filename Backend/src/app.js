@@ -23,8 +23,8 @@ const app = express();
 app.set("trust proxy", 1);
 
 const allowedOrigins = [
+  ...(env.ALLOWED_ORIGINS ?? []),
   env.NODE_ENV === "development" && "http://localhost:3000",
-  env.FRONTEND_URL,
 ].filter(Boolean);
 
 app.use(
