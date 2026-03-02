@@ -4,9 +4,10 @@ import { forTenant, inTenant } from "../utils/tenantScope.js";
 import { generateTrackingId, getPagination, paginatedResponse } from "../utils/helpers.js";
 import { assertRoleCanTransition, isTerminal } from "../utils/statusEngine.js";
 import { notifyAssignment, notifyStatusChange } from "./notification.service.js";
-import { canManageUser } from "../utils/roleHierarchy.js";
+import { canManageUser, ROLE_RANK } from "../utils/roleHierarchy.js";
 import { analyzeComplaint, analyzeSentiment, predictPriority } from "./ai.service.js";
-import { sendStatusChangeEmail, sendComplaintConfirmationEmail } from "./email.service.js";
+import { sendStatusChangeEmail, sendComplaintConfirmationEmail, sendOfficerAssignmentEmail } from "./email.service.js";
+import { buildSlaSummary, NON_SLA_STATUSES } from "../utils/slaEngine.js";
 
 const complaintSummarySelect = {
   id: true,
@@ -20,9 +21,21 @@ const complaintSummarySelect = {
   createdAt: true,
   updatedAt: true,
   resolvedAt: true,
-  department: { select: { id: true, name: true } },
+  department: { select: { id: true, name: true, slaHours: true } },
   assignedTo: { select: { id: true, name: true } },
   createdBy: { select: { id: true, name: true } },
+};
+
+// Attach a computed `slaSummary` field to a complaint object.
+// Returns null when the complaint status is terminal or no SLA data is available.
+const decorateWithSla = (complaint) => {
+  if (!complaint) return complaint;
+  const slaHours = complaint.department?.slaHours;
+  const slaSummary =
+    slaHours && !NON_SLA_STATUSES.includes(complaint.status)
+      ? buildSlaSummary(complaint.createdAt, slaHours)
+      : null;
+  return { ...complaint, slaSummary };
 };
 
 const complaintDetailSelect = {
@@ -141,7 +154,12 @@ export const createComplaint = async (data, user) => {
     select: complaintDetailSelect,
   });
 
-  return complaint;
+  // Send confirmation email to citizen (fire-and-forget)
+  if (citizenEmail) {
+    sendComplaintConfirmationEmail(citizenEmail, citizenName, trackingId).catch(() => {});
+  }
+
+  return decorateWithSla(complaint);
 };
 
 export const listComplaints = async (query, user) => {
@@ -192,7 +210,7 @@ export const getComplaint = async (id, user) => {
   await assertComplaintAccess(complaint, user);
 
   const { createdById: _c, assignedToId: _a, departmentId: _d, ...safeComplaint } = complaint;
-  return safeComplaint;
+  return decorateWithSla(safeComplaint);
 };
 
 export const getComplaintByTrackingId = async (trackingId) => {
@@ -283,7 +301,7 @@ export const updateComplaint = async (id, data, user) => {
     select: complaintDetailSelect,
   });
 
-  return updated;
+  return decorateWithSla(updated);
 };
 
 export const assignComplaint = async (id, data, user) => {
@@ -318,6 +336,8 @@ export const assignComplaint = async (id, data, user) => {
     }
   }
 
+  let officerDetails = null; // cached for email after transaction
+
   if (assignedToId) {
     const officer = await prisma.user.findFirst({
       where: {
@@ -325,11 +345,20 @@ export const assignComplaint = async (id, data, user) => {
         isDeleted: false,
         isActive: true,
         ...forTenant(user),
-        role: { type: { in: ["OFFICER", "DEPARTMENT_HEAD", "ADMIN", "SUPER_ADMIN"] } },
+        role: { type: { notIn: ["CALL_OPERATOR"] } },
       },
-      select: { id: true, departmentId: true },
+      select: { id: true, departmentId: true, name: true, email: true, role: { select: { type: true } } },
     });
     if (!officer) throw new ApiError(404, "Officer not found or not eligible for assignment");
+
+    // Prevent assigning to a role of higher rank than the actor
+    const actorRank   = ROLE_RANK[user.role] ?? 0;
+    const officerRank = ROLE_RANK[officer.role.type] ?? 0;
+    if (officerRank > actorRank) {
+      throw new ApiError(403, "You cannot assign a complaint to a user with a higher role than your own");
+    }
+
+    officerDetails = { name: officer.name, email: officer.email };
 
     if (user.role === "DEPARTMENT_HEAD") {
       const effectiveDeptId = departmentId ?? complaint.departmentId;
@@ -367,10 +396,38 @@ export const assignComplaint = async (id, data, user) => {
   ]);
 
   if (assignedToId) {
-    notifyAssignment(id, assignedToId, user.userId, updated.trackingId).catch(() => {});
+    notifyAssignment(
+      id,
+      assignedToId,
+      updated.createdBy?.id ?? null,
+      user.userId,
+      updated.trackingId
+    ).catch(() => {});
+
+    // Email the officer who was assigned
+    if (officerDetails?.email) {
+      sendOfficerAssignmentEmail(
+        officerDetails.email,
+        officerDetails.name,
+        updated.trackingId,
+        updated.category ?? null,
+        updated.priority ?? null,
+      ).catch(() => {});
+    }
   }
 
-  return updated;
+  // Email citizen when status changed to ASSIGNED (OPEN → ASSIGNED)
+  if (newStatus !== complaint.status && updated.citizenEmail) {
+    sendStatusChangeEmail(
+      updated.citizenEmail,
+      updated.citizenName,
+      updated.trackingId,
+      complaint.status,
+      newStatus,
+    ).catch(() => {});
+  }
+
+  return decorateWithSla(updated);
 };
 
 export const updateComplaintStatus = async (id, { newStatus, note }, user) => {
@@ -456,7 +513,7 @@ export const updateComplaintStatus = async (id, { newStatus, note }, user) => {
     ).catch(() => {});
   }
 
-  return updated;
+  return decorateWithSla(updated);
 };
 
 export const softDeleteComplaint = async (id, user) => {
@@ -644,16 +701,21 @@ export const getPublicDepartments = async (slug) => {
 
 // ── COMPLAINT FEEDBACK ────────────────────────────────────────────────────
 
-export const submitFeedback = async (trackingId, { rating, comment }) => {
+export const submitFeedback = async (id, { rating, comment }, user) => {
   const complaint = await prisma.complaint.findFirst({
-    where: { trackingId, isDeleted: false },
-    select: { id: true, status: true },
+    where: { id, isDeleted: false, ...forTenant(user) },
+    select: { id: true, status: true, createdById: true },
   });
 
   if (!complaint) throw new ApiError(404, "Complaint not found");
 
   if (complaint.status !== "RESOLVED" && complaint.status !== "CLOSED") {
     throw new ApiError(422, "Feedback can only be submitted for resolved or closed complaints");
+  }
+
+  // Only the staff member who originally filed the complaint may submit feedback
+  if (complaint.createdById !== user.userId) {
+    throw new ApiError(403, "Only the person who filed this complaint can submit feedback");
   }
 
   // Check for existing feedback (@unique on complaintId)

@@ -27,18 +27,32 @@ const createNotifications = async (records) => {
   }
 };
 
-export const notifyAssignment = async (complaintId, assignedToId, actorId, trackingId) => {
-  if (!assignedToId || assignedToId === actorId) return;
+export const notifyAssignment = async (complaintId, assignedToId, createdById, actorId, trackingId) => {
+  const records = [];
 
-  await createNotifications([
-    {
+  // Notify the officer who was assigned
+  if (assignedToId && assignedToId !== actorId) {
+    records.push({
       userId:      assignedToId,
       complaintId,
       title:       "Complaint Assigned to You",
       message:     `Complaint ${trackingId} has been assigned to you. Please review and take action.`,
       isRead:      false,
-    },
-  ]);
+    });
+  }
+
+  // Notify the staff user who originally filed the complaint (if different from actor & officer)
+  if (createdById && createdById !== actorId && createdById !== assignedToId) {
+    records.push({
+      userId:      createdById,
+      complaintId,
+      title:       "Complaint Assigned",
+      message:     `Complaint ${trackingId} you filed has been assigned to an officer and is now under review.`,
+      isRead:      false,
+    });
+  }
+
+  if (records.length > 0) await createNotifications(records);
 };
 
 export const notifyStatusChange = async (

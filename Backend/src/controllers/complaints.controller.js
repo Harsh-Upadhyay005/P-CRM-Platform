@@ -70,7 +70,7 @@ export const getPublicDepartments = asyncHandler(async (req, res) => {
 });
 
 export const submitFeedback = asyncHandler(async (req, res) => {
-  const feedback = await service.submitFeedback(req.params.trackingId, req.body);
+  const feedback = await service.submitFeedback(req.params.id, req.body, req.user);
   res.status(201).json(new ApiResponse(201, feedback, "Feedback submitted successfully"));
 });
 
