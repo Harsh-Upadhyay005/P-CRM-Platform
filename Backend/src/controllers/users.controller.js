@@ -27,6 +27,11 @@ export const assignRole = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, user, "Role assigned"));
 });
 
+export const assignDepartment = asyncHandler(async (req, res) => {
+  const user = await service.assignDepartment(req.params.id, req.body, req.user);
+  res.json(new ApiResponse(200, user, "Department updated"));
+});
+
 export const setUserActiveStatus = asyncHandler(async (req, res) => {
   const user = await service.setUserActiveStatus(req.params.id, req.body, req.user);
   res.json(new ApiResponse(200, user, "User status updated"));

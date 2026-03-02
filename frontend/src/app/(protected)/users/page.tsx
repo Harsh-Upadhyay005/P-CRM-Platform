@@ -22,7 +22,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
-import { Search, MoreVertical, Users, ShieldCheck, UserX, Trash2, RefreshCw, UserPlus } from 'lucide-react';
+import { Search, MoreVertical, Users, ShieldCheck, UserX, Trash2, RefreshCw, UserPlus, CheckCircle2, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -241,7 +241,13 @@ export default function UsersPage() {
                         </Avatar>
                         <div>
                           <p className="text-sm font-medium text-white">{u.name}</p>
-                          <p className="text-xs text-slate-500">{u.email}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <p className="text-xs text-slate-500">{u.email}</p>
+                            {u.emailVerified
+                              ? <CheckCircle2 size={10} className="text-emerald-500 shrink-0" title="Email verified" />
+                              : <Clock size={10} className="text-amber-500 shrink-0" title="Email not verified" />
+                            }
+                          </div>
                         </div>
                       </div>
                     </TableCell>

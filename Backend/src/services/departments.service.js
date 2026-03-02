@@ -8,6 +8,7 @@ const deptSelect = {
   name: true,
   slug: true,
   slaHours: true,
+  serviceAreas: true,
   isActive: true,
   createdAt: true,
   updatedAt: true,
@@ -27,7 +28,7 @@ const assertDeptAccess = async (deptId, user, action = "modify") => {
 };
 
 export const createDepartment = async (data, user) => {
-  const { name, slaHours } = data;
+  const { name, slaHours, serviceAreas } = data;
   const slug = slugify(name);
 
   const existing = await prisma.department.findFirst({
@@ -39,7 +40,8 @@ export const createDepartment = async (data, user) => {
     data: {
       name,
       slug,
-      slaHours: slaHours ?? 48,
+      slaHours:     slaHours ?? 48,
+      serviceAreas: serviceAreas ?? [],
       ...inTenant(user),
     },
     select: deptSelect,
@@ -93,7 +95,7 @@ export const updateDepartment = async (id, data, user) => {
 
   await assertDeptAccess(id, user, "modify");
 
-  const { name, slaHours, isActive } = data;
+  const { name, slaHours, isActive, serviceAreas } = data;
   let slug;
 
   if (name !== undefined) {
@@ -107,10 +109,11 @@ export const updateDepartment = async (id, data, user) => {
   const updated = await prisma.department.update({
     where: { id },
     data: {
-      ...(name !== undefined && { name }),
-      ...(slug !== undefined && { slug }),
-      ...(slaHours !== undefined && { slaHours }),
-      ...(isActive !== undefined && { isActive }),
+      ...(name !== undefined         && { name }),
+      ...(slug !== undefined         && { slug }),
+      ...(slaHours !== undefined     && { slaHours }),
+      ...(isActive !== undefined     && { isActive }),
+      ...(serviceAreas !== undefined && { serviceAreas }),
     },
     select: deptSelect,
   });

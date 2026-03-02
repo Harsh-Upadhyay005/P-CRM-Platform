@@ -43,6 +43,7 @@ export interface Complaint {
   citizenName: string;
   citizenPhone: string;
   citizenEmail: string | null;
+  locality: string | null;
   category: string | null;
   priority: Priority;
   status: ComplaintStatus;
@@ -74,6 +75,7 @@ export interface Department {
   name: string;
   slug: string;
   slaHours: number;
+  serviceAreas: string[];
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

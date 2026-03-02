@@ -431,9 +431,12 @@ const cosineSimilarity = (v1, v2) => {
  * @param {string} description        - The complaint text to test
  * @param {string} tenantId           - Scope duplicate search to this tenant
  * @param {string|null} excludeId     - Exclude a specific complaint (for re-analysis)
+ * @param {string|null} locality      - If provided, only compare against complaints in the same area.
+ *                                      This prevents a Delhi "no electricity" from being
+ *                                      flagged as a duplicate of a Varanasi "no electricity".
  * @returns {Promise<number>}          score ∈ [0, 1]
  */
-export const detectDuplicate = async (description, tenantId, excludeId = null) => {
+export const detectDuplicate = async (description, tenantId, excludeId = null, locality = null) => {
   if (!description || !tenantId) return 0;
 
   const tokens1 = preprocessText(description);
@@ -446,6 +449,9 @@ export const detectDuplicate = async (description, tenantId, excludeId = null) =
     where: {
       tenantId,
       isDeleted: false,
+      // Scope to the same locality when provided so that geographically
+      // distinct complaints with similar text are NOT flagged as duplicates.
+      ...(locality ? { locality } : {}),
       ...(excludeId && { id: { not: excludeId } }),
     },
     select:  { description: true },
@@ -488,7 +494,8 @@ export const detectDuplicate = async (description, tenantId, excludeId = null) =
  *   description: string,
  *   category?: string|null,
  *   tenantId: string,
- *   excludeId?: string|null
+ *   excludeId?: string|null,
+ *   locality?: string|null
  * }} params
  *
  * @returns {Promise<{
@@ -503,14 +510,16 @@ export const analyzeComplaint = async ({
   category    = null,
   tenantId,
   excludeId   = null,
+  locality    = null,
 }) => {
   try {
     // Sentiment and priority are pure computation — run synchronously
     const sentimentScore = analyzeSentiment(description);
     const { suggestedPriority, aiScore } = predictPriority(description, category);
 
-    // Duplicate detection needs the DB — run in parallel with a resolved promise
-    const duplicateScore = await detectDuplicate(description, tenantId, excludeId);
+    // Duplicate detection needs the DB — run in parallel with a resolved promise.
+    // Pass locality so complaints from different areas are never cross-compared.
+    const duplicateScore = await detectDuplicate(description, tenantId, excludeId, locality);
 
     return { sentimentScore, duplicateScore, suggestedPriority, aiScore };
   } catch {

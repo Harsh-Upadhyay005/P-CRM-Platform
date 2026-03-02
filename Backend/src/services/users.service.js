@@ -139,7 +139,7 @@ export const assignRole = async (targetId, { roleType, departmentId }, user) => 
 
   const target = await prisma.user.findFirst({
     where: { id: targetId, isDeleted: false, ...forTenant(user) },
-    select: { id: true, role: { select: { type: true } } },
+    select: { id: true, role: { select: { type: true } }, departmentId: true },
   });
 
   if (!target) throw new ApiError(404, "User not found");
@@ -158,12 +158,58 @@ export const assignRole = async (targetId, { roleType, departmentId }, user) => 
 
   const roleId = await resolveRoleId(roleType);
 
+  // Determine which department to scope the head-demotion check against
+  const effectiveDeptId = departmentId !== undefined ? departmentId : target.departmentId;
+
+  // If promoting to DEPARTMENT_HEAD, auto-demote any existing head in that department
+  // to OFFICER so there is never more than one head per department.
+  if (roleType === "DEPARTMENT_HEAD" && effectiveDeptId) {
+    const officerRoleId = await resolveRoleId("OFFICER");
+    await prisma.user.updateMany({
+      where: {
+        departmentId: effectiveDeptId,
+        roleId: roleId,          // currently has DEPARTMENT_HEAD role
+        id: { not: targetId },   // exclude the user being promoted
+        isDeleted: false,
+        ...forTenant(user),
+      },
+      data: { roleId: officerRoleId },
+    });
+  }
+
   const updated = await prisma.user.update({
     where: { id: targetId },
     data: {
       roleId,
       ...(departmentId !== undefined && { departmentId }),
     },
+    select: userSelect,
+  });
+
+  return updated;
+};
+
+export const assignDepartment = async (targetId, { departmentId }, user) => {
+  const target = await prisma.user.findFirst({
+    where: { id: targetId, isDeleted: false, ...forTenant(user) },
+    select: { id: true, role: { select: { type: true } } },
+  });
+  if (!target) throw new ApiError(404, "User not found");
+
+  if (!canManageUser(user.role, target.role.type)) {
+    throw new ApiError(403, "You cannot modify a user with an equal or higher role");
+  }
+
+  if (departmentId !== null && departmentId !== undefined) {
+    const dept = await prisma.department.findFirst({
+      where: { id: departmentId, isDeleted: false, isActive: true, ...forTenant(user) },
+    });
+    if (!dept) throw new ApiError(404, "Department not found");
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: targetId },
+    data:  { departmentId: departmentId ?? null },
     select: userSelect,
   });
 

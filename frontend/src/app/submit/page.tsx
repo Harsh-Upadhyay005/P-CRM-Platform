@@ -17,6 +17,7 @@ const submitSchema = z.object({
   citizenName:  z.string().min(2, 'Name must be at least 2 characters'),
   citizenPhone: z.string().regex(/^\+?[\d\s\-()\/.]{7,20}$/, 'Invalid phone number'),
   citizenEmail: z.string().email('A valid email is required to receive updates'),
+  locality:     z.string().min(2).max(150).optional().or(z.literal('')),
   description:  z.string().min(10, 'Description must be at least 10 characters').max(5000),
   category:     z.string().max(100).optional(),
   priority:     z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
@@ -182,6 +183,7 @@ export default function PublicSubmitPage() {
     try {
       const res = await complaintsApi.createPublic({
         ...data,
+        locality:     (data as any).locality || undefined,
         category:     resolvedCategory || undefined,
         departmentId: departmentId || undefined,
         tenantSlug:   resolvedSlug,
@@ -289,6 +291,19 @@ export default function PublicSubmitPage() {
             <input {...register('citizenEmail')} type="email" placeholder="you@example.com" className={fieldCls} />
             <p className="text-slate-500 text-xs mt-1">You&apos;ll receive updates about your complaint on this email.</p>
             {errors.citizenEmail && <p className="text-red-400 text-xs mt-1">{errors.citizenEmail.message}</p>}
+          </div>
+
+          {/* Locality */}
+          <div>
+            <label className={labelCls}>Locality / Area <span className="text-slate-500 font-normal">(optional)</span></label>
+            <input
+              {...register('locality')}
+              type="text"
+              placeholder="e.g. Lanka, Varanasi or Dwarka, Delhi"
+              className={fieldCls}
+            />
+            <p className="text-slate-500 text-xs mt-1">Helps us route your complaint to the right officer and prevents it from being marked as a duplicate of a similar complaint in a different area.</p>
+            {errors.locality && <p className="text-red-400 text-xs mt-1">{errors.locality.message}</p>}
           </div>
 
           {/* Category + Priority */}

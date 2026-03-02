@@ -124,15 +124,16 @@ model RefreshToken {
 // DEPARTMENT
 
 model Department {
-  id          String   @id @default(uuid())
-  tenantId    String
+  id           String   @id @default(uuid())
+  tenantId     String
 
-  name        String
-  slug        String
-  slaHours    Int      @default(48)
+  name         String
+  slug         String
+  slaHours     Int      @default(48)
+  serviceAreas String[] @default([])  // Ward / area names this dept covers, e.g. ["Gomti Nagar", "Hazratganj"]
 
-  isActive    Boolean  @default(true)
-  isDeleted   Boolean  @default(false)
+  isActive     Boolean  @default(true)
+  isDeleted    Boolean  @default(false)
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -156,6 +157,8 @@ model Complaint {
   citizenPhone    String
   citizenEmail    String?
   description     String
+
+  locality        String?   // Ward / area / block — e.g. "Gomti Nagar, Lucknow" or "Lanka, Varanasi"
 
   category        String?
   priority        Priority @default(MEDIUM)
@@ -193,6 +196,7 @@ model Complaint {
   @@index([assignedToId])
   @@index([createdById])
   @@index([createdAt])
+  @@index([locality])
   // Compound indexes for the two most common filter combinations
   @@index([tenantId, status])
   @@index([tenantId, isDeleted])

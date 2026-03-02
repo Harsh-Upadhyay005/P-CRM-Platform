@@ -36,13 +36,39 @@
 
 ## Roles Overview
 
-| Role                | Who Is This For                  | Key Capability                                                            |
-| ------------------- | -------------------------------- | ------------------------------------------------------------------------- |
-| **Super Admin**     | Platform owner / top-level admin | Full control — manage tenants, all users, all data                        |
-| **Admin**           | Organisation administrator       | Manage users, departments, complaints within their tenant                 |
-| **Department Head** | Head of a government department  | Manage their department’s complaints + analytics                          |
-| **Officer**         | Field/desk officer               | Handle assigned complaints, add notes                                     |
-| **Call Operator**   | Helpdesk / call-centre staff     | Create complaints on behalf of citizens; submit feedback after resolution |
+| Role                | Level | Scope                        | Who Is This For                  |
+| ------------------- | ----- | ---------------------------- | -------------------------------- |
+| **Super Admin**     | 5     | Full platform (all tenants)  | Platform owner / top-level admin |
+| **Admin**           | 4     | Full tenant access           | Organisation administrator       |
+| **Department Head** | 3     | Own department only          | Head of a government department  |
+| **Officer**         | 2     | Own assigned complaints only | Field/desk officer               |
+| **Call Operator**   | 1     | Own created complaints only  | Helpdesk / call-centre staff     |
+
+### Permission Matrix
+
+| Action                                 | Super Admin | Admin |   Dept Head   | Officer | Call Operator |
+| -------------------------------------- | :---------: | :---: | :-----------: | :-----: | :-----------: |
+| Manage tenants                         |     ✅      |  ❌   |      ❌       |   ❌    |      ❌       |
+| Manage all users (all tenants)         |     ✅      |  ❌   |      ❌       |   ❌    |      ❌       |
+| Manage users within tenant             |     ✅      |  ✅   |      ❌       |   ❌    |      ❌       |
+| Create / edit / deactivate departments |     ✅      |  ✅   |      ❌       |   ❌    |      ❌       |
+| View all complaints (tenant scope)     |     ✅      |  ✅   |      ❌       |   ❌    |      ❌       |
+| View dept complaints only              |     ✅      |  ✅   |      ✅       |   ❌    |      ❌       |
+| View own assigned complaints           |     ✅      |  ✅   |      ✅       |   ✅    |      ❌       |
+| View own created complaints            |     ✅      |  ✅   |      ✅       |   ✅    |      ✅       |
+| Assign complaint to any dept/officer   |     ✅      |  ✅   |      ❌       |   ❌    |      ❌       |
+| Assign within own department only      |     ✅      |  ✅   |      ✅       |   ❌    |      ❌       |
+| Set status ASSIGNED                    |     ✅      |  ✅   |      ✅       |   ❌    |      ❌       |
+| Set status IN_PROGRESS                 |     ✅      |  ✅   |      ✅       |   ✅    |      ❌       |
+| Set status RESOLVED                    |     ✅      |  ✅   |      ✅       |   ✅    |      ❌       |
+| Set status ESCALATED                   |     ✅      |  ✅   |      ✅       |   ❌    |      ❌       |
+| Set status CLOSED                      |     ✅      |  ✅   |      ❌       |   ❌    |      ❌       |
+| Add internal notes                     |     ✅      |  ✅   |      ✅       |   ✅    |      ❌       |
+| Submit feedback on own complaint       |     ✅      |  ✅   |      ✅       |   ✅    |      ✅       |
+| View analytics                         |     ✅      |  ✅   | ✅ (own dept) |   ❌    |      ❌       |
+| Export complaints CSV                  |     ✅      |  ✅   |      ✅       |   ❌    |      ❌       |
+| View audit logs                        |     ✅      |  ✅   |      ❌       |   ❌    |      ❌       |
+| Access other tenants' data             |     ✅      |  ❌   |      ❌       |   ❌    |      ❌       |
 
 ---
 
@@ -73,10 +99,12 @@ Citizens can check the real-time status of their complaint without signing in.
 1. Navigate to **Complaints → New Complaint** (or click the **+ New** button on the dashboard)
 2. Fill in the required fields:
    - **Citizen Name** and **Phone Number** (required)
-   - **Citizen Email** (optional)
-   - **Department** — select the responsible department
-   - **Priority** — Low / Medium / High / Critical
-   - **Description** — detailed description of the complaint
+   - **Citizen Email** (optional — used to send the tracking ID)
+   - **Locality / Area** (optional) — the specific neighbourhood or area, e.g. `Lanka, Varanasi`. Helps the system route the complaint correctly and prevents duplicates from different localities being merged.
+   - **Department** — optionally select the responsible department; leave blank to let the AI auto-route
+   - **Priority** — Low / Medium / High / Critical (leave blank for AI auto-detection)
+   - **Description** — detailed description of the complaint (required)
+   - **Attachments** — photos, PDFs, or documents (optional, max 5 files)
 3. Click **Submit Complaint**
 4. The system will:
    - Auto-generate a unique **Tracking ID**
@@ -192,15 +220,25 @@ Admins manage all users and departments within their tenant.
 
 ### Department Management (`/departments`)
 
-| Action                 | How                                                      |
-| ---------------------- | -------------------------------------------------------- |
-| View all departments   | Navigate to **Departments** page                         |
-| Create department      | Click **+ Add Department** → enter name, slug, SLA hours |
-| Edit department        | Click **⋮** → **Edit** → update name, slug, SLA hours    |
-| Toggle active/inactive | Click **⋮** → **Deactivate / Activate**                  |
-| Delete department      | Click **⋮** → **Delete**                                 |
+| Action                      | How                                                                                     |
+| --------------------------- | --------------------------------------------------------------------------------------- |
+| View all departments        | Navigate to **Departments** page                                                        |
+| Create department           | Click **+ New Department** → enter name, SLA hours, and service areas                   |
+| Edit department             | Click **⋮** → **Edit** → update name, SLA hours, or service areas                       |
+| Toggle active/inactive      | Click **⋮** → **Edit** → toggle the Active switch                                       |
+| Delete department           | Click **⋮** → **Delete**                                                                |
+| View & manage members       | Click the **Members** button on any department card                                     |
+| Assign user to department   | Open **Members** dialog → pick a user from the dropdown → **Assign**                    |
+| Remove user from department | Open **Members** dialog → click the **×** icon next to the user                         |
+| Designate a department head | Open **Members** dialog → click the **👑** icon next to the officer you want to promote |
 
 > **SLA Hours** — complaints in this department will breach SLA if unresolved past this many hours.
+
+> **Service Areas** — comma-separated ward/area names (e.g. "Gomti Nagar", "Lanka", "Alambagh") that this department covers. Displayed on the department card and used to help operators route complaints geographically. Add areas one at a time using the **Add** button or by pressing Enter while typing.
+
+> **Department Head** — only one user per department should hold the `DEPARTMENT_HEAD` role. Promoting a new head via the Members dialog automatically changes that user's role. The head badge is shown on the Members dialog for easy identification.
+
+> **Assigning users to departments from the Users page** is also supported via **⋮ → Change Role**: select the role and then pick the department from the dropdown.
 
 ### Complaint Management
 

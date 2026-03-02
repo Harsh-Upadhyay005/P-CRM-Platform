@@ -161,19 +161,19 @@ export const prisma = new PrismaClient({ adapter });
 
 ### Schema Models (summary)
 
-| Model                    | Key Fields                                                                                                                                                                            |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Tenant`                 | id, name, slug (unique), isActive, contactEmail, contactPhone, address, createdAt                                                                                                     |
-| `Role`                   | id, type (RoleType enum) — global, not per-tenant                                                                                                                                     |
-| `User`                   | id, email, password (hashed), emailVerified, isActive, isDeleted, tenantId, roleId, departmentId                                                                                      |
-| `RefreshToken`           | id, tokenHash (SHA-256), userId, expiresAt                                                                                                                                            |
-| `Department`             | id, name, slug (unique per tenant), slaHours, isActive, isDeleted, tenantId                                                                                                           |
-| `Complaint`              | id, trackingId (PCRM-YYYYMMDD-XXXXXXXX), status, priority, tenantId, createdById, assignedToId, departmentId, isDeleted, aiScore, resolvedAt, slaDeadline, isPublic, feedback, rating |
-| `ComplaintStatusHistory` | id, complaintId, oldStatus, newStatus, changedById (null for system), changedAt                                                                                                       |
-| `ComplaintAttachment`    | id, complaintId, fileName, storagePath, mimeType, size, uploadedById, createdAt                                                                                                       |
-| `InternalNote`           | id, complaintId, userId, note, createdAt                                                                                                                                              |
-| `Notification`           | id, userId, complaintId?, title, message, isRead, createdAt                                                                                                                           |
-| `AuditLog`               | id, tenantId, userId?, action, entityType, entityId, metadata (JSON), createdAt                                                                                                       |
+| Model                    | Key Fields                                                                                                                                                                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Tenant`                 | id, name, slug (unique), isActive, contactEmail, contactPhone, address, createdAt                                                                                                                                                           |
+| `Role`                   | id, type (RoleType enum) — global, not per-tenant                                                                                                                                                                                           |
+| `User`                   | id, email, password (hashed), emailVerified, isActive, isDeleted, tenantId, roleId, departmentId                                                                                                                                            |
+| `RefreshToken`           | id, tokenHash (SHA-256), userId, expiresAt                                                                                                                                                                                                  |
+| `Department`             | id, name, slug (unique per tenant), slaHours, **serviceAreas** (String[], geographic ward/area names covered), isActive, isDeleted, tenantId                                                                                                |
+| `Complaint`              | id, trackingId (PCRM-YYYYMMDD-XXXXXXXX), status, priority, **locality** (optional ward/area from citizen input), tenantId, createdById, assignedToId, departmentId, isDeleted, aiScore, resolvedAt, slaDeadline, isPublic, feedback, rating |
+| `ComplaintStatusHistory` | id, complaintId, oldStatus, newStatus, changedById (null for system), changedAt                                                                                                                                                             |
+| `ComplaintAttachment`    | id, complaintId, fileName, storagePath, mimeType, size, uploadedById, createdAt                                                                                                                                                             |
+| `InternalNote`           | id, complaintId, userId, note, createdAt                                                                                                                                                                                                    |
+| `Notification`           | id, userId, complaintId?, title, message, isRead, createdAt                                                                                                                                                                                 |
+| `AuditLog`               | id, tenantId, userId?, action, entityType, entityId, metadata (JSON), createdAt                                                                                                                                                             |
 
 ### DB Indexes
 
@@ -899,14 +899,15 @@ Key difference from self-registration: `emailVerified` is **set to `true` immedi
 
 ### Other User Endpoints (existing)
 
-| Endpoint                      | Min Role | Description                                               |
-| ----------------------------- | -------- | --------------------------------------------------------- |
-| `GET /users`                  | ADMIN    | List all users in tenant (paginated, filter by role/dept) |
-| `GET /users/me`               | Any      | Get own profile                                           |
-| `PATCH /users/me`             | Any      | Update own profile (name, phone, etc.)                    |
-| `GET /users/:id`              | ADMIN    | Get user by ID (tenant-scoped)                            |
-| `PATCH /users/:id/role`       | ADMIN    | Change user role (hierarchy-checked)                      |
-| `PATCH /users/:id/deactivate` | ADMIN    | Soft-deactivate user                                      |
+| Endpoint                      | Min Role | Description                                                                                          |
+| ----------------------------- | -------- | ---------------------------------------------------------------------------------------------------- |
+| `GET /users`                  | ADMIN    | List all users in tenant (paginated, filter by role/dept/search); `departmentId` param supported     |
+| `GET /users/me`               | Any      | Get own profile                                                                                      |
+| `PATCH /users/me`             | Any      | Update own profile (name, phone, etc.)                                                               |
+| `GET /users/:id`              | ADMIN    | Get user by ID (tenant-scoped)                                                                       |
+| `PATCH /users/:id/role`       | ADMIN    | Change user role + optionally assign to department (both in one call, hierarchy-checked)             |
+| `PATCH /users/:id/department` | ADMIN    | Change only the user's department without affecting their role. Body: `{ departmentId: uuid\|null }` |
+| `PATCH /users/:id/deactivate` | ADMIN    | Soft-deactivate user                                                                                 |
 
 ---
 
