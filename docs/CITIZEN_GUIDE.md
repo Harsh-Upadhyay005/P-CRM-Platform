@@ -29,14 +29,17 @@ No login or account is required.
 
 ### What to fill in
 
-| Field         | Required | Description                                                                |
-| ------------- | -------- | -------------------------------------------------------------------------- |
-| Full Name     | ✅       | Your name as you would like it on the complaint                            |
-| Phone Number  | ✅       | Office staff may use this to contact you if they need details              |
-| Email Address | ⬜       | Optional — but recommended so we can send you your Tracking ID             |
-| Category      | ✅       | Choose the area your problem falls under (e.g., Roads, Water, Electricity) |
-| Description   | ✅       | Describe your problem in as much detail as possible                        |
-| Attachments   | ⬜       | You may attach photos or documents (max 10 MB each, up to 5 files)         |
+| Field           | Required | Description                                                                                                                          |
+| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Organisation    | ✅       | Select your municipality or government office from the dropdown                                                                      |
+| Full Name       | ✅       | Your name as you would like it on the complaint                                                                                      |
+| Phone Number    | ✅       | Office staff may use this to contact you if they need details                                                                        |
+| Email Address   | ✅       | Required — used to send you your Tracking ID and status updates                                                                      |
+| Locality / Area | ⬜       | The specific neighbourhood, ward, or area (e.g. `BHU, Varanasi`). Helps route your complaint correctly and avoids false duplicates |
+| Category        | ⬜       | Choose the area your problem falls under (e.g., Roads, Water, Electricity)                                                           |
+| Department      | ⬜       | Optionally select the responsible department; leave blank to let the system assign automatically                                     |
+| Description     | ✅       | Describe your problem in as much detail as possible                                                                                  |
+| Attachments     | ⬜       | Sign in to the staff portal to attach photos or documents — not available on this public page                                        |
 
 ### Submitting
 

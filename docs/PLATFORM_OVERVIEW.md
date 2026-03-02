@@ -257,14 +257,16 @@ The dashboard is a full-featured **Next.js 16** single-page application with:
 
 ```
 1. Citizen visits the public complaint portal
-2. Fills in: name, phone, email (optional), description, category
-3. Submits — no account required
-4. System:
+2. Selects their organisation (municipality/office) from the live dropdown
+3. Fills in: name, phone, email (required), locality/area (optional),
+   category, department (optional — leave blank for AI auto-routing), description
+4. Submits — no account required
+5. System:
    a. Assigns unique Tracking ID (PCRM-20260225-A4F7B3C2)
    b. Runs AI analysis → sets priority score + sentiment score
    c. Creates complaint with status: OPEN
-5. Citizen receives tracking ID — can check status anytime at /track/{id}
-6. Call Operator / Admin sees new complaint on dashboard (live SSE notification)
+6. Citizen receives tracking ID — can check status anytime at /track/{id}
+7. Call Operator / Admin sees new complaint on dashboard (live SSE notification)
 ```
 
 ---

@@ -145,17 +145,14 @@ export default function NewComplaintPage() {
                 <input
                     {...register('locality')}
                     className="w-full bg-slate-950/50 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all placeholder:text-slate-600"
-                    placeholder="e.g. Lanka, Varanasi"
+                    placeholder="e.g. BHU, Varanasi"
                 />
                 <p className="text-slate-500 text-xs">Helps route the complaint to the right officer and prevents false duplicates from other areas.</p>
                 {errors.locality && <p className="text-red-400 text-xs">{errors.locality.message}</p>}
             </div>
 
-            {departments.length > 0 && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">
-                  Department <span className="text-slate-500 font-normal">(optional)</span>
-                </label>
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-300">Department <span className="text-slate-500 font-normal">(optional)</span></label>
                 <select
                   value={selectedDeptId}
                   onChange={(e) => setSelectedDeptId(e.target.value)}
@@ -167,8 +164,7 @@ export default function NewComplaintPage() {
                   ))}
                 </select>
                 <p className="text-slate-500 text-xs">Leave blank to let the system route this complaint automatically.</p>
-              </div>
-            )}
+            </div>
 
             <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-300">Complaint Description <span className="text-red-400">*</span></label>
