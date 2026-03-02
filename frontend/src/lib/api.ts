@@ -292,7 +292,7 @@ export const departmentsApi = {
     const response = await api.get<ApiResponse<Department>>(`/departments/${id}`);
     return response.data;
   },
-  create: async (data: { name: string; slug?: string; slaHours?: number }) => {
+  create: async (data: { name: string; slug?: string; slaHours?: number; serviceAreas?: string[] }) => {
     const response = await api.post<ApiResponse<Department>>('/departments', data);
     return response.data;
   },
@@ -302,6 +302,11 @@ export const departmentsApi = {
   },
   delete: async (id: string) => {
     const response = await api.delete<ApiResponse<null>>(`/departments/${id}`);
+    return response.data;
+  },
+  // Assign a user to this department (or unassign with null) without changing their role
+  assignUser: async (userId: string, departmentId: string | null) => {
+    const response = await api.patch<ApiResponse<User>>(`/users/${userId}/department`, { departmentId });
     return response.data;
   },
 };

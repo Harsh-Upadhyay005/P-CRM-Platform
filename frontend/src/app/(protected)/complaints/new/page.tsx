@@ -2,21 +2,25 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { complaintsApi, getErrorMessage } from '@/lib/api';
+import { complaintsApi, departmentsApi, getErrorMessage } from '@/lib/api';
 import { COMPLAINT_CATEGORIES } from '@/lib/constants';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, Save, Paperclip, X, FileText, Image } from 'lucide-react';
 import Link from 'next/link';
+import { Department } from '@/types';
 
 const createComplaintSchema = z.object({
   citizenName: z.string().min(2, 'Name is too short'),
   citizenPhone: z.string().regex(/^\+?[\d\s\-().]{7,20}$/, 'Invalid phone number'),
   citizenEmail: z.union([z.string().email(), z.literal('')]).optional(),
+  locality: z.string().min(2, 'Locality is too short').max(150).optional().or(z.literal('')),
   description: z.string().min(10, 'Description must be at least 10 characters').max(5000),
   category: z.string().optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
+  departmentId: z.string().uuid().optional().nullable(),
 });
 
 type ComplaintForm = z.infer<typeof createComplaintSchema>;
@@ -27,10 +31,18 @@ export default function NewComplaintPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categorySelect, setCategorySelect] = useState('');
   const [categoryOther, setCategoryOther] = useState('');
+  const [selectedDeptId, setSelectedDeptId] = useState('');
   const { register, handleSubmit, formState: { errors } } = useForm<ComplaintForm>({
     resolver: zodResolver(createComplaintSchema),
     defaultValues: { citizenEmail: user?.email ?? '' },
   });
+
+  const { data: deptsData } = useQuery({
+    queryKey: ['departments', 'for-complaint-form'],
+    queryFn: () => departmentsApi.list(),
+    staleTime: 60_000,
+  });
+  const departments: Department[] = deptsData?.data?.data ?? [];
 
   const [submitError, setSubmitError] = useState('');
   const [attachments, setAttachments] = useState<File[]>([]);
@@ -57,8 +69,10 @@ export default function NewComplaintPage() {
     try {
       const res = await complaintsApi.create({
         ...formData,
+        locality: formData.locality || undefined,
         category: resolvedCategory || undefined,
         citizenEmail: formData.citizenEmail || undefined,
+        departmentId: selectedDeptId || undefined,
       });
       const complaintId = (res.data as { id: string }).id;
       if (attachments.length > 0 && complaintId) {
@@ -125,6 +139,36 @@ export default function NewComplaintPage() {
                 />
                  {errors.citizenEmail && <p className="text-red-400 text-xs">{errors.citizenEmail.message}</p>}
             </div>
+
+            <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-300">Locality / Area <span className="text-slate-500 font-normal">(optional)</span></label>
+                <input
+                    {...register('locality')}
+                    className="w-full bg-slate-950/50 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all placeholder:text-slate-600"
+                    placeholder="e.g. Lanka, Varanasi"
+                />
+                <p className="text-slate-500 text-xs">Helps route the complaint to the right officer and prevents false duplicates from other areas.</p>
+                {errors.locality && <p className="text-red-400 text-xs">{errors.locality.message}</p>}
+            </div>
+
+            {departments.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-300">
+                  Department <span className="text-slate-500 font-normal">(optional)</span>
+                </label>
+                <select
+                  value={selectedDeptId}
+                  onChange={(e) => setSelectedDeptId(e.target.value)}
+                  className="w-full bg-slate-950/50 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
+                >
+                  <option value="">Auto-route (AI)</option>
+                  {departments.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+                <p className="text-slate-500 text-xs">Leave blank to let the system route this complaint automatically.</p>
+              </div>
+            )}
 
             <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-300">Complaint Description <span className="text-red-400">*</span></label>

@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, Building, ArrowRight, ArrowLeft, Loader2, LayoutGrid, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, Building, ArrowRight, ArrowLeft, Loader2, LayoutGrid, Eye, EyeOff, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
 import AbstractBackground from '@/components/3d/AbstractBackground';
 import { authApi } from '@/lib/api';
@@ -12,12 +12,28 @@ export default function SignupPage() {
     name: '',
     email: '',
     password: '',
-    tenantSlug: 'main-office',
+    tenantSlug: '',
   });
+  const [tenants, setTenants] = useState<{ name: string; slug: string }[]>([]);
+  const [tenantsLoading, setTenantsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/v1/complaints/public/tenants')
+      .then((r) => r.json())
+      .then((data) => {
+        const list: { name: string; slug: string }[] = Array.isArray(data?.data) ? data.data : [];
+        setTenants(list);
+        if (list.length > 0) {
+          setFormData((prev) => ({ ...prev, tenantSlug: list[0].slug }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setTenantsLoading(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,18 +194,41 @@ export default function SignupPage() {
             </div>
 
             <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">Organization ID</label>
+                <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">Organization</label>
                 <div className="relative group">
-                    <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" />
-                    <input
-                        type="text"
-                        required
-                        className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-4 text-zinc-200 text-sm placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30"
-                        placeholder="workspace-slug"
-                        value={formData.tenantSlug}
-                        onChange={(e) => setFormData({ ...formData, tenantSlug: e.target.value })}
-                    />
+                    <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors z-10 pointer-events-none" />
+                    {tenantsLoading ? (
+                      <div className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-4 text-zinc-500 text-sm animate-pulse">
+                        Loading organizations…
+                      </div>
+                    ) : tenants.length > 0 ? (
+                      <>
+                        <select
+                          required
+                          value={formData.tenantSlug}
+                          onChange={(e) => setFormData({ ...formData, tenantSlug: e.target.value })}
+                          className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-8 text-zinc-200 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30 appearance-none"
+                        >
+                          {tenants.map((t) => (
+                            <option key={t.slug} value={t.slug} className="bg-slate-900">
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
+                      </>
+                    ) : (
+                      <input
+                          type="text"
+                          required
+                          className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-4 text-zinc-200 text-sm placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30"
+                          placeholder="workspace-slug"
+                          value={formData.tenantSlug}
+                          onChange={(e) => setFormData({ ...formData, tenantSlug: e.target.value })}
+                      />
+                    )}
                 </div>
+                <p className="text-[10px] text-zinc-500 mt-1">Select your organisation / municipality.</p>
             </div>
 
             <button

@@ -72,20 +72,45 @@ Every new complaint is automatically analysed by three built-in AI engines — n
 
 ---
 
-### 3. Department & Officer Assignment with Scope Enforcement
+### 3. Department Setup, Service Areas & Member Management
 
-Complaints are routed to the responsible department and assigned to a specific officer. The system enforces:
+Each department in P-CRM is more than a label — it is a full operational unit with configurable coverage, staff, and leadership:
+
+**Service Areas** — When creating or editing a department, admins can add a list of ward/area/block names the department covers (e.g. `Lanka, Varanasi`, `BHU, Varanasi`, `Durga Kund, Varanasi`). This gives operators accurate context when routing a complaint and prevents the AI duplicate-detection engine from cross-matching geographically distinct complaints that happen to use similar language.
+
+**Member Management** — Admins can open a **Members** panel on any department card to:
+
+- See all staff currently assigned to that department
+- Assign any existing tenant user to the department without changing their role
+- Remove a user from the department
+- Promote a user to **Department Head** (changes their system role to `DEPARTMENT_HEAD`)
+
+**Assignment Scope Enforcement**
 
 - A **Department Head can only assign within their own department** — no cross-department interference
 - An **Officer only sees complaints assigned to them** — no information overload, no confusion
 - Any user with role `OFFICER` or above can be assigned as a handler; `CALL_OPERATOR` is the only role that cannot be assigned
 - Assignment automatically moves the complaint to `ASSIGNED` status and notifies the officer in real time
 
-**Benefit for Government:** Clear ownership from the moment a complaint moves forward. No officer can claim they "didn't see it." No department can push work across boundaries without authorisation.
+**Benefit for Government:** Departments map to real administrative units with defined geographic responsibility. Leadership can set up each department once — areas, staff, head — and the system handles routing, scope enforcement, and accountability automatically.
 
 ---
 
-### 4. Structured Status Lifecycle
+### 11. Tenant vs Department — What Is the Difference?
+
+| Concept        | What It Represents                                                                                                                                                        | Example                                                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Tenant**     | A single government body or organisation that subscribes to P-CRM. All data for a tenant (users, departments, complaints) is completely isolated from every other tenant. | _Varanasi Nagar Nigam_, _Delhi Municipal Corporation_, _Agra Development Authority_                                               |
+| **Department** | An internal operational division **within** a tenant. A tenant can have many departments, each with its own staff, service areas, SLA, and head.                          | Within _Varanasi Nagar Nigam_: _Water & Sanitation_, _Roads & Infrastructure_, _Electricity Department_, _Solid Waste Management_ |
+
+**In plain terms:**
+
+- **Tenant = Organisation** (the whole municipality or body)
+- **Department = Team inside the organisation** (handles a specific type of complaint)
+
+A `SUPER_ADMIN` can see and manage all tenants. An `ADMIN` can only manage their own tenant. A `DEPARTMENT_HEAD` can only manage their own department within their tenant.
+
+---
 
 Every complaint moves through a defined, role-gated workflow:
 

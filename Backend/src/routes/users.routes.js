@@ -9,6 +9,7 @@ import {
   updateMyProfileSchema,
   changePasswordSchema,
   createUserSchema,
+  assignDepartmentSchema,
 } from "../validators/users.validators.js";
 
 const router = express.Router();
@@ -49,6 +50,13 @@ router.patch(
   authorizeMinimum("ADMIN"),
   validate(assignRoleSchema),
   controller.assignRole,
+);
+
+router.patch(
+  "/:id/department",
+  authorizeMinimum("ADMIN"),
+  validate(assignDepartmentSchema),
+  controller.assignDepartment,
 );
 
 router.patch(

@@ -17,7 +17,7 @@ import {
 import {
   ArrowLeft, FileText, User as UserIcon, Phone, Mail, Clock, Tag,
   Building2, Paperclip, MessageSquare, AlertTriangle, Send, Upload, Trash2,
-  ChevronRight, RefreshCw, Trash, Star, Edit2, Timer, Copy, ExternalLink,
+  ChevronRight, RefreshCw, Trash, Star, Edit2, Timer, Copy, ExternalLink, MapPin,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
@@ -469,6 +469,11 @@ export default function ComplaintDetailPage() {
               {complaint.citizenEmail && (
                 <div className="flex items-center gap-2 text-slate-400">
                   <Mail size={12} /> <span className="truncate">{complaint.citizenEmail}</span>
+                </div>
+              )}
+              {complaint.locality && (
+                <div className="flex items-center gap-2 text-slate-400">
+                  <MapPin size={12} /> <span className="truncate">{complaint.locality}</span>
                 </div>
               )}
             </CardContent>

@@ -8,6 +8,10 @@ const RoleType = z.enum([
   "CALL_OPERATOR",
 ]);
 
+export const assignDepartmentSchema = z.object({
+  departmentId: z.string().uuid("Invalid department ID").nullable(),
+});
+
 export const assignRoleSchema = z.object({
   roleType:     RoleType,
   departmentId: z.string().uuid("Invalid department ID").optional().nullable(),

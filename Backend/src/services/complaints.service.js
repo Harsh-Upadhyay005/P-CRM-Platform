@@ -15,6 +15,7 @@ const complaintSummarySelect = {
   citizenName: true,
   citizenPhone: true,
   citizenEmail: true,
+  locality: true,
   category: true,
   priority: true,
   status: true,
@@ -111,7 +112,7 @@ const assertComplaintAccess = async (complaint, user) => {
 };
 
 export const createComplaint = async (data, user) => {
-  const { citizenName, citizenPhone, citizenEmail, description, category, priority, departmentId } = data;
+  const { citizenName, citizenPhone, citizenEmail, locality, description, category, priority, departmentId } = data;
 
   if (departmentId) {
     const dept = await prisma.department.findFirst({
@@ -128,6 +129,7 @@ export const createComplaint = async (data, user) => {
     category:  category ?? null,
     tenantId:  user.tenantId,
     excludeId: null,
+    locality:  locality ?? null,
   });
 
   // Use AI-suggested priority only when the caller did not explicitly provide one
@@ -141,6 +143,7 @@ export const createComplaint = async (data, user) => {
       citizenName,
       citizenPhone,
       citizenEmail,
+      locality:       locality ?? null,
       description,
       category,
       priority:       resolvedPriority,
@@ -608,7 +611,7 @@ export const getInternalNotes = async (complaintId, user) => {
 // ── CITIZEN SELF-FILING (public — no auth) ────────────────────────────────
 
 export const createPublicComplaint = async (data) => {
-  const { citizenName, citizenPhone, citizenEmail, description, category, priority, departmentId, tenantSlug } = data;
+  const { citizenName, citizenPhone, citizenEmail, locality, description, category, priority, departmentId, tenantSlug } = data;
 
   // Resolve tenant from slug
   const tenant = await prisma.tenant.findFirst({
@@ -628,6 +631,7 @@ export const createPublicComplaint = async (data) => {
     category:  category ?? null,
     tenantId:  tenant.id,
     excludeId: null,
+    locality:  locality ?? null,
   });
 
   const resolvedPriority = priority ?? aiResult.suggestedPriority ?? "MEDIUM";
@@ -640,6 +644,7 @@ export const createPublicComplaint = async (data) => {
       citizenName,
       citizenPhone,
       citizenEmail,
+      locality:       locality ?? null,
       description,
       category:       category ?? null,
       priority:       resolvedPriority,
