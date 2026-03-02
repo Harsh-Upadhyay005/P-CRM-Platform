@@ -78,6 +78,7 @@ Complaints are routed to the responsible department and assigned to a specific o
 
 - A **Department Head can only assign within their own department** — no cross-department interference
 - An **Officer only sees complaints assigned to them** — no information overload, no confusion
+- Any user with role `OFFICER` or above can be assigned as a handler; `CALL_OPERATOR` is the only role that cannot be assigned
 - Assignment automatically moves the complaint to `ASSIGNED` status and notifies the officer in real time
 
 **Benefit for Government:** Clear ownership from the moment a complaint moves forward. No officer can claim they "didn't see it." No department can push work across boundaries without authorisation.
@@ -149,9 +150,11 @@ Officers and department heads can add internal staff notes to complaints — not
 
 ### 9. Citizen Feedback & Satisfaction Rating
 
-After a complaint is resolved, the citizen can submit a satisfaction rating (1–5) and a comment using only their tracking ID — no login required. This data is available to staff and management.
+After a complaint is resolved, the staff member who originally filed the complaint can submit a satisfaction rating (1–5 stars) and a free-text comment from the **complaint detail page** inside their dashboard. The feedback form appears automatically when the complaint reaches `RESOLVED` or `CLOSED` status. Authentication is required — only the person who filed the complaint can submit feedback, and each complaint can receive exactly one feedback response.
 
-**Benefit for Government:** Objective, citizen-reported data on service quality. Not what the office thinks it delivered — what the citizen actually experienced. Directly actionable for improvement.
+Feedback data is visible to all staff with complaint access, and feeds into analytics (average satisfaction scores per department).
+
+**Benefit for Government:** Objective, staff-recorded satisfaction data on service quality tied directly to authenticated records — preventing spoofed or duplicate submissions.
 
 ---
 
@@ -199,13 +202,13 @@ Admins and Department Heads can export complaint data and analytics reports as C
 
 ## Who Uses P-CRM
 
-| Role                | Who They Are                         | What They Do                                                               |
-| ------------------- | ------------------------------------ | -------------------------------------------------------------------------- |
-| **Call Operator**   | Front-desk staff, call centre agents | Log complaints, track them by ID                                           |
-| **Officer**         | Field officers, resolution staff     | Action complaints assigned to them, update status, add notes               |
-| **Department Head** | HOD, section chief                   | Assign complaints within department, view department analytics, manage SLA |
-| **Admin**           | Office administrator, IT manager     | Full office management — users, departments, all complaints                |
-| **Super Admin**     | Central IT / platform operator       | Cross-office management, tenant provisioning, platform-wide audit          |
+| Role                | Who They Are                         | What They Do                                                                                    |
+| ------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
+| **Call Operator**   | Front-desk staff, call centre agents | Log complaints, track them by ID, submit satisfaction feedback after resolution                 |
+| **Officer**         | Field officers, resolution staff     | Action complaints assigned to them, update status, add notes                                    |
+| **Department Head** | HOD, section chief                   | Assign complaints within department, view department analytics, manage SLA                      |
+| **Admin**           | Office administrator, IT manager     | Full office management — users, departments, all complaints; can be assigned as a handler       |
+| **Super Admin**     | Central IT / platform operator       | Cross-office management, tenant provisioning, platform-wide audit; can be assigned as a handler |
 
 ---
 
@@ -307,16 +310,20 @@ The dashboard is a full-featured **Next.js 16** single-page application with:
 
 ---
 
-### Workflow 6 — Citizen Tracks & Gives Feedback
+### Workflow 6 — Filing Staff Submits Feedback
 
 ```
-1. Citizen enters tracking ID at /track/PCRM-20260225-A4F7B3C2
-2. Sees: status RESOLVED, resolved on 2026-02-24, department: Water & Sanitation
-3. Receives prompt: "Was your issue resolved? Rate our service."
-4. Submits: 4 stars, comment "Fixed but took longer than expected"
-5. Feedback stored against complaint — visible to staff and management
-6. Appears in analytics: avg citizen satisfaction score for Water dept = 3.8/5
+1. Staff member (Call Operator or Admin) logs in and opens their complaint list
+2. Finds the resolved complaint PCRM-20260225-A4F7B3C2
+3. Opens complaint detail page — sees status: RESOLVED
+4. Feedback section appears in the right sidebar (visible only to the user who filed it)
+5. Selects 4 stars, types: "Fixed but took longer than expected"
+6. Clicks Submit Feedback
+7. Feedback stored against complaint — visible to all staff with access
+8. Appears in analytics: avg citizen satisfaction score for Water dept = 3.8/5
 ```
+
+> Citizens who did not file via a staff account can check status at `/track/{trackingId}` at any time. The public tracker shows the current status and history but does not include the feedback form.
 
 ---
 

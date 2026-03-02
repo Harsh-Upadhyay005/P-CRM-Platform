@@ -340,6 +340,11 @@ Login
 Access Token (JWT, 15m)   → set as httpOnly cookie "accessToken"
 Refresh Token (hex, 7d)   → SHA-256 hashed → stored in DB
                           → raw value set as httpOnly cookie "refreshToken" (path: /api/v1/auth)
+  ↓
+User object also written to browser localStorage ("p-crm-user-cache")
+  → On next load, UI renders instantly from cache; background getMe() re-validates silently
+  → If getMe() times out after 7 s (e.g. backend cold-starting), cache is preserved
+  → On 401 / logout, cache is cleared
 
 Auth Request
   ↓
@@ -355,6 +360,7 @@ Old refresh token deleted + new one created in a single DB $transaction (atomic 
 Logout / Password Reset
   ↓
 JWT JTI added to Redis blacklist (TTL = remaining token lifetime until natural expiry)
+Browser localStorage cache cleared on logout
 ```
 
 ---
@@ -419,14 +425,15 @@ Five fixed system roles — ranked by privilege level.
 
 ### CALL_OPERATOR
 
-| Action                                  | Allowed |
-| --------------------------------------- | ------- |
-| Create a new complaint                  | ✅      |
-| View complaints they created            | ✅      |
-| Track complaint by tracking ID (public) | ✅      |
-| Change complaint status                 | ❌      |
-| Assign complaints                       | ❌      |
-| View complaints created by others       | ❌      |
+| Action                                                 | Allowed |
+| ------------------------------------------------------ | ------- |
+| Create a new complaint                                 | ✅      |
+| View complaints they created                           | ✅      |
+| Track complaint by tracking ID (public)                | ✅      |
+| Submit feedback on their own resolved/closed complaint | ✅      |
+| Change complaint status                                | ❌      |
+| Assign complaints                                      | ❌      |
+| View complaints created by others                      | ❌      |
 
 ---
 
@@ -472,8 +479,9 @@ Both must pass. A role with full permissions still cannot skip from `OPEN → CL
 
 1. Only `ADMIN` or `DEPARTMENT_HEAD` may call this endpoint
 2. Target officer must be in same **tenant**
-3. If actor is `DEPARTMENT_HEAD` → officer must be in the **same department** as the complaint's target department
-4. Automatically transitions `OPEN → ASSIGNED` on first assignment
+3. Target officer must **not** have role `CALL_OPERATOR` (any other role — including `ADMIN` or `SUPER_ADMIN` — may be assigned)
+4. If actor is `DEPARTMENT_HEAD` → officer must be in the **same department** as the complaint's target department
+5. Automatically transitions `OPEN → ASSIGNED` on first assignment
 
 ---
 
@@ -713,24 +721,24 @@ Attachments are stored in **Supabase Storage**. Multer buffers the upload in mem
 
 ### Complaints — `/api/v1/complaints`
 
-| Method   | Endpoint                         | Auth | Min Role        | Description                                                           |
-| -------- | -------------------------------- | ---- | --------------- | --------------------------------------------------------------------- |
-| `GET`    | `/track/:trackingId`             | ❌   | —               | Citizen self-service status check by tracking ID                      |
-| `POST`   | `/public`                        | ❌   | —               | Citizen-facing complaint submission (rate limited, no account needed) |
-| `POST`   | `/feedback/:trackingId`          | ❌   | —               | Citizen submits satisfaction rating + comment after resolution        |
-| `POST`   | `/`                              | ✅   | CALL_OPERATOR   | Staff-filed complaint (AI analysis runs on create)                    |
-| `GET`    | `/`                              | ✅   | CALL_OPERATOR   | List complaints (auto-scoped by role + full-text search)              |
-| `GET`    | `/:id`                           | ✅   | CALL_OPERATOR   | Get single complaint with SLA summary (scoped — 404 if out of scope)  |
-| `PATCH`  | `/:id`                           | ✅   | ADMIN           | Update description / category / priority                              |
-| `PATCH`  | `/:id/assign`                    | ✅   | DEPARTMENT_HEAD | Assign officer + department (department scope enforced)               |
-| `PATCH`  | `/:id/status`                    | ✅   | OFFICER         | Change status (two-layer role-gated transition engine)                |
-| `DELETE` | `/:id`                           | ✅   | ADMIN           | Soft delete (`isDeleted: true`)                                       |
-| `POST`   | `/:id/notes`                     | ✅   | OFFICER         | Add internal note (staff-only)                                        |
-| `GET`    | `/:id/notes`                     | ✅   | OFFICER         | List internal notes for a complaint                                   |
-| `GET`    | `/:id/feedback`                  | ✅   | OFFICER         | Get submitted citizen feedback for a complaint                        |
-| `POST`   | `/:id/attachments`               | ✅   | CALL_OPERATOR   | Upload up to 5 files to Supabase Storage                              |
-| `GET`    | `/:id/attachments`               | ✅   | CALL_OPERATOR   | List attachments (returns 1-hour signed URLs)                         |
-| `DELETE` | `/:id/attachments/:attachmentId` | ✅   | ADMIN           | Delete attachment from DB + Supabase                                  |
+| Method   | Endpoint                         | Auth | Min Role        | Description                                                                                       |
+| -------- | -------------------------------- | ---- | --------------- | ------------------------------------------------------------------------------------------------- |
+| `GET`    | `/track/:trackingId`             | ❌   | —               | Citizen self-service status check by tracking ID                                                  |
+| `POST`   | `/public`                        | ❌   | —               | Citizen-facing complaint submission (rate limited, no account needed)                             |
+| `POST`   | `/:id/feedback`                  | ✅   | CALL_OPERATOR   | Submit satisfaction rating + comment (only by the complaint's creator, only when RESOLVED/CLOSED) |
+| `POST`   | `/`                              | ✅   | CALL_OPERATOR   | Staff-filed complaint (AI analysis runs on create)                                                |
+| `GET`    | `/`                              | ✅   | CALL_OPERATOR   | List complaints (auto-scoped by role + full-text search)                                          |
+| `GET`    | `/:id`                           | ✅   | CALL_OPERATOR   | Get single complaint with SLA summary (scoped — 404 if out of scope)                              |
+| `PATCH`  | `/:id`                           | ✅   | ADMIN           | Update description / category / priority                                                          |
+| `PATCH`  | `/:id/assign`                    | ✅   | DEPARTMENT_HEAD | Assign officer + department (department scope enforced)                                           |
+| `PATCH`  | `/:id/status`                    | ✅   | OFFICER         | Change status (two-layer role-gated transition engine)                                            |
+| `DELETE` | `/:id`                           | ✅   | ADMIN           | Soft delete (`isDeleted: true`)                                                                   |
+| `POST`   | `/:id/notes`                     | ✅   | OFFICER         | Add internal note (staff-only)                                                                    |
+| `GET`    | `/:id/notes`                     | ✅   | OFFICER         | List internal notes for a complaint                                                               |
+| `GET`    | `/:id/feedback`                  | ✅   | OFFICER         | Get submitted citizen feedback for a complaint (staff view)                                       |
+| `POST`   | `/:id/attachments`               | ✅   | CALL_OPERATOR   | Upload up to 5 files to Supabase Storage                                                          |
+| `GET`    | `/:id/attachments`               | ✅   | CALL_OPERATOR   | List attachments (returns 1-hour signed URLs)                                                     |
+| `DELETE` | `/:id/attachments/:attachmentId` | ✅   | ADMIN           | Delete attachment from DB + Supabase                                                              |
 
 ---
 
