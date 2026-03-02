@@ -240,8 +240,8 @@ export const complaintsApi = {
     const response = await api.get<ApiResponse<{ id: string; name: string }[]>>(`/complaints/public/tenant/${slug}/departments`);
     return response.data;
   },
-  submitFeedback: async (trackingId: string, data: { rating: number; comment?: string }) => {
-    const response = await api.post<ApiResponse<null>>(`/complaints/feedback/${trackingId}`, data);
+  submitFeedback: async (id: string, data: { rating: number; comment?: string }) => {
+    const response = await api.post<ApiResponse<null>>(`/complaints/${id}/feedback`, data);
     return response.data;
   },
 };

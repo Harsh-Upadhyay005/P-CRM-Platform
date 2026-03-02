@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { complaintsApi, getErrorMessage } from '@/lib/api';
 import { Complaint, ComplaintStatus } from '@/types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, CheckCircle2, Clock, AlertCircle, ChevronRight, Star, Send } from 'lucide-react';
+import { Search, CheckCircle2, Clock, AlertCircle, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import AbstractBackground from '@/components/3d/AbstractBackground';
 
@@ -29,19 +29,12 @@ export default function TrackPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Feedback
-  const [feedbackRating, setFeedbackRating] = useState(0);
-  const [feedbackComment, setFeedbackComment] = useState('');
-  const [feedbackSent, setFeedbackSent] = useState(false);
-  const [feedbackLoading, setFeedbackLoading] = useState(false);
-
   async function handleTrack(e: React.FormEvent) {
     e.preventDefault();
     if (!trackingId.trim()) return;
     setLoading(true);
     setError('');
     setComplaint(null);
-    setFeedbackSent(false);
     try {
       const res = await complaintsApi.track(trackingId.trim().toUpperCase());
       setComplaint(res.data);
@@ -49,21 +42,6 @@ export default function TrackPage() {
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleFeedback(e: React.FormEvent) {
-    e.preventDefault();
-    if (!feedbackRating || !complaint) return;
-    setFeedbackLoading(true);
-    try {
-      await complaintsApi.submitFeedback(complaint.trackingId, { rating: feedbackRating, comment: feedbackComment });
-      setFeedbackSent(true);
-      toast.success('Thank you for your feedback!');
-    } catch (err) {
-      toast.error(getErrorMessage(err));
-    } finally {
-      setFeedbackLoading(false);
     }
   }
 
@@ -97,7 +75,7 @@ export default function TrackPage() {
           type="text"
           value={trackingId}
           onChange={(e) => setTrackingId(e.target.value.toUpperCase())}
-          placeholder="e.g. CMP-2024-XXXXXX"
+          placeholder="e.g. PCRM-20260101-A1B2C3D4"
           className="flex-1 bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 font-mono text-sm focus:outline-none focus:border-purple-500/50 backdrop-blur-md"
         />
         <button
@@ -210,49 +188,6 @@ export default function TrackPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Feedback — only if resolved/closed */}
-            {(complaint.status === 'RESOLVED' || complaint.status === 'CLOSED') && (
-              <div className="bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-2xl p-5">
-                <h3 className="text-sm font-semibold text-white mb-1">How was your experience?</h3>
-                <p className="text-slate-500 text-xs mb-4">Your feedback helps us improve our services</p>
-                {feedbackSent ? (
-                  <div className="flex items-center gap-2 text-emerald-400">
-                    <CheckCircle2 size={16} />
-                    <span className="text-sm">Thank you for your feedback!</span>
-                  </div>
-                ) : (
-                  <form onSubmit={handleFeedback} className="space-y-3">
-                    <div className="flex gap-1">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          type="button"
-                          key={star}
-                          onClick={() => setFeedbackRating(star)}
-                          className={`text-xl transition-colors ${star <= feedbackRating ? 'text-amber-400' : 'text-slate-700 hover:text-amber-400/60'}`}
-                        >
-                          <Star size={24} fill={star <= feedbackRating ? 'currentColor' : 'none'} />
-                        </button>
-                      ))}
-                    </div>
-                    <textarea
-                      value={feedbackComment}
-                      onChange={(e) => setFeedbackComment(e.target.value)}
-                      placeholder="Tell us more (optional)…"
-                      rows={2}
-                      className="w-full bg-slate-800/60 border border-white/10 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 resize-none focus:outline-none focus:border-purple-500/50"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!feedbackRating || feedbackLoading}
-                      className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-medium rounded-lg transition-colors"
-                    >
-                      <Send size={13} /> {feedbackLoading ? 'Sending…' : 'Submit Feedback'}
-                    </button>
-                  </form>
-                )}
               </div>
             )}
           </motion.div>

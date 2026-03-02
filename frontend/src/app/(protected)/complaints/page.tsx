@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { complaintsApi, departmentsApi } from '@/lib/api';
 import { Complaint, ComplaintStatus, Priority, Department } from '@/types';
+import { useRole } from '@/hooks/useRole';
 import Link from 'next/link';
 import { Plus, Search, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
 import {
@@ -45,6 +46,8 @@ function StatusBadge({ status }: { status: ComplaintStatus }) {
 }
 
 export default function ComplaintsPage() {
+  const { role } = useRole();
+  const isOfficerOnly = role === 'OFFICER';
   const [statusFilter, setStatusFilter] = useState<ComplaintStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<Priority | ''>('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('');
@@ -78,9 +81,13 @@ export default function ComplaintsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white">Complaints</h1>
+          <h1 className="text-3xl font-bold text-white">
+            {isOfficerOnly ? 'My Assigned Complaints' : 'Complaints'}
+          </h1>
           <p className="text-slate-400 text-sm mt-1">
-            Manage and track citizen complaints
+            {isOfficerOnly
+              ? 'Complaints assigned to you for resolution'
+              : 'Manage and track citizen complaints'}
             {pagination && <span className="ml-2 text-slate-600">({pagination.total} total)</span>}
           </p>
         </div>

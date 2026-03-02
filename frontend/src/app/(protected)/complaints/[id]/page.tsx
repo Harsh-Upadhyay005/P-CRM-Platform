@@ -23,6 +23,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { useRole } from '@/hooks/useRole';
+import { useAuth } from '@/hooks/useAuth';
 
 // ─── Status transition map (mirrors backend statusEngine.js) ──────────────────
 const TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {
@@ -84,6 +85,7 @@ export default function ComplaintDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { isAdmin, isDeptHead, isCallOperator, role } = useRole();
+  const { user: authUser } = useAuth();
   const qc = useQueryClient();
 
   const [noteText, setNoteText] = useState('');
@@ -99,6 +101,8 @@ export default function ComplaintDetailPage() {
   const [editDescription, setEditDescription] = useState('');
   const [editCategory, setEditCategory] = useState('');
   const [editPriority, setEditPriority] = useState<Priority>('MEDIUM');
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState('');
 
   const { data: complaintData, isLoading } = useQuery({
     queryKey: ['complaint', id],
@@ -123,10 +127,22 @@ export default function ComplaintDetailPage() {
 
   const { data: officersData } = useQuery({
     queryKey: ['officers'],
-    queryFn: () => usersApi.list({ limit: 100, role: 'OFFICER' }),
+    queryFn: () => usersApi.list({ limit: 100 }),
     enabled: isAdmin || isDeptHead,
   });
   const officers: User[] = officersData?.data?.data ?? [];
+
+  // Role rank map — mirrors backend roleHierarchy.js
+  const ROLE_RANK_FE: Record<string, number> = {
+    SUPER_ADMIN: 5, ADMIN: 4, DEPARTMENT_HEAD: 3, OFFICER: 2, CALL_OPERATOR: 1,
+  };
+  const currentRank = ROLE_RANK_FE[role ?? ''] ?? 0;
+
+  // Exclude CALL_OPERATORs; never show users whose rank exceeds the logged-in user's rank
+  const displayedOfficers = officers
+    .filter((o) => o.role?.type !== 'CALL_OPERATOR')
+    .filter((o) => (ROLE_RANK_FE[o.role?.type ?? ''] ?? 0) <= currentRank)
+    .filter((o) => !assignDepartmentId || o.department?.id === assignDepartmentId);
 
   const { data: departmentsData } = useQuery({
     queryKey: ['departments-list'],
@@ -192,6 +208,18 @@ export default function ComplaintDetailPage() {
   const deleteAttachMutation = useMutation({
     mutationFn: (attachId: string) => complaintsApi.deleteAttachment(id, attachId),
     onSuccess: () => { toast.success('Attachment deleted'); qc.invalidateQueries({ queryKey: ['complaint-attachments', id] }); },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
+  const submitFeedbackMutation = useMutation({
+    mutationFn: ({ rating, comment }: { rating: number; comment?: string }) =>
+      complaintsApi.submitFeedback(id, { rating, comment }),
+    onSuccess: () => {
+      toast.success('Feedback submitted — thank you!');
+      setFeedbackRating(0);
+      setFeedbackComment('');
+      qc.invalidateQueries({ queryKey: ['complaint-feedback', id] });
+    },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
 
@@ -511,22 +539,64 @@ export default function ComplaintDetailPage() {
           </Card>
 
           {/* Citizen Feedback */}
-          {feedback && (
-            <Card className="bg-slate-900/40 backdrop-blur-md border-white/5">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base text-slate-200 flex items-center gap-2"><Star size={15} className="text-amber-400" /> Citizen Feedback</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm space-y-2">
-                <div className="flex gap-0.5">
-                  {[1,2,3,4,5].map((s) => (
-                    <Star key={s} size={14} className={s <= feedback.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-700'} />
-                  ))}
-                  <span className="ml-2 text-slate-400 text-xs">{feedback.rating}/5</span>
-                </div>
-                {feedback.comment && <p className="text-slate-400 text-xs italic leading-relaxed">&ldquo;{feedback.comment}&rdquo;</p>}
-              </CardContent>
-            </Card>
-          )}
+          {(() => {
+            const isResolved = complaint.status === 'RESOLVED' || complaint.status === 'CLOSED';
+            const isCreator  = complaint.createdBy?.id === authUser?.id;
+            if (!isResolved) return null;
+            return (
+              <Card className="bg-slate-900/40 backdrop-blur-md border-white/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base text-slate-200 flex items-center gap-2"><Star size={15} className="text-amber-400" /> Citizen Feedback</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm space-y-3">
+                  {feedback ? (
+                    <>
+                      <div className="flex gap-0.5">
+                        {[1,2,3,4,5].map((s) => (
+                          <Star key={s} size={14} className={s <= feedback.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-700'} />
+                        ))}
+                        <span className="ml-2 text-slate-400 text-xs">{feedback.rating}/5</span>
+                      </div>
+                      {feedback.comment && <p className="text-slate-400 text-xs italic leading-relaxed">&ldquo;{feedback.comment}&rdquo;</p>}
+                    </>
+                  ) : isCreator ? (
+                    <>
+                      <p className="text-slate-500 text-xs">Share your experience with how this complaint was handled.</p>
+                      <div className="flex gap-1">
+                        {[1,2,3,4,5].map((star) => (
+                          <button
+                            type="button"
+                            key={star}
+                            onClick={() => setFeedbackRating(star)}
+                            className={`transition-colors ${ star <= feedbackRating ? 'text-amber-400' : 'text-slate-700 hover:text-amber-400/60' }`}
+                          >
+                            <Star size={22} fill={star <= feedbackRating ? 'currentColor' : 'none'} />
+                          </button>
+                        ))}
+                      </div>
+                      <textarea
+                        value={feedbackComment}
+                        onChange={(e) => setFeedbackComment(e.target.value)}
+                        placeholder="Tell us more (optional)…"
+                        rows={2}
+                        className="w-full bg-slate-800/60 border border-white/10 rounded-lg px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 resize-none focus:outline-none focus:border-purple-500/50"
+                      />
+                      <Button
+                        size="sm"
+                        className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5 h-8 text-xs"
+                        disabled={!feedbackRating || submitFeedbackMutation.isPending}
+                        onClick={() => submitFeedbackMutation.mutate({ rating: feedbackRating, comment: feedbackComment || undefined })}
+                      >
+                        <Send size={12} /> {submitFeedbackMutation.isPending ? 'Submitting…' : 'Submit Feedback'}
+                      </Button>
+                    </>
+                  ) : (
+                    <p className="text-slate-600 text-xs">No feedback submitted yet.</p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
         </div>
       </div>
 
@@ -571,17 +641,30 @@ export default function ComplaintDetailPage() {
       </Dialog>
 
       {/* Assign Dialog */}
-      <Dialog open={assignDialog} onOpenChange={setAssignDialog}>
+      <Dialog
+        open={assignDialog}
+        onOpenChange={(open) => {
+          setAssignDialog(open);
+          if (!open) { setAssignDepartmentId(''); setAssignOfficerId(''); }
+        }}
+      >
         <DialogContent className="bg-slate-900 border-white/10 text-white max-w-sm">
           <DialogHeader><DialogTitle>Assign Complaint</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
             <div>
-              <label className="text-xs text-slate-400 mb-1.5 block">Department</label>
-              <Select value={assignDepartmentId} onValueChange={setAssignDepartmentId}>
+              <label className="text-xs text-slate-400 mb-1.5 block">Department <span className="text-slate-600">(optional — filters officers below)</span></label>
+              <Select
+                value={assignDepartmentId || '__all__'}
+                onValueChange={(v) => {
+                  setAssignDepartmentId(v === '__all__' ? '' : v);
+                  setAssignOfficerId(''); // reset officer when dept changes
+                }}
+              >
                 <SelectTrigger className="bg-slate-800/60 border-white/10 text-slate-300">
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-900 border-white/10 text-slate-300">
+                  <SelectItem value="__all__">All departments</SelectItem>
                   {departments.map((d) => (
                     <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                   ))}
@@ -595,15 +678,25 @@ export default function ComplaintDetailPage() {
                   <SelectValue placeholder="Select officer" />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-900 border-white/10 text-slate-300">
-                  {officers.map((o) => (
-                    <SelectItem key={o.id} value={o.id}>{o.name}{o.department ? ` (${o.department.name})` : ''}</SelectItem>
-                  ))}
+                  {displayedOfficers.length === 0 ? (
+                    <div className="px-3 py-4 text-xs text-slate-500 text-center">No officers in this department</div>
+                  ) : (
+                    displayedOfficers.map((o) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.name}
+                        <span className="text-slate-500 text-xs ml-1">
+                          {o.role?.type === 'OFFICER' ? '' : ` · ${o.role?.type?.replace('_', ' ')}`}
+                          {o.department ? ` (${o.department.name})` : ''}
+                        </span>
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" className="text-slate-400" onClick={() => setAssignDialog(false)}>Cancel</Button>
+            <Button variant="ghost" className="text-slate-400" onClick={() => { setAssignDialog(false); setAssignDepartmentId(''); setAssignOfficerId(''); }}>Cancel</Button>
             <Button
               className="bg-purple-600 hover:bg-purple-700 text-white"
               disabled={(!assignOfficerId && !assignDepartmentId) || assignMutation.isPending}
