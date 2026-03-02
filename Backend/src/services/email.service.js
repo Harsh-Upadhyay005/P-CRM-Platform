@@ -181,12 +181,6 @@ const resetPasswordEmailBody = (fullName, url, expiryMinutes) => `
       </td>
     </tr>
   </table>
-
-  <!-- Fallback link -->
-  <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">
-    Button not working? Copy and paste this link into your browser:<br/>
-    <a href="${url}" style="color:#dc2626;word-break:break-all;">${url}</a>
-  </p>
 `;
 
 export const sendVerificationEmail = async (email, fullName, rawToken) => {

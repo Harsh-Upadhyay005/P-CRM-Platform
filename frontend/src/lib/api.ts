@@ -1,14 +1,35 @@
 import axios, { AxiosError } from 'axios';
 import { User, Complaint, Department, Notification, Tenant, AuditLog, Note, Attachment, PaginatedResponse } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
-
+/**
+ * All API calls use a relative base URL (/api/v1) so they are routed through
+ * the Next.js rewrite proxy defined in next.config.ts:
+ *
+ *   /api/v1/:path*  →  BACKEND_URL/api/v1/:path*
+ *
+ * This ensures the frontend-domain accessToken cookie is forwarded to the
+ * backend transparently, regardless of whether the deployment is local or
+ * cross-origin (Vercel frontend + Render backend).
+ *
+ * For server-side use inside Route Handlers we still have NEXT_PUBLIC_API_URL.
+ */
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: '/api/v1',   // relative — always routed through Next.js rewrite proxy
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+/**
+ * Proxy API — calls Next.js Route Handlers at /api/auth/*.
+ * These handlers forward to the backend AND mirror the accessToken + refreshToken
+ * cookies onto the frontend domain so proxy.ts middleware can gate protected routes.
+ */
+const proxyApi = axios.create({
+  baseURL: '',          // relative — targets the Next.js server itself
+  withCredentials: true,
+  headers: { 'Content-Type': 'application/json' },
 });
 
 // Response interceptor for handling errors
@@ -34,20 +55,21 @@ api.interceptors.response.use(
       !onAuthPage &&
       !originalRequest.url?.includes('/auth/login') &&
       !originalRequest.url?.includes('/auth/refresh') &&
+      !originalRequest.url?.includes('/api/auth/') &&
       !originalRequest.url?.includes('/users/me') &&
       !('_retry' in originalRequest)
     ) {
       (originalRequest as { _retry?: boolean })._retry = true;
       
       try {
-        await api.post('/auth/refresh');
+        // Use the Next.js proxy route so the frontend-domain mirror cookie
+        // is also refreshed (the backend cookie is refreshed via cookie forwarding).
+        await proxyApi.post('/api/auth/refresh');
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed — clear server-side cookies then go to login.
-        // Calling logout first ensures the Next.js middleware won't see a
-        // stale accessToken cookie and bounce the user back to /dashboard.
+        // Refresh failed — clear frontend cookie then redirect to login.
         try {
-          await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', credentials: 'include' });
+          await proxyApi.post('/api/auth/logout');
         } catch { /* best-effort */ }
         if (typeof window !== 'undefined') {
           window.location.href = '/login';
@@ -87,6 +109,7 @@ export interface LoginPayload {
 
 export interface LoginResponse {
   user: User;
+  accessToken: string;
 }
 
 // Auth API functions
@@ -97,7 +120,8 @@ export const authApi = {
   },
 
   login: async (data: LoginPayload): Promise<ApiResponse<LoginResponse>> => {
-    const response = await api.post<ApiResponse<LoginResponse>>('/auth/login', data);
+    // Use the Next.js proxy so the frontend-domain accessToken cookie is set.
+    const response = await proxyApi.post<ApiResponse<LoginResponse>>('/api/auth/login', data);
     return response.data;
   },
 
@@ -107,12 +131,14 @@ export const authApi = {
   },
 
   logout: async (): Promise<ApiResponse<null>> => {
-    const response = await api.post<ApiResponse<null>>('/auth/logout');
+    // Use the Next.js proxy so the frontend-domain cookie is cleared.
+    const response = await proxyApi.post<ApiResponse<null>>('/api/auth/logout');
     return response.data;
   },
 
   refresh: async (): Promise<ApiResponse<null>> => {
-    const response = await api.post<ApiResponse<null>>('/auth/refresh');
+    // Use the Next.js proxy so the frontend-domain cookie is refreshed.
+    const response = await proxyApi.post<ApiResponse<null>>('/api/auth/refresh');
     return response.data;
   },
 
@@ -204,6 +230,14 @@ export const complaintsApi = {
   },
   createPublic: async (data: Record<string, unknown>) => {
     const response = await api.post<ApiResponse<{ trackingId: string }>>('/complaints/public', data);
+    return response.data;
+  },
+  searchPublicTenants: async (q: string) => {
+    const response = await api.get<ApiResponse<{ name: string; slug: string }[]>>('/complaints/public/tenants', { params: { q } });
+    return response.data;
+  },
+  getPublicDepartments: async (slug: string) => {
+    const response = await api.get<ApiResponse<{ id: string; name: string }[]>>(`/complaints/public/tenant/${slug}/departments`);
     return response.data;
   },
   submitFeedback: async (trackingId: string, data: { rating: number; comment?: string }) => {

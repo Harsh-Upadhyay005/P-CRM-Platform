@@ -21,6 +21,10 @@ const router = express.Router();
 // ── PUBLIC (no auth) ──────────────────────────────────────────────────────
 router.get("/track/:trackingId", controller.trackComplaint);
 
+// Tenant search + department lookup for the public submit form
+router.get("/public/tenants",                   controller.searchPublicTenants);
+router.get("/public/tenant/:slug/departments",  controller.getPublicDepartments);
+
 router.post(
   "/public",
   apiWriteLimiter,

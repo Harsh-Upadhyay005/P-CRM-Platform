@@ -6,12 +6,15 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: process.cwd(),
   },
-  // Setup API proxy to avoid CORS issues
+  // Proxy all /api/v1/* requests to the backend server.
+  // In production set BACKEND_URL=https://your-backend.onrender.com in Vercel env vars.
+  // This transparent proxy also forwards the Cookie header, so the accessToken
+  // set on the frontend domain is automatically sent to the backend on every request.
   async rewrites() {
     return [
       {
         source: '/api/v1/:path*',
-        destination: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/v1/:path*`, 
+        destination: `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/v1/:path*`,
       },
     ];
   },

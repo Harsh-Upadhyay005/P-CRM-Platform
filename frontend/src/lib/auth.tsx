@@ -2,7 +2,6 @@
 import React, { createContext, useEffect, useState } from 'react';
 import { authApi } from './api';
 import { User } from '@/types';
-import { useRouter } from 'next/navigation';
 import { queryClient } from './query-client';
 
 interface AuthContextType {
@@ -19,7 +18,6 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
     const initAuth = async () => {
@@ -43,13 +41,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (data: { email: string; password: string }) => {
     const response = await authApi.login(data);
     if (response.success && response.data) {
-      // The backend sets the cookie. We just need to fetch the user or use the returned user if the login response includes it.
-      // Usually login response has user data.
-      // Let's assume response.data.user
-      // Check api.ts LoginResponse interface: { user: User }
       setUser(response.data.user);
-      router.push('/dashboard');
-      router.refresh();
+      // Hard navigation so the Next.js middleware re-evaluates the request
+      // against the freshly mirrored accessToken cookie on the frontend domain.
+      window.location.href = '/dashboard';
     } else {
         throw new Error(response.message || 'Login failed');
     }

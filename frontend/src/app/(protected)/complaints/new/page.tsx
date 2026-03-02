@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { complaintsApi, getErrorMessage } from '@/lib/api';
+import { COMPLAINT_CATEGORIES } from '@/lib/constants';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { ArrowLeft, Loader2, Save, Paperclip, X, FileText, Image } from 'lucide-react';
@@ -22,6 +23,8 @@ type ComplaintForm = z.infer<typeof createComplaintSchema>;
 export default function NewComplaintPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [categorySelect, setCategorySelect] = useState('');
+  const [categoryOther, setCategoryOther] = useState('');
   const { register, handleSubmit, formState: { errors } } = useForm<ComplaintForm>({
     resolver: zodResolver(createComplaintSchema),
   });
@@ -43,11 +46,17 @@ export default function NewComplaintPage() {
   const removeFile = (index: number) =>
     setAttachments((prev) => prev.filter((_, i) => i !== index));
 
+  const resolvedCategory = categorySelect === 'Other' ? categoryOther.trim() : categorySelect;
+
   const onSubmit = async (formData: ComplaintForm) => {
     setIsSubmitting(true);
     setSubmitError('');
     try {
-      const res = await complaintsApi.create({ ...formData, citizenEmail: formData.citizenEmail || undefined });
+      const res = await complaintsApi.create({
+        ...formData,
+        category: resolvedCategory || undefined,
+        citizenEmail: formData.citizenEmail || undefined,
+      });
       const complaintId = (res.data as { id: string }).id;
       if (attachments.length > 0 && complaintId) {
         await Promise.allSettled(
@@ -127,16 +136,26 @@ export default function NewComplaintPage() {
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                  <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300">Category</label>
-                    <select 
-                         {...register('category')}
+                    <select
+                        value={categorySelect}
+                        onChange={(e) => { setCategorySelect(e.target.value); setCategoryOther(''); }}
                         className="w-full bg-slate-950/50 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all"
                     >
                         <option value="">Select Category</option>
-                        <option value="Water">Water Supply</option>
-                        <option value="Electricity">Electricity</option>
-                        <option value="Roads">Roads & Infrastructure</option>
-                        <option value="Sanitation">Sanitation</option>
+                        {COMPLAINT_CATEGORIES.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
                     </select>
+                    {categorySelect === 'Other' && (
+                      <input
+                        type="text"
+                        value={categoryOther}
+                        onChange={(e) => setCategoryOther(e.target.value)}
+                        placeholder="Describe the category…"
+                        maxLength={100}
+                        className="w-full bg-slate-950/50 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all placeholder:text-slate-600 text-sm"
+                      />
+                    )}
                 </div>
                  <div className="space-y-2">
                     <label className="text-sm font-medium text-slate-300">Priority</label>

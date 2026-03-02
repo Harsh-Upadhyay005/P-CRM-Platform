@@ -608,6 +608,40 @@ export const createPublicComplaint = async (data) => {
   return complaint;
 };
 
+// ── PUBLIC TENANT / DEPARTMENT LOOKUP ────────────────────────────────────
+
+export const searchPublicTenants = async ({ q = '' } = {}) => {
+  const search = String(q).trim().slice(0, 100);
+  return prisma.tenant.findMany({
+    where: {
+      isActive: true,
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search, mode: 'insensitive' } },
+              { slug: { contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    },
+    select: { name: true, slug: true },
+    take:   12,
+    orderBy: { name: 'asc' },
+  });
+};
+
+export const getPublicDepartments = async (slug) => {
+  const tenant = await prisma.tenant.findFirst({
+    where: { slug, isActive: true },
+  });
+  if (!tenant) throw new ApiError(404, 'Portal not found');
+  return prisma.department.findMany({
+    where:   { tenantId: tenant.id, isActive: true, isDeleted: false },
+    select:  { id: true, name: true },
+    orderBy: { name: 'asc' },
+  });
+};
+
 // ── COMPLAINT FEEDBACK ────────────────────────────────────────────────────
 
 export const submitFeedback = async (trackingId, { rating, comment }) => {
