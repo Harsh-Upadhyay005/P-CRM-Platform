@@ -59,6 +59,16 @@ export const createPublicComplaint = asyncHandler(async (req, res) => {
   res.status(201).json(new ApiResponse(201, complaint, "Complaint registered. Check your email for your Tracking ID."));
 });
 
+export const searchPublicTenants = asyncHandler(async (req, res) => {
+  const result = await service.searchPublicTenants(req.query);
+  res.json(new ApiResponse(200, result, "Tenants retrieved"));
+});
+
+export const getPublicDepartments = asyncHandler(async (req, res) => {
+  const result = await service.getPublicDepartments(req.params.slug);
+  res.json(new ApiResponse(200, result, "Departments retrieved"));
+});
+
 export const submitFeedback = asyncHandler(async (req, res) => {
   const feedback = await service.submitFeedback(req.params.trackingId, req.body);
   res.status(201).json(new ApiResponse(201, feedback, "Feedback submitted successfully"));

@@ -55,7 +55,9 @@ export const resendVerification = asyncHandler(async (req, res) => {
 export const login = asyncHandler(async (req, res) => {
   const { accessToken, refreshToken, user } = await authService.loginUser(req.body);
   setAuthCookies(res, accessToken, refreshToken);
-  res.json(new ApiResponse(200, { user }, "Login successful"));
+  // Return accessToken in the body so the Next.js proxy route can mirror
+  // it as a cookie on the frontend domain (required for cross-origin deployments).
+  res.json(new ApiResponse(200, { user, accessToken }, "Login successful"));
 });
 
 export const refresh = asyncHandler(async (req, res) => {
@@ -65,7 +67,9 @@ export const refresh = asyncHandler(async (req, res) => {
   }
   const { accessToken, refreshToken } = await authService.refreshTokens(token);
   setAuthCookies(res, accessToken, refreshToken);
-  res.json(new ApiResponse(200, null, "Token refreshed"));
+  // Return the new accessToken in the body so the Next.js proxy can update
+  // the frontend-domain mirror cookie for the Next.js middleware.
+  res.json(new ApiResponse(200, { accessToken }, "Token refreshed"));
 });
 
 export const logout = asyncHandler(async (req, res) => {
