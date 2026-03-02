@@ -42,7 +42,9 @@ const msToHuman = (ms) => {
   const days    = Math.floor(ms / 86_400_000);
   const hours   = Math.floor((ms % 86_400_000) / 3_600_000);
   const minutes = Math.floor((ms % 3_600_000) / 60_000);
-  return { days, hours, minutes, totalHours: +(ms / 3_600_000).toFixed(1) };
+  if (days > 0)  return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 };
 
 export const getOverview = async (user, query = {}) => {
@@ -266,34 +268,54 @@ export const getTrends = async (user, query = {}) => {
     Promise.resolve(forTenant(user)),
   ]);
 
-  const since     = new Date(Date.now() - days * 86_400_000);
-  const baseWhere = {
-    isDeleted: false,
-    ...tenantFilter,
-    ...abacFilter,
-    createdAt: { gte: since },
-  };
+  // Anchor to 00:00:00 UTC of today so that today always has its own bucket.
+  // Using (days - 1) means the window is [today - (days-1) days .. today], giving
+  // exactly `days` buckets with the last bucket being today.
+  const todayKey = new Date().toISOString().slice(0, 10);               // "YYYY-MM-DD"
+  const since    = new Date(todayKey);                                   // 00:00:00 UTC today
+  since.setUTCDate(since.getUTCDate() - (days - 1));                    // go back (days-1) days
+  const base  = { isDeleted: false, ...tenantFilter, ...abacFilter };
 
-  const complaints = await prisma.complaint.findMany({
-    where:   baseWhere,
-    select:  { createdAt: true, status: true },
-    orderBy: { createdAt: "asc" },
-    take:    ANALYTICS_ROW_CAP,
-  });
+  // Two independent queries: complaints *filed* per day (by createdAt)
+  // and complaints *resolved* per day (by resolvedAt OR updatedAt as fallback).
+  // This ensures that resolving an older complaint increments today's resolved count,
+  // and complaints resolved before `resolvedAt` was tracked still appear via updatedAt.
+  const [filed, resolvedList] = await Promise.all([
+    prisma.complaint.findMany({
+      where:   { ...base, createdAt: { gte: since } },
+      select:  { createdAt: true },
+      orderBy: { createdAt: "asc" },
+      take:    ANALYTICS_ROW_CAP,
+    }),
+    prisma.complaint.findMany({
+      where: {
+        ...base,
+        status: { in: ["RESOLVED", "CLOSED"] },
+        OR: [
+          { resolvedAt: { gte: since } },
+          { resolvedAt: null, updatedAt: { gte: since } },
+        ],
+      },
+      select:  { resolvedAt: true, updatedAt: true },
+      orderBy: { updatedAt: "asc" },
+      take:    ANALYTICS_ROW_CAP,
+    }),
+  ]);
 
   if (granularity === "weekly") {
     const buckets = {};
     for (let i = 0; i < days; i++) {
       const key = getISOWeekKey(new Date(since.getTime() + i * 86_400_000));
-      if (!buckets[key]) buckets[key] = { week: key, total: 0, resolved: 0, escalated: 0 };
+      if (!buckets[key]) buckets[key] = { week: key, total: 0, resolved: 0 };
     }
-    for (const c of complaints) {
+    for (const c of filed) {
       const key = getISOWeekKey(c.createdAt);
-      if (buckets[key]) {
-        buckets[key].total++;
-        if (c.status === "RESOLVED" || c.status === "CLOSED") buckets[key].resolved++;
-        if (c.status === "ESCALATED") buckets[key].escalated++;
-      }
+      if (buckets[key]) buckets[key].total++;
+    }
+    for (const c of resolvedList) {
+      const resolvedDate = c.resolvedAt ?? c.updatedAt;
+      const key = getISOWeekKey(resolvedDate);
+      if (buckets[key]) buckets[key].resolved++;
     }
     return { granularity, days, since: since.toISOString(), data: Object.values(buckets) };
   }
@@ -302,15 +324,16 @@ export const getTrends = async (user, query = {}) => {
   for (let i = 0; i < days; i++) {
     const d   = new Date(since.getTime() + i * 86_400_000);
     const key = d.toISOString().slice(0, 10);
-    buckets[key] = { date: key, total: 0, resolved: 0, escalated: 0 };
+    buckets[key] = { date: key, total: 0, resolved: 0 };
   }
-  for (const c of complaints) {
+  for (const c of filed) {
     const key = new Date(c.createdAt).toISOString().slice(0, 10);
-    if (buckets[key]) {
-      buckets[key].total++;
-      if (c.status === "RESOLVED" || c.status === "CLOSED") buckets[key].resolved++;
-      if (c.status === "ESCALATED") buckets[key].escalated++;
-    }
+    if (buckets[key]) buckets[key].total++;
+  }
+  for (const c of resolvedList) {
+    const resolvedDate = c.resolvedAt ?? c.updatedAt;
+    const key = new Date(resolvedDate).toISOString().slice(0, 10);
+    if (buckets[key]) buckets[key].resolved++;
   }
   return { granularity, days, since: since.toISOString(), data: Object.values(buckets) };
 };

@@ -32,13 +32,6 @@ router.post(
   controller.createPublicComplaint,
 );
 
-router.post(
-  "/feedback/:trackingId",
-  apiWriteLimiter,
-  validate(feedbackSchema),
-  controller.submitFeedback,
-);
-
 // ── AUTHENTICATED ─────────────────────────────────────────────────────────
 router.use(authMiddleware);
 
@@ -116,6 +109,13 @@ router.get(
   "/:id/feedback",
   authorizeMinimum("OFFICER"),
   controller.getFeedback,
+);
+
+router.post(
+  "/:id/feedback",
+  authorizeMinimum("CALL_OPERATOR"),
+  validate(feedbackSchema),
+  controller.submitFeedback,
 );
 
 router.post(

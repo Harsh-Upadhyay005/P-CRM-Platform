@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { complaintsApi, getErrorMessage } from '@/lib/api';
 import { COMPLAINT_CATEGORIES } from '@/lib/constants';
+import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { ArrowLeft, Loader2, Save, Paperclip, X, FileText, Image } from 'lucide-react';
@@ -22,11 +23,13 @@ type ComplaintForm = z.infer<typeof createComplaintSchema>;
 
 export default function NewComplaintPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categorySelect, setCategorySelect] = useState('');
   const [categoryOther, setCategoryOther] = useState('');
   const { register, handleSubmit, formState: { errors } } = useForm<ComplaintForm>({
     resolver: zodResolver(createComplaintSchema),
+    defaultValues: { citizenEmail: user?.email ?? '' },
   });
 
   const [submitError, setSubmitError] = useState('');

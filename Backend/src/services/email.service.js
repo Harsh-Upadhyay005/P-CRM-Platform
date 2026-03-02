@@ -438,6 +438,79 @@ const complaintConfirmationEmailBody = (citizenName, trackingId) => `
   </table>
 `;
 
+// ── OFFICER ASSIGNMENT EMAIL ─────────────────────────────────────────────────
+
+const officerAssignmentEmailBody = (officerName, trackingId, category, priority) => `
+  <h2 style="margin:0 0 8px;color:#1a3a6e;font-size:22px;font-weight:700;">Complaint Assigned to You</h2>
+  <p style="margin:0 0 24px;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb;padding-bottom:20px;">Action Required — P-CRM Portal</p>
+
+  <p style="margin:0 0 8px;color:#374151;font-size:16px;">Dear <strong>${officerName}</strong>,</p>
+  <p style="margin:0 0 24px;color:#4b5563;font-size:15px;line-height:1.7;">
+    A citizen complaint has been assigned to you for resolution. Please review it and take the necessary action.
+  </p>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 28px;">
+    <tr>
+      <td style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 24px;">
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="color:#64748b;font-size:13px;padding:4px 0;width:130px;"><strong>Tracking ID:</strong></td>
+            <td style="color:#1e293b;font-size:14px;font-weight:700;padding:4px 0;font-family:monospace;">${trackingId}</td>
+          </tr>
+          ${category ? `<tr>
+            <td style="color:#64748b;font-size:13px;padding:4px 0;"><strong>Category:</strong></td>
+            <td style="color:#1e293b;font-size:14px;padding:4px 0;">${category}</td>
+          </tr>` : ''}
+          ${priority ? `<tr>
+            <td style="color:#64748b;font-size:13px;padding:4px 0;"><strong>Priority:</strong></td>
+            <td style="padding:4px 0;">
+              <span style="display:inline-block;background-color:#fef3c7;color:#92400e;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;">${priority}</span>
+            </td>
+          </tr>` : ''}
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
+    <tr>
+      <td style="background-color:#eff6ff;border-left:4px solid #3b82f6;border-radius:6px;padding:16px 20px;">
+        <p style="margin:0;color:#1e3a8a;font-size:13px;line-height:1.8;">
+          <strong>Next Steps:</strong><br/>
+          • Log in to the P-CRM Portal and locate complaint <strong>${trackingId}</strong>.<br/>
+          • Review the complaint details and update the status to <em>In Progress</em> when you begin work.<br/>
+          • Mark it <em>Resolved</em> once the issue has been addressed.
+        </p>
+      </td>
+    </tr>
+  </table>
+`;
+
+export const sendOfficerAssignmentEmail = async (officerEmail, officerName, trackingId, category, priority) => {
+  if (!officerEmail) return;
+
+  const html = emailWrapper(
+    "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)",
+    { preheader: `Complaint ${trackingId} has been assigned to you — action required` },
+    officerAssignmentEmailBody(officerName, trackingId, category, priority),
+  );
+
+  try {
+    await transactionalEmailApi.sendTransacEmail({
+      sender:      { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
+      to:          [{ email: officerEmail, name: officerName }],
+      subject:     `Complaint Assigned: ${trackingId} — Action Required`,
+      htmlContent: html,
+      textContent: `Dear ${officerName},\n\nComplaint ${trackingId} has been assigned to you.\n\nCategory: ${category ?? 'N/A'}\nPriority: ${priority ?? 'N/A'}\n\nPlease log in to the P-CRM Portal to review and take action.\n\nP-CRM Portal`,
+    });
+    console.log(`[email] Assignment email sent to officer ${officerEmail} for complaint ${trackingId}`);
+  } catch (err) {
+    console.error(`[email] Failed to send assignment email to officer ${officerEmail}:`, err?.message);
+  }
+};
+
+// ── COMPLAINT CONFIRMATION EMAIL (citizen self-filing) ────────────────────
+
 export const sendComplaintConfirmationEmail = async (citizenEmail, citizenName, trackingId) => {
   if (!citizenEmail) return;
 

@@ -2,14 +2,12 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, Building, ArrowRight, ArrowLeft, Loader2, Sparkles, LayoutGrid, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, Building, ArrowRight, ArrowLeft, Loader2, LayoutGrid, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import AbstractBackground from '@/components/3d/AbstractBackground';
 import { authApi } from '@/lib/api';
 
 export default function SignupPage() {
-  const router = useRouter();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -28,9 +26,7 @@ export default function SignupPage() {
 
     try {
       await authApi.register(formData);
-
       setSuccess(true);
-      setTimeout(() => router.push('/login'), 2000);
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosErr = err as { response?: { data?: { message?: string } } };
@@ -47,29 +43,39 @@ export default function SignupPage() {
 
   if (success) {
     return (
-      <div className="relative min-h-screen flex items-center justify-center font-sans">
+      <div className="relative min-h-screen flex items-center justify-center font-sans p-4">
         <AbstractBackground />
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="z-10 bg-white/5 backdrop-blur-2xl p-10 rounded-2xl shadow-2xl w-full max-w-sm border border-white/10 text-center relative overflow-hidden"
+          className="z-10 bg-[#020617]/60 backdrop-blur-2xl p-10 rounded-2xl shadow-2xl w-full max-w-sm border border-white/10 text-center relative overflow-hidden"
         >
-          <div className="absolute inset-0 bg-green-500/10 mix-blend-overlay" />
-          <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-6 ring-1 ring-green-500/50 shadow-[0_0_15px_rgba(34,197,94,0.3)]">
-            <Sparkles className="w-8 h-8 text-green-400" />
+          <div className="absolute inset-0 bg-emerald-500/5 pointer-events-none" />
+
+          {/* Animated mail icon */}
+          <div className="relative w-16 h-16 mx-auto mb-6">
+            <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping opacity-40" />
+            <div className="relative w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center ring-1 ring-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.25)]">
+              <Mail className="w-7 h-7 text-emerald-400" />
+            </div>
           </div>
-          <h2 className="text-xl font-medium text-white mb-2">Account Created</h2>
-          <p className="text-gray-400 mb-6 text-sm font-light">
-            Redirecting known personnel to secure login...
+
+          <h2 className="text-xl font-semibold text-white mb-2">Check Your Email</h2>
+          <p className="text-zinc-400 text-sm mb-1">
+            A verification link has been sent to
           </p>
-          <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
-             <motion.div 
-               initial={{ width: 0 }}
-               animate={{ width: "100%" }}
-               transition={{ duration: 2 }}
-               className="h-full bg-green-500"
-             />
-          </div>
+          <p className="text-emerald-400 font-medium text-sm mb-5 break-all">{formData.email}</p>
+          <p className="text-zinc-500 text-xs mb-8 leading-relaxed">
+            Click the link in the email to activate your account before logging in.
+            If you don&apos;t see it, check your spam folder.
+          </p>
+
+          <Link
+            href="/login"
+            className="inline-flex items-center gap-2 w-full justify-center bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/30 text-emerald-300 hover:text-white text-sm font-medium py-2.5 rounded-lg transition-all"
+          >
+            Go to Login <ArrowRight className="w-4 h-4" />
+          </Link>
         </motion.div>
       </div>
     );

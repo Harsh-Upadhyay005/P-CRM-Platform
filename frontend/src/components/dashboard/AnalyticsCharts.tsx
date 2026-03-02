@@ -40,12 +40,20 @@ export function TrendsChart() {
   const { data, isLoading } = useQuery({
     queryKey: ['analytics', 'trends'],
     queryFn: () => analyticsApi.getTrends(30),
-    staleTime: 60_000,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
   });
 
   // getTrends returns ApiResponse<{ granularity, days, since, data: TrendPoint[] }>
   // so actual array is at data.data.data
   const trendData = (data?.data as any)?.data ?? [];
+
+  // Show ~7 date labels regardless of dataset size; format as "M/D"
+  const tickInterval = Math.max(1, Math.ceil(trendData.length / 7) - 1);
+  const fmtDate = (d: string) => {
+    const [, m, day] = d.split('-');
+    return `${parseInt(m)}/${parseInt(day)}`;
+  };
 
   return (
     <Card className="bg-slate-900/40 backdrop-blur-md border-white/5 shadow-lg">
@@ -59,7 +67,7 @@ export function TrendsChart() {
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+            <AreaChart data={trendData} margin={{ top: 5, right: 30, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="gradComplaints" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#a855f7" stopOpacity={0.4} />
@@ -71,8 +79,20 @@ export function TrendsChart() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+              <XAxis
+                dataKey="date"
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={fmtDate}
+                interval={tickInterval}
+              />
+              <YAxis
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+              />
               <Tooltip
                 content={<CustomTooltip />}
                 wrapperStyle={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, outline: 'none' }}
