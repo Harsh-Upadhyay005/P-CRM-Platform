@@ -15,7 +15,7 @@ import toast from 'react-hot-toast';
 import { Notification } from '@/types';
 import { useSidebar } from '@/lib/sidebar-context';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const SSE_URL = '/api/v1/notifications/stream';
 
 function timeAgo(ts: string) {
   const diff = Date.now() - new Date(ts).getTime();
@@ -62,7 +62,7 @@ export function TopBar() {
     function connect() {
       if (destroyed) return;
       sseRef.current?.close();
-      sseRef.current = new EventSource(`${API_BASE_URL}/notifications/stream`, { withCredentials: true });
+      sseRef.current = new EventSource(SSE_URL, { withCredentials: true });
 
       sseRef.current.addEventListener('notification', () => {
         queryClient.invalidateQueries({ queryKey: ['notifications'] });

@@ -4,12 +4,10 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Lock, ArrowRight, ArrowLeft, Loader2, UserCircle, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import AbstractBackground from '@/components/3d/AbstractBackground';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
-  const router = useRouter();
   const { login } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -26,8 +24,7 @@ export default function LoginPage() {
 
     try {
       await login(formData);
-      // Redirect handled by login but just in case
-      // router.push('/dashboard'); 
+      // Redirect is handled by login() via window.location.href
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
         const axiosErr = err as { response?: { data?: { message?: string } } };

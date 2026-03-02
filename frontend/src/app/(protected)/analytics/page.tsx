@@ -20,15 +20,25 @@ import {
 
 const COLORS = ['#a855f7', '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6', '#ec4899'];
 
-function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string }>; label?: string }) {
-  if (!active || !payload) return null;
+function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ name: string; value: number; color: string; fill?: string }>; label?: string }) {
+  if (!active || !payload || payload.length === 0) return null;
   return (
-    <div className="bg-slate-900/95 backdrop-blur-sm border border-white/10 rounded-lg px-3 py-2 shadow-xl">
-      <p className="text-xs text-slate-400 mb-1">{label}</p>
+    <div
+      className="bg-slate-950/95 border border-white/20 rounded-lg px-3 py-2.5 min-w-32.5"
+      style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.75)' }}
+    >
+      {label && (
+        <p className="text-xs font-semibold text-slate-300 mb-2 pb-1.5 border-b border-white/10">{label}</p>
+      )}
       {payload.map((e, i) => (
-        <p key={i} className="text-sm font-semibold" style={{ color: e.color }}>
-          {e.name}: {e.value}
-        </p>
+        <div key={i} className="flex items-center gap-2">
+          <span
+            className="inline-block w-2 h-2 rounded-full shrink-0"
+            style={{ background: e.color ?? e.fill ?? '#a855f7' }}
+          />
+          <span className="text-xs text-slate-400">{e.name}:</span>
+          <span className="text-sm font-bold text-white ml-auto pl-2">{e.value}</span>
+        </div>
       ))}
     </div>
   );
@@ -135,7 +145,7 @@ function TrendsTab() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
                 <Area type="monotone" dataKey="total" name="Filed" stroke="#a855f7" fill="url(#gc)" strokeWidth={2} dot={false} />
                 <Area type="monotone" dataKey="resolved" name="Resolved" stroke="#10b981" fill="url(#gr)" strokeWidth={2} dot={false} />
                 <Legend verticalAlign="top" align="right" iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
@@ -179,7 +189,7 @@ function DepartmentTab() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
               <Bar dataKey="total" name="Total" fill="#a855f7" radius={[4, 4, 0, 0]} opacity={0.85} />
               <Bar dataKey="resolved" name="Resolved" fill="#10b981" radius={[4, 4, 0, 0]} opacity={0.85} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
@@ -221,7 +231,7 @@ function OfficersTab() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
               <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={80} />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
               <Bar dataKey="assigned" name="Assigned" fill="#3b82f6" radius={[0, 4, 4, 0]} opacity={0.85} />
               <Bar dataKey="completed" name="Resolved" fill="#10b981" radius={[0, 4, 4, 0]} opacity={0.85} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
@@ -269,7 +279,7 @@ function SlaHeatmapTab() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
               <XAxis type="number" unit="%" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={90} />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
               <Bar dataKey="breachPct" name="Breach %" fill="#ef4444" radius={[0, 4, 4, 0]} opacity={0.85} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
             </BarChart>
@@ -313,7 +323,7 @@ function EscalationTab() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} />
+              <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
               <Line type="monotone" dataKey="escalations" name="Escalations" stroke="#f97316" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
@@ -352,7 +362,7 @@ function CategoryTab() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} angle={-35} textAnchor="end" />
                 <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
                 <Bar dataKey="value" name="Complaints" radius={[4, 4, 0, 0]}>
                   {categoryData.map((e, i) => <Cell key={i} fill={e.fill} opacity={0.85} />)}
                 </Bar>
@@ -372,7 +382,7 @@ function CategoryTab() {
                 <Pie data={categoryData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={3} dataKey="value" stroke="none">
                   {categoryData.map((e, i) => <Cell key={i} fill={e.fill} />)}
                 </Pie>
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
               </PieChart>
             </ResponsiveContainer>

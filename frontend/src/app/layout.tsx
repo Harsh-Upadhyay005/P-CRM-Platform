@@ -25,6 +25,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="scroll-smooth">
+      {/* Fires the moment the browser parses this HTML — warms up the Render backend
+          before any JS bundle has even downloaded, minimising cold-start delays. */}
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "fetch('/api/v1/health').catch(function(){})",
+          }}
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
