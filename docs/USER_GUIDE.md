@@ -36,13 +36,13 @@
 
 ## Roles Overview
 
-| Role                | Who Is This For                  | Key Capability                                            |
-| ------------------- | -------------------------------- | --------------------------------------------------------- |
-| **Super Admin**     | Platform owner / top-level admin | Full control — manage tenants, all users, all data        |
-| **Admin**           | Organisation administrator       | Manage users, departments, complaints within their tenant |
-| **Department Head** | Head of a government department  | Manage their department's complaints + analytics          |
-| **Officer**         | Field/desk officer               | Handle assigned complaints, add notes                     |
-| **Call Operator**   | Helpdesk / call-centre staff     | Create complaints on behalf of citizens                   |
+| Role                | Who Is This For                  | Key Capability                                                            |
+| ------------------- | -------------------------------- | ------------------------------------------------------------------------- |
+| **Super Admin**     | Platform owner / top-level admin | Full control — manage tenants, all users, all data                        |
+| **Admin**           | Organisation administrator       | Manage users, departments, complaints within their tenant                 |
+| **Department Head** | Head of a government department  | Manage their department’s complaints + analytics                          |
+| **Officer**         | Field/desk officer               | Handle assigned complaints, add notes                                     |
+| **Call Operator**   | Helpdesk / call-centre staff     | Create complaints on behalf of citizens; submit feedback after resolution |
 
 ---
 
@@ -59,8 +59,8 @@ Citizens can check the real-time status of their complaint without signing in.
    - Current status (Open → Assigned → In Progress → Resolved / Closed)
    - Assigned department & officer
    - Status history timeline
-   - Citizen feedback form (once the complaint is **Resolved/Closed**)
-3. Citizens can leave a **star rating (1–5)** and a comment after resolution
+
+> Satisfaction feedback is submitted from the **complaint detail page** inside the dashboard, not here. Only the staff member who originally filed the complaint can submit feedback once it is Resolved or Closed.
 
 ---
 
@@ -104,6 +104,18 @@ Citizens can check the real-time status of their complaint without signing in.
 | Assignment     | See which department/officer is handling it           |
 | Tracking       | Copy tracking ID; open the public tracking page       |
 | Feedback       | View citizen rating and comment (if submitted)        |
+
+### Submitting Feedback
+
+Once a complaint you filed reaches **Resolved** or **Closed** status:
+
+1. Open the complaint from the **Complaints** list
+2. Scroll to the **Feedback** section in the right sidebar
+3. Select a **star rating (1–5)**
+4. Optionally add a comment (e.g. `“Fixed but took 3 days”`)
+5. Click **Submit Feedback**
+
+> Only the user who originally filed the complaint can see and submit the feedback form. Once submitted, the feedback is stored permanently against the complaint and is visible to staff and management.
 
 ---
 
