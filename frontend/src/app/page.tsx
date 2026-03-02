@@ -97,13 +97,9 @@ export default function Home() {
     if (!isLoading && user) router.push("/dashboard");
   }, [user, isLoading, router]);
 
-  if (isLoading && !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#020617]">
-        <span className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
+  // Don't block the landing page on auth resolution — logged-in users get
+  // redirected via the useEffect above once auth resolves. Unauthenticated
+  // visitors (the majority of cold-start traffic) see the page instantly.
 
   return (
     <div className="relative min-h-screen bg-[#020617] text-slate-100 font-sans selection:bg-emerald-500/30 overflow-x-hidden">
