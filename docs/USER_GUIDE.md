@@ -22,13 +22,13 @@
 
 ### Registration & Login
 
-| Step | Action                                                                 |
-| ---- | ---------------------------------------------------------------------- |
-| 1    | Visit the platform URL and click **Register**                          |
-| 2    | Fill in your name, email, password, and select your role               |
-| 3    | Verify your email via the link sent to your inbox                      |
-| 4    | Log in with your credentials                                           |
-| 5    | If you forget your password, use **Forgot Password** on the login page |
+| Step | Action                                                                                      |
+| ---- | ------------------------------------------------------------------------------------------- |
+| 1    | Visit the platform URL and click **Register**                                               |
+| 2    | Fill in your name, email, and password, then **select your organisation** from the dropdown |
+| 3    | Verify your email via the link sent to your inbox                                           |
+| 4    | Log in with your credentials — an Admin will assign your role after first login             |
+| 5    | If you forget your password, use **Forgot Password** on the login page                      |
 
 > **Email Verification**: If you did not receive the email, go to `/resend-verification` to request a new one.
 
@@ -205,14 +205,15 @@ Admins manage all users and departments within their tenant.
 
 ### User Management (`/users`)
 
-| Action                  | How                                                                     |
-| ----------------------- | ----------------------------------------------------------------------- |
-| View all users          | Navigate to **Users** page                                              |
-| Search & filter         | Use the search bar and Role/Status filters                              |
-| Create a user           | Click **+ Add User** → fill in name, email, role, department, password  |
-| Change role / dept      | Click the **⋮** menu → **Change Role** → select new role and department |
-| Deactivate / reactivate | Click the **⋮** menu → **Deactivate / Activate**                        |
-| Delete a user           | Click the **⋮** menu → **Delete**                                       |
+| Action                  | How                                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------ |
+| View all users          | Navigate to **Users** page                                                                             |
+| Search & filter         | Use the search bar and Role/Status filters                                                             |
+| Email verification      | A green ✓ next to the email means verified; an amber ⏱ means the user has not yet verified their email |
+| Create a user           | Click **+ Add User** → fill in name, email, role, department, password                                 |
+| Change role / dept      | Click the **⋮** menu → **Change Role** → select new role and department                                |
+| Deactivate / reactivate | Click the **⋮** menu → **Deactivate / Activate**                                                       |
+| Delete a user           | Click the **⋮** menu → **Delete**                                                                      |
 
 > **Admin-created users**: When you create a user via the **+ Add User** button, their email is automatically verified — they can log in immediately without needing to check their inbox.
 
@@ -220,21 +221,21 @@ Admins manage all users and departments within their tenant.
 
 ### Department Management (`/departments`)
 
-| Action                      | How                                                                                     |
-| --------------------------- | --------------------------------------------------------------------------------------- |
-| View all departments        | Navigate to **Departments** page                                                        |
-| Create department           | Click **+ New Department** → enter name, SLA hours, and service areas                   |
-| Edit department             | Click **⋮** → **Edit** → update name, SLA hours, or service areas                       |
-| Toggle active/inactive      | Click **⋮** → **Edit** → toggle the Active switch                                       |
-| Delete department           | Click **⋮** → **Delete**                                                                |
-| View & manage members       | Click the **Members** button on any department card                                     |
-| Assign user to department   | Open **Members** dialog → pick a user from the dropdown → **Assign**                    |
-| Remove user from department | Open **Members** dialog → click the **×** icon next to the user                         |
-| Designate a department head | Open **Members** dialog → click the **👑** icon next to the officer you want to promote |
+| Action                      | How                                                                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| View all departments        | Navigate to **Departments** page                                                                                   |
+| Create department           | Click **+ New Department** → enter name, SLA hours, and service areas                                              |
+| Edit department             | Click **⋮** → **Edit** → update name, SLA hours, or service areas                                                  |
+| Toggle active/inactive      | Click **⋮** → **Edit** → toggle the Active switch                                                                  |
+| Delete department           | Click **⋮** → **Delete**                                                                                           |
+| View & manage members       | Click the **Members** button on any department card                                                                |
+| Assign user to department   | Open **Members** dialog → pick a user from the dropdown → **Assign**                                               |
+| Remove user from department | Open **Members** dialog → click the **×** icon next to the user                                                    |
+| Designate a department head | Open **Members** dialog → use the **Role** dropdown next to the user → select **Department Head** → click **Save** |
 
 > **SLA Hours** — complaints in this department will breach SLA if unresolved past this many hours.
 
-> **Service Areas** — comma-separated ward/area names (e.g. "Gomti Nagar", "Lanka", "Alambagh") that this department covers. Displayed on the department card and used to help operators route complaints geographically. Add areas one at a time using the **Add** button or by pressing Enter while typing.
+> **Service Areas** — ward/area/block names that this department covers (e.g. `BHU, Varanasi`, `Durga Kund, Varanasi`). Type an area name and press **Enter** or click **Add** to add it; click the **×** on any tag to remove it. Displayed on the department card and used to help operators route complaints geographically.
 
 > **Department Head** — only one user per department should hold the `DEPARTMENT_HEAD` role. Promoting a new head via the Members dialog automatically changes that user's role. The head badge is shown on the Members dialog for easy identification.
 

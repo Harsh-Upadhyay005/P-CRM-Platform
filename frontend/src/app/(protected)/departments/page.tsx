@@ -94,7 +94,7 @@ function DeptForm({
             value={areaInput}
             onChange={(e) => setAreaInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addArea(); } }}
-            placeholder="e.g. Lanka, Varanasi"
+            placeholder="e.g. BHU, Varanasi"
             className="bg-slate-800/50 border-white/10 text-slate-200 text-sm flex-1"
           />
           <Button

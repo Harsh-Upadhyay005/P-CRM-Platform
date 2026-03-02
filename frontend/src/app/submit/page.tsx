@@ -299,7 +299,7 @@ export default function PublicSubmitPage() {
             <input
               {...register('locality')}
               type="text"
-              placeholder="e.g. Lanka, Varanasi or Dwarka, Delhi"
+              placeholder="e.g. Banaras Hindu University, Varanasi"
               className={fieldCls}
             />
             <p className="text-slate-500 text-xs mt-1">Helps us route your complaint to the right officer and prevents it from being marked as a duplicate of a similar complaint in a different area.</p>
@@ -353,7 +353,7 @@ export default function PublicSubmitPage() {
           </div>
 
           {/* Department (loads after tenant is selected) */}
-          {departments.length > 0 && (
+          {resolvedSlug && (
             <div>
               <label className={labelCls}>
                 Department <span className="text-slate-500 font-normal">(optional)</span>
