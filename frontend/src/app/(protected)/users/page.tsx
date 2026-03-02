@@ -244,8 +244,8 @@ export default function UsersPage() {
                           <div className="flex items-center gap-1.5 mt-0.5">
                             <p className="text-xs text-slate-500">{u.email}</p>
                             {u.emailVerified
-                              ? <CheckCircle2 size={10} className="text-emerald-500 shrink-0" title="Email verified" />
-                              : <Clock size={10} className="text-amber-500 shrink-0" title="Email not verified" />
+                              ? <span title="Email verified"><CheckCircle2 size={10} className="text-emerald-500 shrink-0" /></span>
+                              : <span title="Email not verified"><Clock size={10} className="text-amber-500 shrink-0" /></span>
                             }
                           </div>
                         </div>
