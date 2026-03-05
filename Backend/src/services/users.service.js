@@ -17,6 +17,7 @@ const userSelect = {
   updatedAt: true,
   department: { select: { id: true, name: true, slug: true } },
   role: { select: { id: true, type: true } },
+  tenant: { select: { id: true, name: true, slug: true } },
 };
 
 const resolveRoleId = async (roleType) => {
@@ -42,7 +43,7 @@ export const listUsers = async (query, user) => {
   }
 
   const { page, limit, skip } = getPagination(query);
-  const { search, roleType, isActive, departmentId } = query;
+  const { search, roleType, isActive, departmentId, tenantId: tenantIdParam } = query;
 
   let deptFilter = {};
 
@@ -59,9 +60,16 @@ export const listUsers = async (query, user) => {
     deptFilter = { departmentId };
   }
 
+  // SUPER_ADMIN can pass an explicit tenantId to scope results to one tenant.
+  // ADMIN is always scoped to their own tenant via forTenant() regardless of params.
+  const tenantFilter =
+    role === "SUPER_ADMIN" && tenantIdParam
+      ? { tenantId: tenantIdParam }
+      : forTenant(user);
+
   const where = {
     isDeleted: false,
-    ...forTenant(user),
+    ...tenantFilter,
     ...deptFilter,
     ...(isActive !== undefined && { isActive: isActive === "true" }),
     ...(roleType && { role: { type: roleType } }),
@@ -290,7 +298,7 @@ export const changePassword = async (userId, { currentPassword, newPassword }, u
   return true;
 };
 
-export const createUser = async ({ name, email, password, roleType = "CALL_OPERATOR", departmentId }, user) => {
+export const createUser = async ({ name, email, password, roleType = "CALL_OPERATOR", departmentId, tenantId: targetTenantId }, user) => {
   // Only ADMIN+ can create users; enforce role hierarchy so no privilege escalation
   if (!canAssignRole(user.role, roleType)) {
     throw new ApiError(403, `You cannot create a user with role ${roleType}`);
@@ -313,12 +321,27 @@ export const createUser = async ({ name, email, password, roleType = "CALL_OPERA
   const role = await prisma.role.findUnique({ where: { type: roleType } });
   if (!role) throw new ApiError(400, `Role "${roleType}" does not exist`);
 
-  // Resolve tenantId from caller
+  // Resolve tenantId — SUPER_ADMIN may specify a different tenant
   const caller = await prisma.user.findUnique({
     where: { id: user.userId },
     select: { tenantId: true },
   });
   if (!caller?.tenantId) throw new ApiError(400, "Could not determine tenant");
+
+  let finalTenantId = caller.tenantId;
+  if (user.role === "SUPER_ADMIN" && targetTenantId) {
+    const tenant = await prisma.tenant.findFirst({ where: { id: targetTenantId, isActive: true } });
+    if (!tenant) throw new ApiError(404, "Tenant not found");
+    finalTenantId = targetTenantId;
+  }
+
+  // Re-validate departmentId against the finalTenantId (may differ from caller's tenant)
+  if (departmentId) {
+    const dept = await prisma.department.findFirst({
+      where: { id: departmentId, isDeleted: false, isActive: true, tenantId: finalTenantId },
+    });
+    if (!dept) throw new ApiError(404, "Department not found in target tenant");
+  }
 
   const hashedPassword = await bcrypt.hash(password, env.BCRYPT_SALT_ROUNDS);
 
@@ -327,7 +350,7 @@ export const createUser = async ({ name, email, password, roleType = "CALL_OPERA
       name,
       email,
       password: hashedPassword,
-      tenantId: caller.tenantId,
+      tenantId: finalTenantId,
       roleId: role.id,
       ...(departmentId ? { departmentId } : {}),
       emailVerified: true, // admin-created accounts skip email verification

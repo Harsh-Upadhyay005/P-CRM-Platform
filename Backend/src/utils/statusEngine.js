@@ -12,7 +12,7 @@ const TRANSITIONS = Object.freeze({
 const ROLE_STATUS_PERMISSIONS = Object.freeze({
   CALL_OPERATOR:   [],
   OFFICER:         ["IN_PROGRESS", "RESOLVED"],
-  DEPARTMENT_HEAD: ["IN_PROGRESS", "RESOLVED", "ESCALATED"],
+  DEPARTMENT_HEAD: ["ASSIGNED", "IN_PROGRESS", "RESOLVED", "ESCALATED"],
   ADMIN:           null,
   SUPER_ADMIN:     null,
 });

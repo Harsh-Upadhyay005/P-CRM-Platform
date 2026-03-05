@@ -10,6 +10,7 @@ const deptSelect = {
   slaHours: true,
   serviceAreas: true,
   isActive: true,
+  tenantId: true,
   createdAt: true,
   updatedAt: true,
   _count: { select: { users: { where: { isDeleted: false, isActive: true } }, complaints: { where: { isDeleted: false } } } },
@@ -28,11 +29,19 @@ const assertDeptAccess = async (deptId, user, action = "modify") => {
 };
 
 export const createDepartment = async (data, user) => {
-  const { name, slaHours, serviceAreas } = data;
+  const { name, slaHours, serviceAreas, tenantId: bodyTenantId } = data;
+
+  // SUPER_ADMIN may target any tenant; all other roles use their own tenant
+  const tenantId =
+    user.role === "SUPER_ADMIN" && bodyTenantId
+      ? bodyTenantId
+      : user.tenantId;
+  if (!tenantId) throw new ApiError(400, "tenantId is required to create a department");
+
   const slug = slugify(name);
 
   const existing = await prisma.department.findFirst({
-    where: { slug, isDeleted: false, ...forTenant(user) },
+    where: { slug, isDeleted: false, tenantId },
   });
   if (existing) throw new ApiError(409, "A department with this name already exists");
 
@@ -42,7 +51,7 @@ export const createDepartment = async (data, user) => {
       slug,
       slaHours:     slaHours ?? 48,
       serviceAreas: serviceAreas ?? [],
-      ...inTenant(user),
+      tenantId,
     },
     select: deptSelect,
   });

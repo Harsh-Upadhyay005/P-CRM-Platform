@@ -38,7 +38,7 @@ const TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {
 const ROLE_STATUS_PERMISSIONS: Record<RoleType, ComplaintStatus[] | null> = {
   CALL_OPERATOR:   [],
   OFFICER:         ['IN_PROGRESS', 'RESOLVED'],
-  DEPARTMENT_HEAD: ['IN_PROGRESS', 'RESOLVED', 'ESCALATED'],
+  DEPARTMENT_HEAD: ['ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'ESCALATED'],
   ADMIN:           null, // null = all allowed
   SUPER_ADMIN:     null,
 };
@@ -397,23 +397,25 @@ export default function ComplaintDetailPage() {
                   ))}
                 </div>
               )}
-              <div className="flex gap-2 pt-1">
-                <Textarea
-                  placeholder="Add a note…"
-                  value={noteText}
-                  onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNoteText(e.target.value)}
-                  rows={2}
-                  className="flex-1 bg-slate-800/60 border-white/10 text-slate-200 placeholder:text-slate-600 text-sm resize-none"
-                />
-                <Button
-                  size="sm"
-                  className="bg-purple-600 hover:bg-purple-700 text-white self-end h-9 w-9 p-0 shrink-0"
-                  disabled={!noteText.trim() || addNoteMutation.isPending}
-                  onClick={() => addNoteMutation.mutate(noteText.trim())}
-                >
-                  <Send size={14} />
-                </Button>
-              </div>
+              {!isCallOperator && (
+                <div className="flex gap-2 pt-1">
+                  <Textarea
+                    placeholder="Add a note…"
+                    value={noteText}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setNoteText(e.target.value)}
+                    rows={2}
+                    className="flex-1 bg-slate-800/60 border-white/10 text-slate-200 placeholder:text-slate-600 text-sm resize-none"
+                  />
+                  <Button
+                    size="sm"
+                    className="bg-purple-600 hover:bg-purple-700 text-white self-end h-9 w-9 p-0 shrink-0"
+                    disabled={!noteText.trim() || addNoteMutation.isPending}
+                    onClick={() => addNoteMutation.mutate(noteText.trim())}
+                  >
+                    <Send size={14} />
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

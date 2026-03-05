@@ -35,6 +35,7 @@ export interface User {
   updatedAt: string;
   role: { id: string; type: RoleType };
   department: { id: string; name: string; slug: string } | null;
+  tenant?: { id: string; name: string; slug: string };
 }
 
 export interface Complaint {
@@ -77,6 +78,7 @@ export interface Department {
   slaHours: number;
   serviceAreas: string[];
   isActive: boolean;
+  tenantId: string;
   createdAt: string;
   updatedAt: string;
   _count: { users: number; complaints: number };

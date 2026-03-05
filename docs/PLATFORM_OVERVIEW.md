@@ -96,7 +96,7 @@ Each department in P-CRM is more than a label — it is a full operational unit 
 
 ---
 
-### 11. Tenant vs Department — What Is the Difference?
+### 4. Tenant vs Department — What Is the Difference?
 
 | Concept        | What It Represents                                                                                                                                                        | Example                                                                                                                           |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |

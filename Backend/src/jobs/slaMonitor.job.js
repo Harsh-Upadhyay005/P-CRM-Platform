@@ -17,9 +17,8 @@ export const runSlaTick = async () => {
     do {
       batch = await prisma.complaint.findMany({
         where: {
-          isDeleted:    false,
-          status:       { notIn: NON_SLA_STATUSES },
-          departmentId: { not: null },
+          isDeleted: false,
+          status:    { notIn: NON_SLA_STATUSES },
         },
         select: {
           id:           true,
@@ -29,7 +28,10 @@ export const runSlaTick = async () => {
           createdAt:    true,
           assignedToId: true,
           createdById:  true,
-          department:   { select: { name: true, slaHours: true } },
+          department:   { select: { name: true, slaHours: true, users: {
+            where: { role: { type: 'DEPARTMENT_HEAD' }, isDeleted: false, isActive: true },
+            select: { id: true, name: true, email: true },
+          } } },
           assignedTo:   { select: { name: true, email: true } },
           createdBy:    { select: { name: true, email: true } },
         },
@@ -76,10 +78,23 @@ export const runSlaTick = async () => {
 };
 
 const escalateComplaint = async (complaint, tenantAdminMap) => {
-  const adminIds = tenantAdminMap[complaint.tenantId] ?? [];
-  const actorId  = adminIds[0] ?? complaint.createdById;
+  let adminIds = tenantAdminMap[complaint.tenantId] ?? [];
 
+  // Last-resort: if no admin was found for this tenant in the pre-fetched map, query now
+  if (adminIds.length === 0) {
+    const admins = await prisma.user.findMany({
+      where: { tenantId: complaint.tenantId, isDeleted: false, isActive: true, role: { type: { in: ["ADMIN", "SUPER_ADMIN"] } } },
+      select: { id: true },
+      take: 1,
+    });
+    adminIds = admins.map((a) => a.id);
+  }
+
+  const actorId = adminIds[0] ?? complaint.createdById;
+
+  // createdById is non-nullable in ComplaintStatusHistory schema — need a real user
   if (!actorId) return;
+
 
   await prisma.$transaction([
     prisma.complaint.update({
@@ -100,8 +115,10 @@ const escalateComplaint = async (complaint, tenantAdminMap) => {
 };
 
 const notifyEscalation = async (complaint, adminIds) => {
+  const deptHead = complaint.department?.users?.[0] ?? null;
+
   const recipientSet = new Set(
-    [...adminIds, complaint.createdById, complaint.assignedToId].filter(Boolean)
+    [...adminIds, complaint.createdById, complaint.assignedToId, deptHead?.id ?? null].filter(Boolean)
   );
   if (recipientSet.size === 0) return;
 
@@ -124,6 +141,12 @@ const notifyEscalation = async (complaint, adminIds) => {
     const alreadyAdded = emailRecipients.some((r) => r.email === complaint.assignedTo.email);
     if (!alreadyAdded) {
       emailRecipients.push({ email: complaint.assignedTo.email, name: complaint.assignedTo.name });
+    }
+  }
+  if (deptHead?.email) {
+    const alreadyAdded = emailRecipients.some((r) => r.email === deptHead.email);
+    if (!alreadyAdded) {
+      emailRecipients.push({ email: deptHead.email, name: deptHead.name });
     }
   }
 

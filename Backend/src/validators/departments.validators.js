@@ -14,6 +14,7 @@ export const createDepartmentSchema = z.object({
     .max(8760, "slaHours cannot exceed 8760 (1 year)")
     .optional(),
   serviceAreas: serviceAreasField,
+  tenantId:     z.string().uuid("Invalid tenant ID").optional(),
 });
 
 export const updateDepartmentSchema = z

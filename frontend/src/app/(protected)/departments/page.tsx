@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { departmentsApi, usersApi, getErrorMessage } from '@/lib/api';
+import { departmentsApi, tenantsApi, usersApi, getErrorMessage } from '@/lib/api';
 import { useRole } from '@/hooks/useRole';
-import { Department, User, RoleType } from '@/types';
+import { Department, User, RoleType, Tenant } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -39,16 +39,29 @@ function DeptForm({
   onSave,
   onCancel,
   isPending,
+  isSuperAdmin = false,
+  isCreate = false,
 }: {
   initial?: Partial<Department>;
-  onSave: (data: { name: string; slaHours: number; serviceAreas: string[] }) => void;
+  onSave: (data: { name: string; slaHours: number; serviceAreas: string[]; tenantId?: string }) => void;
   onCancel: () => void;
   isPending: boolean;
+  isSuperAdmin?: boolean;
+  isCreate?: boolean;
 }) {
   const [name, setName] = useState(initial?.name ?? '');
   const [slaHours, setSlaHours] = useState(initial?.slaHours ?? 48);
   const [serviceAreas, setServiceAreas] = useState<string[]>(initial?.serviceAreas ?? []);
   const [areaInput, setAreaInput] = useState('');
+  const [selectedTenantId, setSelectedTenantId] = useState('');
+
+  const { data: tenantsData } = useQuery({
+    queryKey: ['tenants', 'list-for-dept'],
+    queryFn: () => tenantsApi.list({ limit: 100 }),
+    enabled: isSuperAdmin && isCreate,
+    staleTime: 60_000,
+  });
+  const tenants: Tenant[] = tenantsData?.data?.data ?? [];
 
   const addArea = () => {
     const v = areaInput.trim();
@@ -84,6 +97,21 @@ function DeptForm({
         />
         <p className="text-[10px] text-slate-500">Complaints must be resolved within this many hours</p>
       </div>
+      {isSuperAdmin && isCreate && (
+        <div className="space-y-1.5">
+          <label className="text-xs text-slate-400 font-medium">Tenant</label>
+          <Select value={selectedTenantId} onValueChange={setSelectedTenantId}>
+            <SelectTrigger className="bg-slate-800/50 border-white/10 text-slate-200">
+              <SelectValue placeholder="Select a tenant…" />
+            </SelectTrigger>
+            <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
+              {tenants.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div className="space-y-1.5">
         <label className="text-xs text-slate-400 font-medium flex items-center gap-1">
           <MapPin size={11} className="text-slate-500" /> Service Areas
@@ -129,8 +157,13 @@ function DeptForm({
         <Button
           size="sm"
           className="bg-purple-600 hover:bg-purple-500"
-          disabled={!name.trim() || isPending}
-          onClick={() => onSave({ name: name.trim(), slaHours, serviceAreas })}
+          disabled={!name.trim() || isPending || (isSuperAdmin && isCreate && !selectedTenantId)}
+          onClick={() => onSave({
+            name: name.trim(),
+            slaHours,
+            serviceAreas,
+            ...(isSuperAdmin && isCreate && selectedTenantId && { tenantId: selectedTenantId }),
+          })}
         >
           {isPending ? 'Saving…' : 'Save'}
         </Button>
@@ -152,8 +185,8 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
   const members: User[] = membersData?.data?.data ?? [];
 
   const { data: allUsersData } = useQuery({
-    queryKey: ['users', 'all-for-assign'],
-    queryFn: () => usersApi.list({ limit: 200 }),
+    queryKey: ['users', 'all-for-assign', dept.tenantId],
+    queryFn: () => usersApi.list({ limit: 200, tenantId: dept.tenantId }),
     staleTime: 30_000,
   });
   const allUsers: User[] = allUsersData?.data?.data ?? [];
@@ -165,7 +198,7 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
     onSuccess: () => {
       toast.success('User assigned to department');
       qc.invalidateQueries({ queryKey: ['users', 'dept-members', dept.id] });
-      qc.invalidateQueries({ queryKey: ['users', 'all-for-assign'] });
+      qc.invalidateQueries({ queryKey: ['users', 'all-for-assign', dept.tenantId] });
       qc.invalidateQueries({ queryKey: ['departments'] });
       setSelectedUserId('');
     },
@@ -177,7 +210,7 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
     onSuccess: () => {
       toast.success('User removed from department');
       qc.invalidateQueries({ queryKey: ['users', 'dept-members', dept.id] });
-      qc.invalidateQueries({ queryKey: ['users', 'all-for-assign'] });
+      qc.invalidateQueries({ queryKey: ['users', 'all-for-assign', dept.tenantId] });
       qc.invalidateQueries({ queryKey: ['departments'] });
     },
     onError: (e) => toast.error(getErrorMessage(e)),
@@ -189,7 +222,7 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
     onSuccess: () => {
       toast.success('Role updated');
       qc.invalidateQueries({ queryKey: ['users', 'dept-members', dept.id] });
-      qc.invalidateQueries({ queryKey: ['users', 'all-for-assign'] });
+      qc.invalidateQueries({ queryKey: ['users', 'all-for-assign', dept.tenantId] });
     },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
@@ -319,7 +352,7 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function DepartmentsPage() {
-  const { isAdmin } = useRole();
+  const { isAdmin, isSuperAdmin } = useRole();
   const qc = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [editDept, setEditDept] = useState<Department | null>(null);
@@ -335,7 +368,7 @@ export default function DepartmentsPage() {
   const departments: Department[] = data?.data?.data ?? [];
 
   const createMutation = useMutation({
-    mutationFn: (d: { name: string; slaHours: number; serviceAreas: string[] }) => departmentsApi.create(d),
+    mutationFn: (d: { name: string; slaHours: number; serviceAreas: string[]; tenantId?: string }) => departmentsApi.create(d),
     onSuccess: () => {
       toast.success('Department created');
       qc.invalidateQueries({ queryKey: ['departments'] });
@@ -497,14 +530,16 @@ export default function DepartmentsPage() {
                       SLA: <span className="text-amber-400 font-semibold">{dept.slaHours}h</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 text-[10px] text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 px-2 gap-1"
-                        onClick={() => setManageMembersDept(dept)}
-                      >
-                        <Users size={10} /> Members
-                      </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 text-[10px] text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 px-2 gap-1"
+                          onClick={() => setManageMembersDept(dept)}
+                        >
+                          <Users size={10} /> Members
+                        </Button>
+                      )}
                       <Badge
                         variant="outline"
                         className={dept.isActive
@@ -532,6 +567,8 @@ export default function DepartmentsPage() {
             onSave={(d) => createMutation.mutate(d)}
             onCancel={() => setCreateOpen(false)}
             isPending={createMutation.isPending}
+            isSuperAdmin={isSuperAdmin}
+            isCreate
           />
         </DialogContent>
       </Dialog>

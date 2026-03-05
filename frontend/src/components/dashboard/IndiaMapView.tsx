@@ -222,12 +222,12 @@ function StatsSummary({ states }: { states: StateData[] }) {
   ];
 
   return (
-    <div className="grid grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       {items.map((item) => (
         <div key={item.label} className="bg-white/5 rounded-xl p-3 border border-white/5">
           <div className="flex items-center gap-2 mb-1">
             <item.icon size={12} style={{ color: item.color }} />
-            <span className="text-[10px] text-slate-500 uppercase tracking-wider">{item.label}</span>
+            <span className="text-[10px] text-slate-500 uppercase tracking-wider truncate">{item.label}</span>
           </div>
           <p className="text-lg font-bold text-white font-mono">{item.value}</p>
         </div>
