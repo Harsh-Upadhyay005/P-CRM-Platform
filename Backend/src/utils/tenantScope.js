@@ -7,9 +7,11 @@ const requireTenantId = (user) => {
   return user.tenantId;
 };
 
-export const forTenant = (user) => ({
-  tenantId: requireTenantId(user),
-});
+export const forTenant = (user) => {
+  // SUPER_ADMIN is platform-level and has no tenantId — let them see all tenants
+  if (user?.role === "SUPER_ADMIN") return {};
+  return { tenantId: requireTenantId(user) };
+};
 
 export const inTenant = (user) => ({
   tenantId: requireTenantId(user),

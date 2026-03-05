@@ -165,17 +165,26 @@ export const createComplaint = async (data, user) => {
   return decorateWithSla(complaint);
 };
 
+const TERMINAL_STATUSES = ["RESOLVED", "CLOSED"];
+
 export const listComplaints = async (query, user) => {
   const { page, limit, skip } = getPagination(query);
-  const { status, priority, category, search } = query;
+  const { status, priority, category, search, slaBreached } = query;
 
   const abacFilter = await getABACFilter(user);
+
+  // When slaBreached=true, find non-terminal complaints older than 48h (default SLA)
+  const sla48hAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
 
   const where = {
     isDeleted: false,
     ...forTenant(user),
     ...abacFilter,
-    ...(status && { status }),
+    ...(slaBreached === "true"
+      ? { status: { notIn: TERMINAL_STATUSES }, createdAt: { lt: sla48hAgo } }
+      : {
+          ...(status && { status }),
+        }),
     ...(priority && { priority }),
     ...(category && { category }),
     ...(search && {

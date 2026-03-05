@@ -163,6 +163,18 @@ export const authApi = {
   },
 };
 
+// ─── Download helper ─────────────────────────────────────────────────────────
+function triggerDownload(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 // ─── Complaints API ───────────────────────────────────────────────────────────
 export const complaintsApi = {
   list: async (params?: Record<string, string | number | undefined>) => {
@@ -244,6 +256,12 @@ export const complaintsApi = {
     const response = await api.post<ApiResponse<null>>(`/complaints/${id}/feedback`, data);
     return response.data;
   },
+  exportComplaints: async (params?: Record<string, string | undefined>) => {
+    const response = await api.get('/complaints/export', { params, responseType: 'blob' });
+    const disposition = (response.headers['content-disposition'] as string) ?? '';
+    const match = disposition.match(/filename="?([^";\r\n]+)"?/);
+    triggerDownload(response.data as Blob, match?.[1] ?? `complaints-${new Date().toISOString().slice(0, 10)}.csv`);
+  },
 };
 
 // ─── Users API ────────────────────────────────────────────────────────────────
@@ -252,7 +270,7 @@ export const usersApi = {
     const response = await api.get<ApiResponse<PaginatedResponse<User>>>('/users', { params });
     return response.data;
   },
-  create: async (data: { name: string; email: string; password: string; roleType?: string; departmentId?: string | null }) => {
+  create: async (data: { name: string; email: string; password: string; roleType?: string; departmentId?: string | null; tenantId?: string | null }) => {
     const response = await api.post<ApiResponse<User>>('/users', data);
     return response.data;
   },
@@ -292,7 +310,7 @@ export const departmentsApi = {
     const response = await api.get<ApiResponse<Department>>(`/departments/${id}`);
     return response.data;
   },
-  create: async (data: { name: string; slug?: string; slaHours?: number; serviceAreas?: string[] }) => {
+  create: async (data: { name: string; slug?: string; slaHours?: number; serviceAreas?: string[]; tenantId?: string }) => {
     const response = await api.post<ApiResponse<Department>>('/departments', data);
     return response.data;
   },
@@ -362,6 +380,12 @@ export const analyticsApi = {
   getCategoryDistribution: async () => {
     const response = await api.get<ApiResponse<CategoryPoint[]>>('/analytics/category-distribution');
     return response.data;
+  },
+  exportAnalytics: async (report: string = 'overview') => {
+    const response = await api.get('/analytics/export', { params: { report }, responseType: 'blob' });
+    const disposition = (response.headers['content-disposition'] as string) ?? '';
+    const match = disposition.match(/filename="?([^";\r\n]+)"?/);
+    triggerDownload(response.data as Blob, match?.[1] ?? `analytics-${report}-${new Date().toISOString().slice(0, 10)}.csv`);
   },
 };
 

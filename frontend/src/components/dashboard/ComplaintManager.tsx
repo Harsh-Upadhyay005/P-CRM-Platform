@@ -101,7 +101,7 @@ function ComplaintsTable({ data }: { data: Complaint[] }) {
               <TableCell>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 text-slate-400">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-slate-400">
                       <MoreVertical size={14} />
                     </Button>
                   </DropdownMenuTrigger>

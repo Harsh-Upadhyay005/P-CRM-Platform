@@ -6,7 +6,7 @@ import { complaintsApi, departmentsApi } from '@/lib/api';
 import { Complaint, ComplaintStatus, Priority, Department } from '@/types';
 import { useRole } from '@/hooks/useRole';
 import Link from 'next/link';
-import { Plus, Search, ChevronLeft, ChevronRight, Filter, X } from 'lucide-react';
+import { Plus, Search, ChevronLeft, ChevronRight, Filter, X, Download } from 'lucide-react';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -48,6 +48,8 @@ function StatusBadge({ status }: { status: ComplaintStatus }) {
 export default function ComplaintsPage() {
   const { role } = useRole();
   const isOfficerOnly = role === 'OFFICER';
+  const canExport = role === 'DEPARTMENT_HEAD' || role === 'ADMIN' || role === 'SUPER_ADMIN';
+  const [exporting, setExporting] = useState(false);
   const [statusFilter, setStatusFilter] = useState<ComplaintStatus | ''>('');
   const [priorityFilter, setPriorityFilter] = useState<Priority | ''>('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('');
@@ -91,13 +93,37 @@ export default function ComplaintsPage() {
             {pagination && <span className="ml-2 text-slate-600">({pagination.total} total)</span>}
           </p>
         </div>
-        <Link
-          href="/complaints/new"
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-lg shadow-blue-900/20"
-        >
-          <Plus size={18} />
-          New Complaint
-        </Link>
+        <div className="flex items-center gap-2">
+          {canExport && (
+            <button
+              onClick={async () => {
+                setExporting(true);
+                try {
+                  await complaintsApi.exportComplaints({
+                    ...(statusFilter ? { status: statusFilter } : {}),
+                    ...(priorityFilter ? { priority: priorityFilter } : {}),
+                    ...(departmentFilter ? { departmentId: departmentFilter } : {}),
+                    ...(search ? { search } : {}),
+                  });
+                } finally {
+                  setExporting(false);
+                }
+              }}
+              disabled={exporting}
+              className="flex items-center gap-2 bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
+            >
+              <Download size={15} />
+              {exporting ? 'Exporting…' : 'Export CSV'}
+            </button>
+          )}
+          <Link
+            href="/complaints/new"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-lg shadow-blue-900/20"
+          >
+            <Plus size={18} />
+            New Complaint
+          </Link>
+        </div>
       </div>
 
       {/* Search + Filters */}

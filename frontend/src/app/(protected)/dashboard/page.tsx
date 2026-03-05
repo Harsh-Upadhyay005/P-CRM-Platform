@@ -32,9 +32,8 @@ export default function Dashboard() {
     const sections = dashboardRef.current.querySelectorAll('.dashboard-section');
     gsap.fromTo(
       sections,
-      { opacity: 0, y: 30 },
+      { y: 30 },
       {
-        opacity: 1,
         y: 0,
         duration: 0.6,
         stagger: 0.12,
@@ -45,7 +44,7 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div ref={dashboardRef} className="h-full w-full flex flex-col gap-6 pb-8">
+    <div ref={dashboardRef} className="w-full flex flex-col gap-6 pb-24">
       {/* ── Header ────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}

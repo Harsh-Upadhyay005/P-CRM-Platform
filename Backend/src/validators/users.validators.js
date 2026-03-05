@@ -46,4 +46,5 @@ export const createUserSchema = z.object({
   password:     z.string().min(8, "Password must be at least 8 characters").max(64),
   roleType:     RoleType.optional().default("CALL_OPERATOR"),
   departmentId: z.string().uuid("Invalid department ID").optional().nullable(),
+  tenantId:     z.string().uuid("Invalid tenant ID").optional().nullable(),
 });

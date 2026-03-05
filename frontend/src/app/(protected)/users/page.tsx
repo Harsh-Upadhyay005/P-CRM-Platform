@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { usersApi, departmentsApi, getErrorMessage } from '@/lib/api';
+import { usersApi, departmentsApi, tenantsApi, getErrorMessage } from '@/lib/api';
 import { useRole } from '@/hooks/useRole';
-import { User, RoleType, Department } from '@/types';
+import { User, RoleType, Department, Tenant } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -47,7 +47,7 @@ function formatDate(d: string) {
 }
 
 export default function UsersPage() {
-  const { isAdmin } = useRole();
+  const { isAdmin, isSuperAdmin } = useRole();
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -64,13 +64,14 @@ export default function UsersPage() {
   const [createPassword, setCreatePassword] = useState('');
   const [createRole, setCreateRole] = useState<RoleType>('CALL_OPERATOR');
   const [createDeptId, setCreateDeptId] = useState<string>('');
+  const [createTenantId, setCreateTenantId] = useState<string>('');
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['users', 'list', page, roleFilter, search],
     queryFn: () => usersApi.list({
       page,
       limit: 20,
-      role: roleFilter !== 'all' ? roleFilter : undefined,
+      roleType: roleFilter !== 'all' ? roleFilter : undefined,
       search: search || undefined,
     }),
     staleTime: 30_000,
@@ -85,6 +86,14 @@ export default function UsersPage() {
     staleTime: 60_000,
   });
   const departments: Department[] = departmentsData?.data?.data ?? [];
+
+  const { data: tenantsData } = useQuery({
+    queryKey: ['tenants-list'],
+    queryFn: () => tenantsApi.list({ limit: 100 }),
+    enabled: isSuperAdmin,
+    staleTime: 60_000,
+  });
+  const tenants: Tenant[] = tenantsData?.data?.data ?? [];
 
   const assignRoleMutation = useMutation({
     mutationFn: ({ id, role, departmentId }: { id: string; role: RoleType; departmentId?: string | null }) =>
@@ -126,12 +135,13 @@ export default function UsersPage() {
       password: createPassword,
       roleType: createRole,
       departmentId: createDeptId || null,
+      tenantId: isSuperAdmin ? (createTenantId || null) : null,
     }),
     onSuccess: () => {
       toast.success('User created successfully');
       qc.invalidateQueries({ queryKey: ['users'] });
       setShowCreateDialog(false);
-      setCreateName(''); setCreateEmail(''); setCreatePassword(''); setCreateRole('CALL_OPERATOR'); setCreateDeptId('');
+      setCreateName(''); setCreateEmail(''); setCreatePassword(''); setCreateRole('CALL_OPERATOR'); setCreateDeptId(''); setCreateTenantId('');
     },
     onError: (e) => toast.error(getErrorMessage(e)),
   });
@@ -223,6 +233,7 @@ export default function UsersPage() {
                 <TableRow className="border-white/5 hover:bg-transparent">
                   <TableHead className="text-slate-400 text-xs font-semibold">User</TableHead>
                   <TableHead className="text-slate-400 text-xs font-semibold">Role</TableHead>
+                  {isSuperAdmin && <TableHead className="text-slate-400 text-xs font-semibold">Tenant</TableHead>}
                   <TableHead className="text-slate-400 text-xs font-semibold">Department</TableHead>
                   <TableHead className="text-slate-400 text-xs font-semibold">Status</TableHead>
                   <TableHead className="text-slate-400 text-xs font-semibold">Joined</TableHead>
@@ -256,6 +267,9 @@ export default function UsersPage() {
                         {ROLE_LABELS[u.role.type]}
                       </Badge>
                     </TableCell>
+                    {isSuperAdmin && (
+                      <TableCell className="text-xs text-slate-400">{u.tenant?.name ?? '—'}</TableCell>
+                    )}
                     <TableCell className="text-xs text-slate-400">
                       {u.department?.name ?? '—'}
                     </TableCell>
@@ -347,6 +361,12 @@ export default function UsersPage() {
             <p className="text-sm text-slate-400">
               Changing role for <span className="text-white font-medium">{assignRoleUser?.name}</span>
             </p>
+            {isSuperAdmin && assignRoleUser?.tenant && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800/50 border border-white/5">
+                <span className="text-xs text-slate-500">Tenant:</span>
+                <span className="text-xs font-medium text-slate-300">{assignRoleUser.tenant.name}</span>
+              </div>
+            )}
             <Select value={newRole} onValueChange={(v) => setNewRole(v as RoleType)}>
               <SelectTrigger className="bg-slate-800/50 border-white/10">
                 <SelectValue />
@@ -411,12 +431,27 @@ export default function UsersPage() {
       </Dialog>
 
       {/* Create User Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={(o) => { if (!o) { setShowCreateDialog(false); setCreateName(''); setCreateEmail(''); setCreatePassword(''); setCreateRole('CALL_OPERATOR'); setCreateDeptId(''); } }}>
+      <Dialog open={showCreateDialog} onOpenChange={(o) => { if (!o) { setShowCreateDialog(false); setCreateName(''); setCreateEmail(''); setCreatePassword(''); setCreateRole('CALL_OPERATOR'); setCreateDeptId(''); setCreateTenantId(''); } }}>
         <DialogContent className="bg-slate-900 border-white/10 text-slate-200 max-w-sm">
           <DialogHeader>
             <DialogTitle className="text-white">Add New User</DialogTitle>
           </DialogHeader>
           <div className="space-y-3 py-2">
+            {isSuperAdmin && (
+              <div className="space-y-1">
+                <p className="text-xs text-slate-400 font-medium">Tenant</p>
+                <Select value={createTenantId} onValueChange={(v) => { setCreateTenantId(v); setCreateDeptId(''); }}>
+                  <SelectTrigger className="bg-slate-800/50 border-white/10 text-slate-200">
+                    <SelectValue placeholder="Select tenant" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
+                    {tenants.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-1">
               <p className="text-xs text-slate-400 font-medium">Full Name</p>
               <Input

@@ -47,13 +47,22 @@ export function AlertsPanel() {
     staleTime: 30_000,
   });
 
+  const { data: slaData } = useQuery({
+    queryKey: ['complaints', 'sla-breached'],
+    queryFn: () => complaintsApi.list({ slaBreached: 'true', limit: 10 }),
+    staleTime: 30_000,
+  });
+
   const escalated: Complaint[] = data?.data?.data ?? [];
   const critical: Complaint[] = critData?.data?.data ?? [];
+  const slaBreached: Complaint[] = slaData?.data?.data ?? [];
 
-  const alerts = [
-    ...escalated,
-    ...critical.filter((c) => !escalated.find((e) => e.id === c.id)),
-  ].slice(0, 10);
+  const seen = new Set<string>();
+  const alerts: Complaint[] = [];
+  for (const c of [...escalated, ...critical, ...slaBreached]) {
+    if (!seen.has(c.id)) { seen.add(c.id); alerts.push(c); }
+  }
+  alerts.splice(15);
 
   return (
     <Card className="bg-slate-900/40 backdrop-blur-md border-white/5 shadow-lg h-full flex flex-col">

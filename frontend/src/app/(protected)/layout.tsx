@@ -26,7 +26,7 @@ function ProtectedLayoutInner({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#0B0F19] text-slate-200 font-sans selection:bg-purple-500/30">
+    <div className="flex h-screen overflow-hidden bg-[#0B0F19] text-slate-200 font-sans selection:bg-purple-500/30">
       <Sidebar />
       {/* Mobile overlay backdrop */}
       {isOpen && (
@@ -37,13 +37,13 @@ function ProtectedLayoutInner({ children }: { children: React.ReactNode }) {
       )}
       <div className="flex-1 flex flex-col lg:ml-64 transition-all duration-300 min-w-0">
         <TopBar />
-        <main className="flex-1 p-4 sm:p-6 relative overflow-hidden">
+        <main className="flex-1 p-4 sm:p-6 relative overflow-y-auto overflow-x-hidden scroll-smooth">
              {/* 3D Content Background Overlay */}
              <div className="absolute inset-0 pointer-events-none">
                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-purple-600/10 blur-[120px]" />
                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-emerald-600/10 blur-[120px]" />
              </div>
-             <div className="relative z-10 w-full h-full">
+             <div className="relative z-10 w-full">
                {children}
              </div>
         </main>
