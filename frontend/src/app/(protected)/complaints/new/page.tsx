@@ -11,6 +11,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, Save, Paperclip, X, FileText, Image } from 'lucide-react';
 import Link from 'next/link';
 import { Department } from '@/types';
+import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 
 const createComplaintSchema = z.object({
   citizenName: z.string().min(2, 'Name is too short'),
@@ -32,7 +33,7 @@ export default function NewComplaintPage() {
   const [categorySelect, setCategorySelect] = useState('');
   const [categoryOther, setCategoryOther] = useState('');
   const [selectedDeptId, setSelectedDeptId] = useState('');
-  const { register, handleSubmit, formState: { errors } } = useForm<ComplaintForm>({
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<ComplaintForm>({
     resolver: zodResolver(createComplaintSchema),
     defaultValues: { citizenEmail: user?.email ?? '' },
   });
@@ -142,10 +143,12 @@ export default function NewComplaintPage() {
 
             <div className="space-y-2">
                 <label className="text-sm font-medium text-slate-300">Locality / Area <span className="text-slate-500 font-normal">(optional)</span></label>
-                <input
-                    {...register('locality')}
-                    className="w-full bg-slate-950/50 border border-white/10 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all placeholder:text-slate-600"
+                <LocationAutocomplete
+                    value={watch('locality')}
+                    onChange={(value) => setValue('locality', value)}
                     placeholder="e.g. BHU, Varanasi"
+                    name="locality"
+                    className="[&_.geoapify-autocomplete-input]:w-full [&_.geoapify-autocomplete-input]:bg-slate-950/50 [&_.geoapify-autocomplete-input]:border [&_.geoapify-autocomplete-input]:border-white/10 [&_.geoapify-autocomplete-input]:rounded-lg [&_.geoapify-autocomplete-input]:px-4 [&_.geoapify-autocomplete-input]:py-2.5 [&_.geoapify-autocomplete-input]:text-white [&_.geoapify-autocomplete-input]:focus:outline-none [&_.geoapify-autocomplete-input]:focus:ring-2 [&_.geoapify-autocomplete-input]:focus:ring-blue-500/50 [&_.geoapify-autocomplete-input]:placeholder:text-slate-600"
                 />
                 <p className="text-slate-500 text-xs">Helps route the complaint to the right officer and prevents false duplicates from other areas.</p>
                 {errors.locality && <p className="text-red-400 text-xs">{errors.locality.message}</p>}

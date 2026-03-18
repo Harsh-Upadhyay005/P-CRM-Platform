@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@geoapify/geocoder-autocomplete": "^3.0.1",
+    "@geoapify/react-geocoder-autocomplete": "^3.0.0",
     "@hookform/resolvers": "^5.2.2",
     "@react-spring/three": "^10.0.3",
     "@react-three/drei": "^10.7.7",
