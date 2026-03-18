@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Button } from '@/components/ui/button';
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Button } from "@/components/ui/button";
 import {
   Plus,
   FileText,
@@ -10,18 +10,64 @@ import {
   Bell,
   BarChart2,
   X,
-} from 'lucide-react';
-import Link from 'next/link';
+  PlusCircle,
+  Search,
+} from "lucide-react";
+import Link from "next/link";
+import { useRole } from "@/hooks/useRole";
 
-const actions = [
-  { label: 'New Complaint', icon: FileText, href: '/complaints/new', color: 'bg-indigo-600 hover:bg-indigo-500' },
-  { label: 'Add Staff', icon: UserPlus, href: '/users', color: 'bg-purple-600 hover:bg-purple-500' },
-  { label: 'Notifications', icon: Bell, href: '/notifications', color: 'bg-amber-600 hover:bg-amber-500' },
-  { label: 'Analytics', icon: BarChart2, href: '/analytics', color: 'bg-emerald-600 hover:bg-emerald-500' },
+const staffActions = [
+  {
+    label: "New Complaint",
+    icon: FileText,
+    href: "/complaints/new",
+    color: "bg-indigo-600 hover:bg-indigo-500",
+  },
+  {
+    label: "Add Staff",
+    icon: UserPlus,
+    href: "/users",
+    color: "bg-purple-600 hover:bg-purple-500",
+  },
+  {
+    label: "Notifications",
+    icon: Bell,
+    href: "/notifications",
+    color: "bg-amber-600 hover:bg-amber-500",
+  },
+  {
+    label: "Analytics",
+    icon: BarChart2,
+    href: "/analytics",
+    color: "bg-emerald-600 hover:bg-emerald-500",
+  },
+];
+
+const citizenActions = [
+  {
+    label: "File Complaint",
+    icon: PlusCircle,
+    href: "/submit",
+    color: "bg-orange-600 hover:bg-orange-500",
+  },
+  {
+    label: "Track Complaint",
+    icon: Search,
+    href: "/track",
+    color: "bg-emerald-600 hover:bg-emerald-500",
+  },
+  {
+    label: "Notifications",
+    icon: Bell,
+    href: "/notifications",
+    color: "bg-amber-600 hover:bg-amber-500",
+  },
 ];
 
 export function QuickActions() {
   const [open, setOpen] = useState(false);
+  const { isCitizen } = useRole();
+  const actions = isCitizen ? citizenActions : staffActions;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-2">
@@ -61,8 +107,8 @@ export function QuickActions() {
         onClick={() => setOpen(!open)}
         className={`h-14 w-14 rounded-full shadow-2xl transition-all duration-300 ${
           open
-            ? 'bg-red-600 hover:bg-red-500 rotate-45'
-            : 'bg-linear-to-r from-purple-600 to-emerald-500 hover:from-purple-500 hover:to-emerald-400'
+            ? "bg-red-600 hover:bg-red-500 rotate-45"
+            : "bg-linear-to-r from-purple-600 to-emerald-500 hover:from-purple-500 hover:to-emerald-400"
         }`}
         size="icon"
       >

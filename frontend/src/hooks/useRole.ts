@@ -7,16 +7,15 @@ const ROLE_RANK: Record<string, number> = {
   DEPARTMENT_HEAD: 3,
   OFFICER: 2,
   CALL_OPERATOR: 1,
+  CITIZEN: 0,
 };
 
 export function useRole() {
   const { user } = useAuth();
-  // Ensure user.role.type is handled whether role is an object or string (backend consistency check)
-  const userRole = user?.role?.type as RoleType | undefined; // Adjust based on actual API response
+  const userRole = user?.role?.type as RoleType | undefined;
 
   const hasMinimumRole = (minimum: RoleType): boolean => {
     if (!userRole) return false;
-    // Map string from backend to number
     const userRank = ROLE_RANK[userRole] || 0;
     const minRank = ROLE_RANK[minimum] || 0;
     return userRank >= minRank;
@@ -28,6 +27,7 @@ export function useRole() {
     role: userRole,
     hasMinimumRole,
     isExactRole,
+    isCitizen: isExactRole("CITIZEN"),
     isCallOperator: isExactRole("CALL_OPERATOR"),
     isOfficer: hasMinimumRole("OFFICER"),
     isDeptHead: hasMinimumRole("DEPARTMENT_HEAD"),
