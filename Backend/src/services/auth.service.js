@@ -49,7 +49,7 @@ export const registerUser = async ({ name, email, password, tenantSlug }) => {
   }
 
   const role = await prisma.role.findUnique({
-    where: { type: "CALL_OPERATOR" },
+    where: { type: "CITIZEN" },
   });
 
   if (!role) {

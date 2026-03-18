@@ -32,6 +32,14 @@ router.post(
   controller.createPublicComplaint,
 );
 
+// Public file upload - no auth required
+router.post(
+  "/public/:trackingId/attachments",
+  apiWriteLimiter,
+  uploadMiddleware.array("files", 5),
+  attachmentController.uploadPublicAttachments,
+);
+
 // ── AUTHENTICATED ─────────────────────────────────────────────────────────
 router.use(authMiddleware);
 
