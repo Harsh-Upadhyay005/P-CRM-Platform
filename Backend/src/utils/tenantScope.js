@@ -2,7 +2,7 @@ import { ApiError } from "./ApiError.js";
 
 const requireTenantId = (user) => {
   if (!user?.tenantId) {
-    throw new ApiError(500, "tenantId missing on authenticated user");
+    throw new ApiError(500, `tenantId missing on authenticated user: role=${user?.role}, userId=${user?.userId}`);
   }
   return user.tenantId;
 };

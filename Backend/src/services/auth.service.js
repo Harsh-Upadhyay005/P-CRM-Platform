@@ -192,6 +192,30 @@ export const loginUser = async ({ email, password }) => {
     },
   });
 
+  // Link anonymous complaints to this user based on matching email (case-insensitive)
+  const anonymousComplaints = await prisma.complaint.findMany({
+    where: {
+      citizenEmail: {
+        equals: email,
+        mode: 'insensitive',
+      },
+      createdById: null,
+      tenantId: user.tenantId,
+    },
+    select: { id: true },
+  });
+
+  if (anonymousComplaints.length > 0) {
+    await prisma.complaint.updateMany({
+      where: {
+        id: { in: anonymousComplaints.map(c => c.id) },
+      },
+      data: {
+        createdById: user.id,
+      },
+    });
+  }
+
   const {
     password: _pw,
     verificationToken,
