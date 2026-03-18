@@ -7,7 +7,7 @@ import * as z from 'zod';
 import { complaintsApi, getErrorMessage } from '@/lib/api';
 import { COMPLAINT_CATEGORIES } from '@/lib/constants';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Loader2, Send, Paperclip, Search, Building2, ChevronDown } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Loader2, Send, Paperclip, Search, Building2, ChevronDown, X, FileText, Image, Upload } from 'lucide-react';
 import AbstractBackground from '@/components/3d/AbstractBackground';
 import toast from 'react-hot-toast';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
@@ -152,6 +152,9 @@ export default function PublicSubmitPage() {
   const [departmentId, setDepartmentId]     = useState('');
   const [categorySelect, setCategorySelect] = useState('');
   const [categoryOther, setCategoryOther]   = useState('');
+  const [attachments, setAttachments]       = useState<File[]>([]);
+  const [isUploading, setIsUploading]     = useState(false);
+  const fileInputRef                       = useRef<HTMLInputElement>(null);
 
   const envTenantSlug = process.env.NEXT_PUBLIC_TENANT_SLUG ?? '';
   const resolvedSlug  = envTenantSlug || tenantSlug;
@@ -166,6 +169,30 @@ export default function PublicSubmitPage() {
   }, [resolvedSlug]);
 
   const resolvedCategory = categorySelect === 'Other' ? categoryOther : categorySelect;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    setAttachments((prev) => {
+      const existing = new Set(prev.map((f) => f.name + f.size));
+      const newFiles = files.filter((f) => !existing.has(f.name + f.size));
+      return [...prev, ...newFiles].slice(0, 5);
+    });
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const removeFile = (index: number) =>
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType.startsWith('image/')) return <Image size={14} className="text-purple-400" />;
+    return <FileText size={14} className="text-slate-400" />;
+  };
 
   const {
     register,
@@ -191,12 +218,27 @@ export default function PublicSubmitPage() {
         departmentId: departmentId || undefined,
         tenantSlug:   resolvedSlug,
       });
-      const id = (res.data as { trackingId: string }).trackingId;
-      setTrackingId(id);
+      const trackingIdFromResponse = (res.data as { trackingId: string }).trackingId;
+      
+      if (attachments.length > 0) {
+        setIsUploading(true);
+        try {
+          await Promise.allSettled(
+            attachments.map((file) => complaintsApi.uploadPublicAttachment(trackingIdFromResponse, file))
+          );
+        } catch (uploadError) {
+          console.error('Failed to upload some files:', uploadError);
+        } finally {
+          setIsUploading(false);
+        }
+      }
+      
+      setTrackingId(trackingIdFromResponse);
       reset();
       setCategorySelect('');
       setCategoryOther('');
       setDepartmentId('');
+      setAttachments([]);
       toast.success('Complaint submitted successfully!');
     } catch (err) {
       setSubmitError(getErrorMessage(err));
@@ -390,14 +432,57 @@ export default function PublicSubmitPage() {
             {errors.description && <p className="text-red-400 text-xs mt-1">{errors.description.message}</p>}
           </div>
 
-          {/* Attachments hint */}
-          <div className="flex items-start gap-2.5 bg-slate-800/40 border border-white/8 rounded-xl px-4 py-3">
-            <Paperclip size={14} className="text-slate-500 mt-0.5 shrink-0" />
-            <p className="text-xs text-slate-400">
-              Want to attach photos or documents?{' '}
-              <Link href="/login" className="text-purple-400 hover:text-purple-300 transition-colors">Sign in</Link>{' '}
-              to file with attachments using the staff portal.
-            </p>
+          {/* Attachments */}
+          <div>
+            <label className={labelCls}>
+              Attachments <span className="text-slate-500 font-normal">(optional, max 5 files)</span>
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.txt"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center cursor-pointer hover:border-purple-500/50 hover:bg-white/5 transition-all"
+            >
+              <Upload size={24} className="text-slate-500 mx-auto mb-2" />
+              <p className="text-sm text-slate-400">
+                Click or drag files here to upload
+              </p>
+              <p className="text-xs text-slate-500 mt-1">
+                Images, PDFs, or documents (max 10MB each)
+              </p>
+            </div>
+            
+            {attachments.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {attachments.map((file, index) => (
+                  <div
+                    key={`${file.name}-${index}`}
+                    className="flex items-center justify-between bg-slate-800/60 border border-white/10 rounded-lg px-3 py-2"
+                  >
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      {getFileIcon(file.type)}
+                      <div className="overflow-hidden">
+                        <p className="text-sm text-white truncate max-w-[200px]">{file.name}</p>
+                        <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); removeFile(index); }}
+                      className="p-1 hover:bg-white/10 rounded transition-colors"
+                    >
+                      <X size={14} className="text-slate-500 hover:text-red-400" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {submitError && (
@@ -411,8 +496,8 @@ export default function PublicSubmitPage() {
             disabled={isSubmitting || (needsSlug && !tenantSlug)}
             className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors"
           >
-            {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-            {isSubmitting ? 'Submitting…' : 'Submit Complaint'}
+            {isSubmitting || isUploading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+            {isUploading ? 'Uploading files…' : isSubmitting ? 'Submitting…' : 'Submit Complaint'}
           </button>
 
           <p className="text-center text-xs text-slate-500">

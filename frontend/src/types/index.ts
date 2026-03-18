@@ -3,7 +3,8 @@ export type RoleType =
   | "ADMIN"
   | "DEPARTMENT_HEAD"
   | "OFFICER"
-  | "CALL_OPERATOR";
+  | "CALL_OPERATOR"
+  | "CITIZEN";
 
 export type ComplaintStatus =
   | "OPEN"

@@ -114,9 +114,19 @@ const assertComplaintAccess = async (complaint, user) => {
 export const createComplaint = async (data, user) => {
   const { citizenName, citizenPhone, citizenEmail, locality, description, category, priority, departmentId } = data;
 
-  if (departmentId) {
+  let resolvedDepartmentId = departmentId ?? null;
+
+  // Auto-route: if no department specified, match locality to service areas
+  if (!resolvedDepartmentId && locality) {
+    const matchedDept = await matchLocalityToDepartment(locality, user.tenantId);
+    if (matchedDept) {
+      resolvedDepartmentId = matchedDept.id;
+    }
+  }
+
+  if (resolvedDepartmentId) {
     const dept = await prisma.department.findFirst({
-      where: { id: departmentId, isDeleted: false, isActive: true, ...forTenant(user) },
+      where: { id: resolvedDepartmentId, isDeleted: false, isActive: true, ...forTenant(user) },
     });
     if (!dept) throw new ApiError(404, "Department not found");
   }
@@ -150,7 +160,7 @@ export const createComplaint = async (data, user) => {
       sentimentScore: aiResult.sentimentScore,
       duplicateScore: aiResult.duplicateScore,
       aiScore:        aiResult.aiScore,
-      departmentId:   departmentId ?? null,
+      departmentId:   resolvedDepartmentId,
       createdById:    user.userId,
       ...inTenant(user),
     },
@@ -619,6 +629,41 @@ export const getInternalNotes = async (complaintId, user) => {
 
 // ── CITIZEN SELF-FILING (public — no auth) ────────────────────────────────
 
+const matchLocalityToDepartment = async (locality, tenantId) => {
+  if (!locality) return null;
+
+  const localityLower = locality.toLowerCase();
+
+  const departments = await prisma.department.findMany({
+    where: {
+      tenantId,
+      isActive: true,
+      isDeleted: false,
+      serviceAreas: { isEmpty: false },
+    },
+    select: {
+      id: true,
+      name: true,
+      serviceAreas: true,
+    },
+  });
+
+  for (const dept of departments) {
+    for (const area of dept.serviceAreas) {
+      const areaLower = area.toLowerCase();
+      if (
+        localityLower === areaLower ||
+        localityLower.includes(areaLower) ||
+        areaLower.includes(localityLower)
+      ) {
+        return { id: dept.id, name: dept.name };
+      }
+    }
+  }
+
+  return null;
+};
+
 export const createPublicComplaint = async (data) => {
   const { citizenName, citizenPhone, citizenEmail, locality, description, category, priority, departmentId, tenantSlug } = data;
 
@@ -628,9 +673,19 @@ export const createPublicComplaint = async (data) => {
   });
   if (!tenant) throw new ApiError(404, "Portal not found");
 
-  if (departmentId) {
+  let resolvedDepartmentId = departmentId ?? null;
+
+  // Auto-route: if no department specified, match locality to service areas
+  if (!resolvedDepartmentId && locality) {
+    const matchedDept = await matchLocalityToDepartment(locality, tenant.id);
+    if (matchedDept) {
+      resolvedDepartmentId = matchedDept.id;
+    }
+  }
+
+  if (resolvedDepartmentId) {
     const dept = await prisma.department.findFirst({
-      where: { id: departmentId, isDeleted: false, isActive: true, tenantId: tenant.id },
+      where: { id: resolvedDepartmentId, isDeleted: false, isActive: true, tenantId: tenant.id },
     });
     if (!dept) throw new ApiError(404, "Department not found");
   }
@@ -660,7 +715,7 @@ export const createPublicComplaint = async (data) => {
       sentimentScore: aiResult.sentimentScore,
       duplicateScore: aiResult.duplicateScore,
       aiScore:        aiResult.aiScore,
-      departmentId:   departmentId ?? null,
+      departmentId:   resolvedDepartmentId,
       createdById:    null,
     },
     select: {

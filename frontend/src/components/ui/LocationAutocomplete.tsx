@@ -1,8 +1,7 @@
 'use client';
 
 import { GeoapifyContext, GeoapifyGeocoderAutocomplete } from '@geoapify/react-geocoder-autocomplete';
-import '@geoapify/geocoder-autocomplete/styles/minimal.css';
-import { useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 interface LocationAutocompleteProps {
@@ -24,15 +23,24 @@ export function LocationAutocomplete({
   required = false,
   className,
 }: LocationAutocompleteProps) {
-  const [inputValue, setInputValue] = useState(value || '');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (inputRef.current && value === '') {
+      inputRef.current.value = '';
+    }
+  }, [value]);
 
   const handlePlaceSelect = (place: any) => {
-    if (place) {
-      const address = place.properties?.formatted || 
-                      place.properties?.address || 
+    if (place && place.properties) {
+      const address = place.properties.formatted || 
+                      place.properties.address || 
                       '';
-      setInputValue(address);
       onChange(address);
+      
+      if (inputRef.current) {
+        inputRef.current.value = '';
+      }
     }
   };
 
@@ -40,8 +48,6 @@ export function LocationAutocomplete({
     <div className={cn('relative', className)}>
       <GeoapifyContext apiKey={process.env.NEXT_PUBLIC_GEOAPIFY_API_KEY || ''}>
         <GeoapifyGeocoderAutocomplete
-          value={inputValue}
-          onUserInput={setInputValue}
           placeholder={placeholder}
           countryCodes={['in']}
           limit={5}

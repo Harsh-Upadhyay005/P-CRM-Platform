@@ -4,6 +4,7 @@ export const ROLE_RANK = Object.freeze({
   DEPARTMENT_HEAD: 3,
   OFFICER: 2,
   CALL_OPERATOR: 1,
+  CITIZEN: 0,
 });
 
 export const getRank = (role) => {

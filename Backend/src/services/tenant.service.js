@@ -27,6 +27,7 @@ export const listTenants = async (query = {}) => {
         name:      true,
         slug:      true,
         isActive:  true,
+        areas:     true,
         createdAt: true,
         updatedAt: true,
         _count: {
@@ -52,6 +53,7 @@ export const getTenantById = async (id) => {
       name:      true,
       slug:      true,
       isActive:  true,
+      areas:     true,
       createdAt: true,
       updatedAt: true,
       _count: {
@@ -68,32 +70,34 @@ export const getTenantById = async (id) => {
   return tenant;
 };
 
-export const createTenant = async ({ name, slug: providedSlug }) => {
+export const createTenant = async ({ name, slug: providedSlug, areas }) => {
   const slug = providedSlug ? slugify(providedSlug) : slugify(name);
 
   const existing = await prisma.tenant.findUnique({ where: { slug } });
   if (existing) throw new ApiError(409, `Slug "${slug}" is already taken`);
 
   return prisma.tenant.create({
-    data: { name: name.trim(), slug },
+    data: { name: name.trim(), slug, areas: areas ?? [] },
     select: {
       id:        true,
       name:      true,
       slug:      true,
       isActive:  true,
+      areas:     true,
       createdAt: true,
       updatedAt: true,
     },
   });
 };
 
-export const updateTenant = async (id, { name, isActive }) => {
+export const updateTenant = async (id, { name, isActive, areas }) => {
   const tenant = await prisma.tenant.findUnique({ where: { id } });
   if (!tenant) throw new ApiError(404, "Tenant not found");
 
   const data = {};
   if (name !== undefined) data.name = name.trim();
   if (isActive !== undefined) data.isActive = isActive;
+  if (areas !== undefined) data.areas = areas;
 
   return prisma.tenant.update({
     where: { id },
@@ -103,6 +107,7 @@ export const updateTenant = async (id, { name, isActive }) => {
       name:      true,
       slug:      true,
       isActive:  true,
+      areas:     true,
       createdAt: true,
       updatedAt: true,
     },

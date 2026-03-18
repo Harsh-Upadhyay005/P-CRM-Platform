@@ -11,6 +11,14 @@ export const uploadAttachments = asyncHandler(async (req, res) => {
   res.status(201).json(new ApiResponse(201, data, "Files uploaded successfully"));
 });
 
+export const uploadPublicAttachments = asyncHandler(async (req, res) => {
+  const data = await attachmentService.uploadPublicAttachments(
+    req.params.trackingId,
+    req.files,
+  );
+  res.status(201).json(new ApiResponse(201, data, "Files uploaded successfully"));
+});
+
 export const listAttachments = asyncHandler(async (req, res) => {
   const data = await attachmentService.listAttachments(req.params.id, req.user);
   res.json(new ApiResponse(200, data, "Attachments retrieved"));

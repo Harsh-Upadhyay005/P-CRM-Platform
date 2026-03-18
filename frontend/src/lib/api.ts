@@ -218,8 +218,16 @@ export const complaintsApi = {
   },
   uploadAttachment: async (id: string, file: File) => {
     const form = new FormData();
-    form.append('files', file); // backend: uploadMiddleware.array("files", 5)
+    form.append('files', file);
     const response = await api.post<ApiResponse<Attachment[]>>(`/complaints/${id}/attachments`, form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+  uploadPublicAttachment: async (trackingId: string, file: File) => {
+    const form = new FormData();
+    form.append('files', file);
+    const response = await api.post<ApiResponse<Attachment[]>>(`/complaints/public/${trackingId}/attachments`, form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
