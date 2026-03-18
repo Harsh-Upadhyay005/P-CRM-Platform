@@ -36,10 +36,11 @@ const TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {
 };
 
 const ROLE_STATUS_PERMISSIONS: Record<RoleType, ComplaintStatus[] | null> = {
+  CITIZEN:         [],
   CALL_OPERATOR:   [],
   OFFICER:         ['IN_PROGRESS', 'RESOLVED'],
   DEPARTMENT_HEAD: ['ASSIGNED', 'IN_PROGRESS', 'RESOLVED', 'ESCALATED'],
-  ADMIN:           null, // null = all allowed
+  ADMIN:           null,
   SUPER_ADMIN:     null,
 };
 

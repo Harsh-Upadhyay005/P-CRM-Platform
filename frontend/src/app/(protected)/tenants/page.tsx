@@ -15,13 +15,14 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Building2, Plus, MoreVertical, Edit2, PowerOff, RefreshCw, Users, Briefcase, FileText } from 'lucide-react';
+import { Building2, Plus, MoreVertical, Edit2, PowerOff, RefreshCw, Users, Briefcase, FileText, MapPin, X } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useRole } from '@/hooks/useRole';
+import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 
-interface TenantFormData { name: string; slug: string; domain?: string }
-const empty: TenantFormData = { name: '', slug: '', domain: '' };
+interface TenantFormData { name: string; slug: string; domain?: string; areas?: string[] }
+const empty: TenantFormData = { name: '', slug: '', domain: '', areas: [] };
 
 function slugify(s: string) {
   return s.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -70,7 +71,7 @@ export default function TenantsPage() {
 
   function openEdit(t: Tenant) {
     setEditing(t);
-    setForm({ name: t.name, slug: t.slug, domain: (t as any).domain ?? '' });
+    setForm({ name: t.name, slug: t.slug, domain: (t as any).domain ?? '', areas: (t as any).areas ?? [] });
     setDialogOpen(true);
   }
 
@@ -242,6 +243,40 @@ export default function TenantsPage() {
                 placeholder="acme.gov"
                 className="bg-slate-800/60 border-white/10 text-slate-200 placeholder:text-slate-600"
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-slate-300 text-sm flex items-center gap-1">
+                <MapPin size={11} /> Service Areas (optional)
+              </Label>
+              <LocationAutocomplete
+                onChange={(value) => {
+                  if (value && !(form.areas ?? []).includes(value)) {
+                    setForm((f) => ({ ...f, areas: [...(f.areas ?? []), value] }));
+                  }
+                }}
+                placeholder="Search for a service area..."
+                className="[&_.geoapify-autocomplete-input]:w-full [&_.geoapify-autocomplete-input]:bg-slate-800/60 [&_.geoapify-autocomplete-input]:border [&_.geoapify-autocomplete-input]:border-white/10 [&_.geoapify-autocomplete-input]:rounded-lg [&_.geoapify-autocomplete-input]:px-4 [&_.geoapify-autocomplete-input]:py-2 [&_.geoapify-autocomplete-input]:text-slate-200 [&_.geoapify-autocomplete-input]:text-sm [&_.geoapify-autocomplete-input]:placeholder:text-slate-600 [&_.geoapify-autocomplete-input]:focus:outline-none"
+              />
+              <p className="text-[11px] text-slate-600">Search and add service areas covered by this tenant.</p>
+              {(form.areas ?? []).length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {(form.areas ?? []).map((area) => (
+                    <span
+                      key={area}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30 text-[11px]"
+                    >
+                      {area}
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, areas: (f.areas ?? []).filter((a) => a !== area) }))}
+                        className="hover:text-white"
+                      >
+                        <X size={10} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>

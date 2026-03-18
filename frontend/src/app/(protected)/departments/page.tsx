@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 
 const ROLE_LABELS: Record<RoleType, string> = {
   SUPER_ADMIN: 'Super Admin',
@@ -32,6 +33,7 @@ const ROLE_LABELS: Record<RoleType, string> = {
   DEPARTMENT_HEAD: 'Dept. Head',
   OFFICER: 'Officer',
   CALL_OPERATOR: 'Operator',
+  CITIZEN: 'Citizen',
 };
 
 function DeptForm({
@@ -52,7 +54,6 @@ function DeptForm({
   const [name, setName] = useState(initial?.name ?? '');
   const [slaHours, setSlaHours] = useState(initial?.slaHours ?? 48);
   const [serviceAreas, setServiceAreas] = useState<string[]>(initial?.serviceAreas ?? []);
-  const [areaInput, setAreaInput] = useState('');
   const [selectedTenantId, setSelectedTenantId] = useState('');
 
   const { data: tenantsData } = useQuery({
@@ -63,12 +64,10 @@ function DeptForm({
   });
   const tenants: Tenant[] = tenantsData?.data?.data ?? [];
 
-  const addArea = () => {
-    const v = areaInput.trim();
-    if (v && !serviceAreas.includes(v)) {
-      setServiceAreas([...serviceAreas, v]);
+  const addArea = (area: string) => {
+    if (area && !serviceAreas.includes(area)) {
+      setServiceAreas([...serviceAreas, area]);
     }
-    setAreaInput('');
   };
 
   const removeArea = (area: string) =>
@@ -118,24 +117,13 @@ function DeptForm({
           <span className="text-slate-600 font-normal">(optional)</span>
         </label>
         <div className="flex gap-2">
-          <Input
-            value={areaInput}
-            onChange={(e) => setAreaInput(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addArea(); } }}
-            placeholder="e.g. BHU, Varanasi"
-            className="bg-slate-800/50 border-white/10 text-slate-200 text-sm flex-1"
+          <LocationAutocomplete
+            onChange={(value) => addArea(value)}
+            placeholder="Search for an area..."
+            className="flex-1 [&_.geoapify-autocomplete-input]:bg-slate-800/50 [&_.geoapify-autocomplete-input]:border [&_.geoapify-autocomplete-input]:border-white/10 [&_.geoapify-autocomplete-input]:rounded-lg [&_.geoapify-autocomplete-input]:px-4 [&_.geoapify-autocomplete-input]:py-2 [&_.geoapify-autocomplete-input]:text-slate-200 [&_.geoapify-autocomplete-input]:text-sm [&_.geoapify-autocomplete-input]:focus:outline-none [&_.geoapify-autocomplete-input]:placeholder:text-slate-500"
           />
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            onClick={addArea}
-            className="border-white/10 text-slate-300 hover:bg-white/5"
-          >
-            Add
-          </Button>
         </div>
-        <p className="text-[10px] text-slate-500">Press Enter or click Add. Area names can include a city, e.g. &quot;Lanka, Varanasi&quot;. Citizens from these areas will be routed to this department.</p>
+        <p className="text-[10px] text-slate-500">Search and select areas. Area names include a city, e.g. &quot;Lanka, Varanasi&quot;. Citizens from these areas will be routed to this department.</p>
         {serviceAreas.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-1">
             {serviceAreas.map((a) => (

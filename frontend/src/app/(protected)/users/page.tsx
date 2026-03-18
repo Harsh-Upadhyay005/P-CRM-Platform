@@ -32,6 +32,7 @@ const ROLE_COLORS: Record<RoleType, string> = {
   DEPARTMENT_HEAD: 'bg-purple-500/15 text-purple-400 border-purple-500/30',
   OFFICER: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
   CALL_OPERATOR: 'bg-slate-500/15 text-slate-400 border-slate-500/30',
+  CITIZEN: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
 };
 
 const ROLE_LABELS: Record<RoleType, string> = {
@@ -40,6 +41,7 @@ const ROLE_LABELS: Record<RoleType, string> = {
   DEPARTMENT_HEAD: 'Dept. Head',
   OFFICER: 'Officer',
   CALL_OPERATOR: 'Operator',
+  CITIZEN: 'Citizen',
 };
 
 function formatDate(d: string) {
@@ -195,6 +197,7 @@ export default function UsersPage() {
                 <SelectItem value="DEPARTMENT_HEAD">Dept. Head</SelectItem>
                 <SelectItem value="OFFICER">Officer</SelectItem>
                 <SelectItem value="CALL_OPERATOR">Call Operator</SelectItem>
+                <SelectItem value="CITIZEN">Citizen</SelectItem>
               </SelectContent>
             </Select>
           </div>
