@@ -10,6 +10,7 @@ import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Loader2, Send, Paperclip, Search, Building2, ChevronDown } from 'lucide-react';
 import AbstractBackground from '@/components/3d/AbstractBackground';
 import toast from 'react-hot-toast';
+import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -169,6 +170,8 @@ export default function PublicSubmitPage() {
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
     reset,
   } = useForm<SubmitForm>({ resolver: zodResolver(submitSchema) });
@@ -296,11 +299,12 @@ export default function PublicSubmitPage() {
           {/* Locality */}
           <div>
             <label className={labelCls}>Locality / Area <span className="text-slate-500 font-normal">(optional)</span></label>
-            <input
-              {...register('locality')}
-              type="text"
+            <LocationAutocomplete
+              value={watch('locality')}
+              onChange={(value) => setValue('locality', value)}
               placeholder="e.g. Banaras Hindu University, Varanasi"
-              className={fieldCls}
+              name="locality"
+              className="[&_.geoapify-autocomplete-input]:w-full [&_.geoapify-autocomplete-input]:bg-slate-800/60 [&_.geoapify-autocomplete-input]:border [&_.geoapify-autocomplete-input]:border-white/10 [&_.geoapify-autocomplete-input]:rounded-xl [&_.geoapify-autocomplete-input]:px-4 [&_.geoapify-autocomplete-input]:py-2.5 [&_.geoapify-autocomplete-input]:text-white [&_.geoapify-autocomplete-input]:text-sm [&_.geoapify-autocomplete-input]:placeholder:text-slate-600 [&_.geoapify-autocomplete-input]:focus:outline-none [&_.geoapify-autocomplete-input]:focus:border-purple-500/50"
             />
             <p className="text-slate-500 text-xs mt-1">Helps us route your complaint to the right officer and prevents it from being marked as a duplicate of a similar complaint in a different area.</p>
             {errors.locality && <p className="text-red-400 text-xs mt-1">{errors.locality.message}</p>}
