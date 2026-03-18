@@ -11,13 +11,13 @@ router.use(authMiddleware);
 
 router.get(
   "/",
-  authorizeMinimum("CALL_OPERATOR"),
+  authorizeMinimum("CITIZEN"),
   controller.listDepartments,
 );
 
 router.get(
   "/:id",
-  authorizeMinimum("CALL_OPERATOR"),
+  authorizeMinimum("CITIZEN"),
   controller.getDepartment,
 );
 

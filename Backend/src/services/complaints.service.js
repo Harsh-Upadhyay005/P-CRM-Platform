@@ -60,6 +60,10 @@ const complaintDetailSelect = {
 const getABACFilter = async (user) => {
   const { userId, role } = user;
 
+  if (role === "CITIZEN") {
+    return { createdById: userId };
+  }
+
   if (role === "CALL_OPERATOR") {
     return { createdById: userId };
   }
@@ -84,6 +88,13 @@ const getABACFilter = async (user) => {
 
 const assertComplaintAccess = async (complaint, user) => {
   const { userId, role } = user;
+
+  if (role === "CITIZEN") {
+    if (complaint.createdById !== userId) {
+      throw new ApiError(404, "Complaint not found");
+    }
+    return;
+  }
 
   if (role === "CALL_OPERATOR") {
     if (complaint.createdById !== userId) {

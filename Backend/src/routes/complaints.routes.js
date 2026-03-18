@@ -55,9 +55,11 @@ router.post(
   controller.createComplaint,
 );
 
+// Citizens can only view their own complaints (filed via public portal)
+// Officers and above can view complaints based on their role-based access
 router.get(
   "/",
-  authorizeMinimum("CALL_OPERATOR"),
+  authorizeMinimum("CITIZEN"),
   controller.listComplaints,
 );
 
@@ -69,7 +71,7 @@ router.get(
 
 router.get(
   "/:id",
-  authorizeMinimum("CALL_OPERATOR"),
+  authorizeMinimum("CITIZEN"),
   controller.getComplaint,
 );
 
