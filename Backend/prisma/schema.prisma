@@ -50,6 +50,9 @@ model Tenant {
   departments Department[]
   complaints  Complaint[]
   auditLogs   AuditLog[]
+  assignmentRules AutomationAssignmentRule[]
+  categorySlaPolicies CategorySlaPolicy[]
+  workflowSetting WorkflowSetting?
 
   @@index([slug])
 }
@@ -103,6 +106,8 @@ model User {
   notes         InternalNote[]
   notifications Notification[]
   refreshTokens RefreshToken[]
+  assignedAutomationRules AutomationAssignmentRule[] @relation("AutomationRuleAssignee")
+  createdAutomationRules  AutomationAssignmentRule[] @relation("AutomationRuleCreator")
 
   @@index([tenantId])
   @@index([roleId])
@@ -133,6 +138,8 @@ model Department {
   slug         String
   slaHours     Int      @default(48)
   serviceAreas String[] @default([])  // Ward / area names this dept covers, e.g. ["Gomti Nagar", "Hazratganj"]
+  categoryTags String[] @default([])
+  routingKeywords String[] @default([])
 
   isActive     Boolean  @default(true)
   isDeleted    Boolean  @default(false)
@@ -143,9 +150,79 @@ model Department {
   tenant      Tenant   @relation(fields: [tenantId], references: [id])
   users       User[]
   complaints  Complaint[]
+  assignmentRules AutomationAssignmentRule[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
+}
+
+// WORKFLOW AUTOMATION
+
+model WorkflowSetting {
+  id                 String   @id @default(uuid())
+  tenantId           String   @unique
+
+  smartRoutingEnabled Boolean @default(true)
+  autoCloseEnabled    Boolean @default(true)
+  autoCloseAfterDays  Int     @default(7)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant             Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId])
+}
+
+model AutomationAssignmentRule {
+  id                String   @id @default(uuid())
+  tenantId          String
+  name              String
+  description       String?
+
+  isActive          Boolean  @default(true)
+  priority          Int      @default(100)
+  stopOnMatch       Boolean  @default(true)
+
+  categoryPatterns  String[] @default([])
+  areaPatterns      String[] @default([])
+  keywordPatterns   String[] @default([])
+
+  departmentId      String?
+  assignToId        String?
+  setPriority       Priority?
+  createdById       String?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tenant            Tenant      @relation(fields: [tenantId], references: [id])
+  department        Department? @relation(fields: [departmentId], references: [id])
+  assignee          User?       @relation("AutomationRuleAssignee", fields: [assignToId], references: [id])
+  createdBy         User?       @relation("AutomationRuleCreator", fields: [createdById], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, isActive, priority])
+  @@index([departmentId])
+  @@index([assignToId])
+}
+
+model CategorySlaPolicy {
+  id            String   @id @default(uuid())
+  tenantId      String
+  categoryKey   String
+  categoryLabel String
+  slaHours      Int
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tenant        Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([tenantId, categoryKey])
+  @@index([tenantId])
+  @@index([tenantId, isActive])
 }
 
 // COMPLAINT

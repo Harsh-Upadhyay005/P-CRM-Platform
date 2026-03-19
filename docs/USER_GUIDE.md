@@ -241,6 +241,50 @@ Admins manage all users and departments within their tenant.
 
 > **Assigning users to departments from the Users page** is also supported via **⋮ → Change Role**: select the role and then pick the department from the dropdown.
 
+### Workflow Automation (`/workflow`)
+
+Admins and Super Admins can configure the automation engine from the **Workflow** page.
+
+#### A. Workflow Settings
+
+| Setting               | Meaning                                                                   |
+| --------------------- | ------------------------------------------------------------------------- |
+| Smart Routing Enabled | Uses AI + department service metadata to auto-route unassigned complaints |
+| Auto Close Enabled    | Closes resolved complaints after configured no-feedback days              |
+| Auto Close After Days | Number of days to wait before auto-closing                                |
+
+#### B. Assignment Rules
+
+Use **New Rule** to create priority-ordered automation rules.
+
+Rule inputs:
+
+- **Rule Priority** (lower runs first)
+- **Category patterns** (comma-separated)
+- **Area patterns** (comma-separated)
+- **Keyword patterns** (comma-separated)
+- Optional **Department action**
+- Optional **Assignee action**
+- Optional **Priority override**
+- **Stop on match** toggle
+
+#### C. Category SLA Policies
+
+Define SLA by category directly from Workflow page.
+
+Examples:
+
+- `Water` → `24h`
+- `Road` → `72h`
+
+SLA evaluation order:
+
+1. Category SLA policy
+2. Department SLA
+3. Platform default (48h)
+
+This SLA is used consistently in complaint cards, SLA breach filters, escalation jobs, and analytics.
+
 ### Complaint Management
 
 - Admins can view, assign, update, and **permanently delete** any complaint within their tenant

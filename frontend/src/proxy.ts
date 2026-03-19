@@ -28,6 +28,7 @@ export default function middleware(request: NextRequest) {
     request.nextUrl.pathname.startsWith('/complaints') ||
     request.nextUrl.pathname.startsWith('/users') ||
     request.nextUrl.pathname.startsWith('/departments') ||
+    request.nextUrl.pathname.startsWith('/workflow') ||
     request.nextUrl.pathname.startsWith('/analytics') ||
     request.nextUrl.pathname.startsWith('/notifications') ||
     request.nextUrl.pathname.startsWith('/audit-logs') ||

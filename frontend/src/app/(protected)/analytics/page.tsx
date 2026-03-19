@@ -646,7 +646,7 @@ export default function AnalyticsPage() {
             <TabsTrigger
               key={value}
               value={value}
-              className="text-xs data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400 gap-1.5 h-8"
+              className="text-xs text-slate-300 hover:text-white data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-300 gap-1.5 h-8"
             >
               <Icon size={13} /> {label}
             </TabsTrigger>

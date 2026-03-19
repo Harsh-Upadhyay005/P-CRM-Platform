@@ -29,17 +29,17 @@ No login or account is required.
 
 ### What to fill in
 
-| Field           | Required | Description                                                                                                                          |
-| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Organisation    | ✅       | Select your municipality or government office from the dropdown                                                                      |
-| Full Name       | ✅       | Your name as you would like it on the complaint                                                                                      |
-| Phone Number    | ✅       | Office staff may use this to contact you if they need details                                                                        |
-| Email Address   | ✅       | Required — used to send you your Tracking ID and status updates                                                                      |
+| Field           | Required | Description                                                                                                                        |
+| --------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Organisation    | ✅       | Select your municipality or government office from the dropdown                                                                    |
+| Full Name       | ✅       | Your name as you would like it on the complaint                                                                                    |
+| Phone Number    | ✅       | Office staff may use this to contact you if they need details                                                                      |
+| Email Address   | ✅       | Required — used to send you your Tracking ID and status updates                                                                    |
 | Locality / Area | ⬜       | The specific neighbourhood, ward, or area (e.g. `BHU, Varanasi`). Helps route your complaint correctly and avoids false duplicates |
-| Category        | ⬜       | Choose the area your problem falls under (e.g., Roads, Water, Electricity)                                                           |
-| Department      | ⬜       | Optionally select the responsible department; leave blank to let the system assign automatically                                     |
-| Description     | ✅       | Describe your problem in as much detail as possible                                                                                  |
-| Attachments     | ⬜       | Sign in to the staff portal to attach photos or documents — not available on this public page                                        |
+| Category        | ⬜       | Choose the area your problem falls under (e.g., Roads, Water, Electricity)                                                         |
+| Department      | ⬜       | Optionally select the responsible department; leave blank to let the system assign automatically                                   |
+| Description     | ✅       | Describe your problem in as much detail as possible                                                                                |
+| Attachments     | ⬜       | Sign in to the staff portal to attach photos or documents — not available on this public page                                      |
 
 ### Submitting
 
@@ -112,6 +112,8 @@ If the office does not act within the SLA deadline, the complaint is automatical
 
 SLA stands for **Service Level Agreement** — it is a deadline by which the office must respond to or resolve your complaint. Each department has its own SLA (typically 48 hours). If the deadline is missed, the system automatically escalates the complaint and sends alerts to senior staff.
 
+In some organisations, SLA can also vary by complaint category (for example, emergency utility issues may have shorter timelines than non-urgent civic repairs).
+
 ---
 
 ## 4. Tracking Your Complaint
@@ -173,6 +175,7 @@ Once your complaint reaches **RESOLVED** or **CLOSED** status, a feedback form w
 
 - You can submit feedback **only once per complaint** — it cannot be changed after submission.
 - Feedback helps the office improve their service and is reviewed by administrators.
+- If no feedback is submitted for a while after resolution, your complaint may be auto-closed by policy.
 
 ---
 

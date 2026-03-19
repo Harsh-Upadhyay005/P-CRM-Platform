@@ -2,6 +2,7 @@ import app from "./app.js";
 import { env } from "./config/env.js";
 import { connectDB, disconnectDB } from "./config/db.js";
 import { startSlaMonitor, stopSlaMonitor } from "./jobs/slaMonitor.job.js";
+import { startAutoCloseMonitor, stopAutoCloseMonitor } from "./jobs/autoClose.job.js";
 import { broadcastPing } from "./services/sse.service.js";
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
@@ -11,6 +12,7 @@ const startServer = async () => {
 
   // Start background SLA monitor (auto-escalates breached complaints every 30 min)
   startSlaMonitor();
+  startAutoCloseMonitor();
 
   // SSE keep-alive heartbeat — pings all connected clients every 30 s
   const heartbeat = setInterval(broadcastPing, HEARTBEAT_INTERVAL_MS);
@@ -23,6 +25,7 @@ const startServer = async () => {
     console.log("Shutting down server...");
     clearInterval(heartbeat);
     stopSlaMonitor();
+    stopAutoCloseMonitor();
     server.close(async () => {
       await disconnectDB();
       process.exit(0);

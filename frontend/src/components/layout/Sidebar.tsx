@@ -17,6 +17,7 @@ import {
   PlusSquare,
   LogOut,
   X,
+  Settings2,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/hooks/useAuth";
@@ -113,6 +114,13 @@ export function Sidebar() {
       show: !isCitizen,
     },
     {
+      label: "Workflow",
+      href: "/workflow",
+      icon: Settings2,
+      show: isAdmin,
+    },
+
+    {
       label: "Analytics",
       href: "/analytics",
       icon: BarChart2,
@@ -142,16 +150,6 @@ export function Sidebar() {
         isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
       )}
     >
-      {/* Tricolor accent line */}
-      <div
-        className="absolute top-0 right-0 bottom-0 w-1"
-        style={{
-          background:
-            "linear-gradient(180deg, #FF9933 0%, #FFFFFF 50%, #138808 100%)",
-          opacity: 0.8,
-        }}
-      />
-
       <div className="brand-header p-6 border-b border-[#138808]/20 relative overflow-hidden">
         {/* Subtle glow behind logo */}
         <div className="absolute -top-10 -left-10 w-24 h-24 bg-[#FF9933]/20 blur-2xl rounded-full pointer-events-none" />
@@ -165,7 +163,7 @@ export function Sidebar() {
         <div className="flex items-center gap-3">
           {/* Static Ashoka Chakra Icon instead of full component, for cleaner side logo */}
           <div className="relative w-8 h-8 flex items-center justify-center rounded-full border-[1.5px] border-indigo-400/70">
-            <div className="absolute inset-0 rounded-full border-[1px] border-dashed border-indigo-400/40 animate-[spin_10s_linear_infinite]"></div>
+            <div className="absolute inset-0 rounded-full border border-dashed border-indigo-400/40 animate-[spin_10s_linear_infinite]"></div>
             <div className="w-1 h-1 bg-indigo-300 rounded-full"></div>
             {Array.from({ length: 24 }).map((_, i) => (
               <div
@@ -196,7 +194,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-1.5 custom-scrollbar relative">
+      <nav className="flex-1 overflow-y-auto py-5 px-3 space-y-1.5 relative [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Faint watermark in background */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.02] pointer-events-none grayscale">
           <div className="w-48 h-48 rounded-full border-8 border-current flex items-center justify-center">
@@ -261,7 +259,7 @@ export function Sidebar() {
 
       <div className="sidebar-footer p-4 border-t border-[#FF9933]/20 bg-slate-900/80 relative overflow-hidden">
         {/* Footer Bottom Glow */}
-        <div className="absolute bottom-[-20px] right-[-20px] w-24 h-24 bg-[#138808]/20 blur-2xl rounded-full pointer-events-none" />
+        <div className="absolute -bottom-5 -right-5 w-24 h-24 bg-[#138808]/20 blur-2xl rounded-full pointer-events-none" />
         <button
           onClick={() => logout()}
           className="relative w-full flex items-center justify-center gap-2 px-4 py-3 text-xs font-bold text-slate-300 bg-slate-800/50 hover:text-white hover:bg-red-500/20 hover:border-red-500/40 border border-white/5 rounded-lg transition-all duration-300 group tracking-widest uppercase overflow-hidden"
