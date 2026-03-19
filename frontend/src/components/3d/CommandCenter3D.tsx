@@ -6,8 +6,7 @@ import { Float, Sparkles, Text } from '@react-three/drei';
 import * as THREE from 'three';
 
 /* ─────────────────────────────────────────────────────────────
-   Animated 3D Header – Ashoka Chakra inspired
-   Government theme: Saffron, White, Green, Navy
+   Animated 3D Header – Majestic Ashoka Chakra & Tricolor
    ───────────────────────────────────────────────────────────── */
 
 // ── Ashoka Chakra (spinning ring with 24 spokes)
@@ -18,10 +17,10 @@ function AshokaChakra() {
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
     if (groupRef.current) {
-      groupRef.current.rotation.z = t * 0.3;
+      groupRef.current.rotation.z = t * 0.5;
     }
     if (ringRef.current) {
-      ringRef.current.rotation.z = -t * 0.15;
+      ringRef.current.rotation.z = -t * 0.2;
     }
   });
 
@@ -32,33 +31,39 @@ function AshokaChakra() {
     });
   }, []);
 
+  const chakraMaterial = useMemo(() => new THREE.MeshPhysicalMaterial({
+    color: "#000080",
+    metalness: 0.9,
+    roughness: 0.1,
+    clearcoat: 1.0,
+    clearcoatRoughness: 0.1,
+  }), []);
+
   return (
-    <group>
+    <group position={[0, 0, 0]} scale={1.2}>
       {/* Outer ring */}
-      <mesh ref={ringRef}>
-        <torusGeometry args={[1.4, 0.05, 32, 100]} />
-        <meshStandardMaterial color="#000080" metalness={0.8} roughness={0.1} />
+      <mesh ref={ringRef} material={chakraMaterial}>
+        <torusGeometry args={[1.4, 0.08, 64, 128]} />
       </mesh>
 
       {/* Internal rim ring */}
       <mesh>
-        <torusGeometry args={[1.30, 0.015, 16, 64]} />
-        <meshStandardMaterial color="#000080" metalness={0.9} roughness={0.2} transparent opacity={0.6} />
+        <torusGeometry args={[1.30, 0.02, 32, 128]} />
+        <meshPhysicalMaterial color="#000040" metalness={0.9} roughness={0.3} transparent opacity={0.8} />
       </mesh>
 
-      {/* Center hub rings */}
+      {/* Center hub */}
       <group>
-        <mesh>
-          <torusGeometry args={[0.25, 0.03, 32, 64]} />
-          <meshStandardMaterial color="#000080" metalness={0.8} roughness={0.1} />
+        <mesh material={chakraMaterial}>
+          <torusGeometry args={[0.25, 0.04, 32, 64]} />
         </mesh>
-        <mesh>
-          <circleGeometry args={[0.2, 64]} />
-          <meshStandardMaterial color="#000080" metalness={0.6} roughness={0.4} />
+        <mesh material={chakraMaterial}>
+          <circleGeometry args={[0.22, 64]} />
         </mesh>
-        <mesh position={[0, 0, 0.01]}>
-          <circleGeometry args={[0.1, 32]} />
-          <meshStandardMaterial color="#FFFFFF" metalness={0.4} roughness={0.6} />
+        {/* Hub Glow */}
+        <mesh position={[0, 0, 0.02]}>
+          <circleGeometry args={[0.12, 32]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.6} />
         </mesh>
       </group>
 
@@ -77,181 +82,106 @@ function AshokaChakra() {
 
           return (
             <group key={key} position={[midX, midY, 0]} rotation={[0, 0, angle - Math.PI / 2]}>
-              {/* Spoke body */}
-              <mesh>
-                <cylinderGeometry args={[0.01, 0.025, length, 12]} />
-                <meshStandardMaterial color="#000080" metalness={0.7} roughness={0.4} />
+              <mesh material={chakraMaterial}>
+                <cylinderGeometry args={[0.015, 0.035, length, 16]} />
               </mesh>
             </group>
           );
         })}
       </group>
 
-      {/* Glow rings */}
-      <mesh position={[0, 0, -0.1]}>
-        <torusGeometry args={[1.6, 0.05, 8, 100]} />
-        <meshBasicMaterial color="#FF9933" transparent opacity={0.15} />
+      {/* Majestic Backdrop Glow Rings */}
+      <mesh position={[0, 0, -0.3]}>
+        <ringGeometry args={[1.4, 1.8, 64]} />
+        <meshBasicMaterial color="#FF9933" transparent opacity={0.15} side={THREE.DoubleSide} />
       </mesh>
-      <mesh position={[0, 0, -0.15]}>
-        <torusGeometry args={[1.8, 0.05, 8, 100]} />
-        <meshBasicMaterial color="#138808" transparent opacity={0.1} />
+      <mesh position={[0, 0, -0.4]}>
+        <ringGeometry args={[1.8, 2.2, 64]} />
+        <meshBasicMaterial color="#138808" transparent opacity={0.1} side={THREE.DoubleSide} />
+      </mesh>
+      
+      {/* Central Blue Aura */}
+      <mesh position={[0, 0, -0.1]}>
+        <circleGeometry args={[1.4, 64]} />
+        <meshBasicMaterial color="#000080" transparent opacity={0.05} />
       </mesh>
     </group>
   );
 }
 
-// ── Wavy Flag Background
-function WavyBand({ color, yOffset, height, opacity = 0.15, emission = false }: { color: string, yOffset: number, height: number, opacity?: number, emission?: boolean }) {
-  const planeGeoRef = useRef<THREE.PlaneGeometry>(null!);
-  const initialPositions = useRef<Float32Array | null>(null);
+// ── Continuous Sweeping Tricolor Fabric
+function TriColorFabric() {
+  const geometry = useMemo(() => new THREE.PlaneGeometry(40, 1.8, 128, 1), []);
+  const initialPositions = useMemo(() => new Float32Array(geometry.attributes.position.array), [geometry]);
 
   useFrame(({ clock }) => {
-    if (!planeGeoRef.current || !initialPositions.current) return;
-    const t = clock.getElapsedTime() * 0.4;
-    const positions = planeGeoRef.current.attributes.position;
+    const t = clock.getElapsedTime() * 1.5;
+    const positions = geometry.attributes.position;
     
     for (let i = 0; i < positions.count; i++) {
-      const idx = i * 3;
-      const x = initialPositions.current[idx];
-      const baseY = initialPositions.current[idx + 1];
-      const baseZ = initialPositions.current[idx + 2];
-      
-      const waveY = Math.sin(x * 0.4 - t * 2.0) * 0.5;
-      const waveZ = Math.cos(x * 0.3 - t * 1.5) * 0.6;
-      
-      positions.setXYZ(i, x, baseY + waveY, baseZ + waveZ);
+        const x = initialPositions[i * 3];
+        // Create a luscious, continuous wave that sweeps horizontally
+        const waveZ = Math.sin(x * 0.15 - t * 0.8) * 2.0;
+        positions.setZ(i, waveZ);
     }
     positions.needsUpdate = true;
-    planeGeoRef.current.computeVertexNormals();
+    geometry.computeVertexNormals();
   });
 
   return (
-    <mesh position={[0, yOffset, -2.5]}>
-      <planeGeometry 
-        ref={(geom) => {
-          if (geom && !initialPositions.current) {
-            planeGeoRef.current = geom;
-            initialPositions.current = new Float32Array(geom.attributes.position.array);
-          }
-        }} 
-        args={[24, height, 64, 4]} 
-      />
-      {emission ? (
-        <meshBasicMaterial color={color} transparent opacity={opacity} side={THREE.DoubleSide} />
-      ) : (
-        <meshStandardMaterial color={color} transparent opacity={opacity} metalness={0.7} roughness={0.3} side={THREE.DoubleSide} />
-      )}
-    </mesh>
+    <group position={[0, 0, -4]} rotation={[-0.1, 0, 0]}>
+      {/* Saffron Band */}
+      <mesh position={[0, 1.8, 0]} geometry={geometry}>
+        <meshPhysicalMaterial color="#FF9933" transparent opacity={0.8} roughness={0.2} metalness={0.4} clearcoat={1.0} side={THREE.DoubleSide} />
+      </mesh>
+      
+      {/* White Band */}
+      <mesh position={[0, 0, 0]} geometry={geometry}>
+        <meshPhysicalMaterial color="#FFFFFF" transparent opacity={0.6} roughness={0.1} metalness={0.7} clearcoat={1.0} side={THREE.DoubleSide} emissive="#ffffff" emissiveIntensity={0.1} />
+      </mesh>
+
+      {/* Green Band */}
+      <mesh position={[0, -1.8, 0]} geometry={geometry}>
+        <meshPhysicalMaterial color="#138808" transparent opacity={0.8} roughness={0.2} metalness={0.4} clearcoat={1.0} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
   );
 }
 
-// function WavyFlagBackground() {
-//   return (
-//     <group>
-//       {/* Upper Saffron Band */}
-//       <WavyBand color="#FF9933" yOffset={3.0} height={3.0} opacity={0.85} />
-      
-//       {/* Top Wavy Line */}
-//       <WavyBand color="#FFFFFF" yOffset={1.5} height={0.03} opacity={1.0} emission />
-
-//       {/* Middle White Band */}
-//       <WavyBand color="#FFFFFF" yOffset={0} height={3.0} opacity={0.85} />
-
-//       {/* Bottom Wavy Line */}
-//       <WavyBand color="#FFFFFF" yOffset={-1.5} height={0.03} opacity={1.0} emission />
-
-//       {/* Lower Green Band */}
-//       <WavyBand color="#138808" yOffset={-3.0} height={3.0} opacity={0.85} />
-//     </group>
-//   );
-// }
-
-// ── Orbiting data particles (represent states/complaints)
+// ── Orbiting data particles (represent glowing ambient data)
 function DataOrbit() {
   const ref = useRef<THREE.Group>(null!);
-  const count = 28;
+  const count = 40;
 
-  // Use a seeded PRNG so values are stable across renders (no Math.random in render)
   const particles = useMemo(() => {
-    let seed = 42;
+    let seed = 123;
     const rng = () => { seed = (seed * 16807 + 0) % 2147483647; return (seed - 1) / 2147483646; };
     return Array.from({ length: count }, (_, i) => {
       const angle = (i / count) * Math.PI * 2;
-      const radius = 1.8 + rng() * 0.4;
-      const zOffset = (rng() - 0.5) * 0.3;
+      const radius = 2.5 + rng() * 1.5;
+      const zOffset = (rng() - 0.5) * 2.0;
       return {
         angle, radius, zOffset,
-        size: 0.02 + rng() * 0.02,
+        size: 0.02 + rng() * 0.04,
         color: i % 3 === 0 ? '#FF9933' : i % 3 === 1 ? '#138808' : '#FFFFFF',
+        speed: 0.2 + rng() * 0.3,
         key: i,
       };
     });
   }, []);
 
   useFrame(({ clock }) => {
-    if (ref.current) ref.current.rotation.z = clock.getElapsedTime() * 0.08;
+    if (ref.current) ref.current.rotation.z = clock.getElapsedTime() * 0.05;
   });
 
   return (
     <group ref={ref}>
       {particles.map((p) => (
         <mesh key={p.key} position={[Math.cos(p.angle) * p.radius, Math.sin(p.angle) * p.radius, p.zOffset]}>
-          <sphereGeometry args={[p.size, 8, 8]} />
-          <meshBasicMaterial color={p.color} transparent opacity={0.8} />
+          <sphereGeometry args={[p.size, 16, 16]} />
+          <meshBasicMaterial color={p.color} transparent opacity={0.9} />
         </mesh>
       ))}
-    </group>
-  );
-}
-
-// ── Floating text badges
-function FloatingLabels() {
-  return (
-    <group>
-      <Float speed={1.2} floatIntensity={0.2}>
-        <Text position={[-2.8, 1.5, 0]} fontSize={0.16} color="#CBD5E1" anchorX="left" font={undefined} letterSpacing={0.15}>
-          BHARAT COMPLAINT
-        </Text>
-        <Text position={[-2.8, 1.2, 0]} fontSize={0.1} color="#64748B" anchorX="left" font={undefined} letterSpacing={0.2}>
-          RESOLUTION PLATFORM
-        </Text>
-      </Float>
-      <Float speed={1} floatIntensity={0.15}>
-        <Text position={[1.5, -1.6, 0]} fontSize={0.08} color="#475569" anchorX="left" font={undefined} letterSpacing={0.1}>
-          {'सत्यमेव जयते'}
-        </Text>
-      </Float>
-    </group>
-  );
-}
-
-// ── Tricolor accent lines
-function TricolorAccents() {
-  const ref = useRef<THREE.Group>(null!);
-
-  useFrame(({ clock }) => {
-    if (ref.current) {
-      const t = clock.getElapsedTime();
-      ref.current.children.forEach((child, i) => {
-        (child as THREE.Mesh).position.x = Math.sin(t * 0.3 + i * 0.5) * 0.1 - 3;
-      });
-    }
-  });
-
-  return (
-    <group ref={ref}>
-      <mesh position={[-3, 0.5, -0.5]}>
-        <boxGeometry args={[0.3, 0.008, 0.001]} />
-        <meshBasicMaterial color="#FF9933" transparent opacity={0.5} />
-      </mesh>
-      <mesh position={[-3, 0.45, -0.5]}>
-        <boxGeometry args={[0.25, 0.008, 0.001]} />
-        <meshBasicMaterial color="#FFFFFF" transparent opacity={0.3} />
-      </mesh>
-      <mesh position={[-3, 0.4, -0.5]}>
-        <boxGeometry args={[0.2, 0.008, 0.001]} />
-        <meshBasicMaterial color="#138808" transparent opacity={0.5} />
-      </mesh>
     </group>
   );
 }
@@ -261,59 +191,64 @@ function TricolorAccents() {
 // ═══════════════════════════════════════════════════════════════
 export function CommandCenter3D() {
   return (
-    <div
-      className="relative w-full h-70 rounded-2xl overflow-hidden shadow-2xl"
-      style={{ background: 'linear-gradient(180deg, rgba(255,153,51,0.9) 0%, rgba(255,153,51,0.9) 33.3%, rgba(255,255,255,0.9) 33.3%, rgba(255,255,255,0.9) 66.6%, rgba(19,136,8,0.9) 66.6%, rgba(19,136,8,0.9) 100%)' }}
-    >
-      {/* Top tricolor bar */}
-      <div className="absolute top-0 left-0 right-0 h-0.5 z-10" style={{ background: 'linear-gradient(90deg, #FF9933 33%, #FFFFFF 33%, #FFFFFF 66%, #138808 66%)' }} />
+    <div className="relative w-full h-80 sm:h-96 rounded-2xl overflow-hidden shadow-2xl border border-white/10 bg-slate-950">
+      
+      {/* Deep premium background with soft glowing corners */}
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(255,153,51,0.15),_transparent_40%),radial-gradient(ellipse_at_bottom_right,_rgba(19,136,8,0.15),_transparent_40%)]" />
+      
+      {/* Top metallic tricolor trim */}
+      <div className="absolute top-0 left-0 right-0 h-[3px] z-10" style={{ background: 'linear-gradient(90deg, #FF9933 0%, #FF9933 33.3%, #FFFFFF 33.3%, #FFFFFF 66.6%, #138808 66.6%, #138808 100%)', boxShadow: '0 2px 10px rgba(255,255,255,0.2)' }} />
 
-      {/* Gradient overlays */}
-      <div className="absolute inset-0 bg-linear-to-r from-[#FF9933]/5 via-transparent to-[#138808]/5 pointer-events-none z-10" />
-      <div className="absolute inset-0 bg-linear-to-t from-slate-950/80 via-transparent to-transparent pointer-events-none z-10" />
+      {/* Overlay Vignette */}
+      <div className="absolute inset-0 bg-linear-to-t from-slate-950/90 via-transparent to-slate-950/40 pointer-events-none z-10" />
 
-      {/* Title overlay — responsive HTML (replaces Three.js FloatingLabels) */}
-      <div className="absolute top-3 left-4 z-10 flex flex-col gap-0.5">
-        <p className="text-[11px] sm:text-xs text-slate-300 font-mono tracking-[0.18em] uppercase leading-tight">
-          Bharat Complaint
-        </p>
-        <p className="text-[9px] sm:text-[10px] text-slate-500 font-mono tracking-[0.22em] uppercase">
-          Resolution Platform
+      {/* Typography Overlay */}
+      <div className="absolute top-5 left-6 z-20 flex flex-col gap-1">
+        <h2 className="text-xl sm:text-2xl text-white font-semibold tracking-wider font-sans drop-shadow-md">
+          MAJESTIC PLATFORM
+        </h2>
+        <p className="text-xs sm:text-sm text-slate-300 font-mono tracking-[0.25em] uppercase">
+          National Command Center
         </p>
       </div>
 
-      {/* Footer label */}
-      <div className="absolute bottom-3 left-4 z-10 flex items-center gap-2">
-        <div className="flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#FF9933]" />
-          <span className="w-1.5 h-1.5 rounded-full bg-white/40" />
-          <span className="w-1.5 h-1.5 rounded-full bg-[#138808]" />
+      <div className="absolute bottom-5 left-6 z-20 flex items-center gap-3">
+        <div className="flex gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-[#FF9933] shadow-[0_0_8px_#FF9933]" />
+          <div className="w-2 h-2 rounded-full bg-white shadow-[0_0_8px_#FFFFFF]" />
+          <div className="w-2 h-2 rounded-full bg-[#138808] shadow-[0_0_8px_#138808]" />
         </div>
-        <p className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">
-          Government CRM Platform • National Command Center
+        <p className="text-xs text-slate-400 font-mono uppercase tracking-widest">
+          Satyameva Jayate
         </p>
       </div>
 
-      {/* Live indicator */}
-      <div className="absolute top-3 right-4 z-10 flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-900/60 border border-white/5">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-        <span className="text-[9px] text-slate-400 font-mono">ACTIVE</span>
+      <div className="absolute top-5 right-6 z-20 flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/40 border border-white/10 backdrop-blur-md">
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
+        <span className="text-[10px] text-white font-mono tracking-wider">SYSTEM ACTIVE</span>
       </div>
 
-      <Canvas camera={{ position: [0, 0, 5], fov: 45 }}>
-        <ambientLight intensity={0.4} />
-        <pointLight position={[5, 5, 5]} intensity={0.6} color="#FF9933" />
-        <pointLight position={[-5, -3, 3]} intensity={0.3} color="#138808" />
-        <pointLight position={[0, 0, 5]} intensity={0.2} color="#FFFFFF" />
+      {/* 3D Scene */}
+      <Canvas camera={{ position: [0, 0, 6], fov: 45 }}>
+        <ambientLight intensity={0.6} />
+        <directionalLight position={[5, 10, 5]} intensity={1.2} color="#ffffff" />
+        <pointLight position={[-5, 2, 5]} intensity={0.8} color="#FF9933" />
+        <pointLight position={[5, -2, 5]} intensity={0.8} color="#138808" />
 
         <React.Suspense fallback={null}>
-          {/* <WavyFlagBackground /> */}
-          <Float speed={0.8} rotationIntensity={0.05} floatIntensity={0.2}>
+          {/* Sweeping Tricolor Background */}
+          <TriColorFabric />
+          
+          {/* Centered Chakra & Particles */}
+          <Float speed={1.5} rotationIntensity={0.1} floatIntensity={0.3}>
             <AshokaChakra />
             <DataOrbit />
           </Float>
-          <Sparkles count={60} scale={8} size={1.2} speed={0.2} opacity={0.15} color="#FF9933" />
-          <Sparkles count={40} scale={6} size={0.8} speed={0.15} opacity={0.1} color="#138808" />
+          
+          {/* Ambient Sparkles */}
+          <Sparkles count={50} scale={10} size={1.5} speed={0.4} opacity={0.4} color="#FF9933" position={[0, 2, -2]} />
+          <Sparkles count={50} scale={10} size={1.5} speed={0.4} opacity={0.4} color="#138808" position={[0, -2, -2]} />
+          <Sparkles count={30} scale={8} size={2} speed={0.2} opacity={0.6} color="#FFFFFF" />
         </React.Suspense>
       </Canvas>
     </div>
