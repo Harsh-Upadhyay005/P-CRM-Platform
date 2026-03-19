@@ -34,6 +34,7 @@ async function createRoles() {
     "DEPARTMENT_HEAD",
     "OFFICER",
     "CALL_OPERATOR",
+    "CITIZEN",
   ];
 
   for (const role of roles) {

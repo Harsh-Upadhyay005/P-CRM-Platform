@@ -3,8 +3,14 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 
 const errorMiddleware = (err, req, res, next) => {
+  const isApiClientError = err instanceof ApiError && err.statusCode >= 400 && err.statusCode < 500;
+
   if (process.env.NODE_ENV !== "production") {
-    console.error(err);
+    if (isApiClientError) {
+      console.warn(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} -> ${err.statusCode} ${err.message}`);
+    } else {
+      console.error(err);
+    }
   } else {
     console.error(`[${new Date().toISOString()}] ${err.name}: ${err.message}`);
   }
