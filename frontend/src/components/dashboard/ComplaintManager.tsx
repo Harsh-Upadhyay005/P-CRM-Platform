@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { complaintsApi } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -39,6 +41,9 @@ import {
   User,
   Clock,
   Plus,
+  Eye,
+  Edit2,
+  Trash2,
 } from "lucide-react";
 import { ComplaintStatus, Priority, Complaint } from "@/types";
 import Link from "next/link";
@@ -105,6 +110,8 @@ function SlaTimer({
 }
 
 function ComplaintsTable({ data }: { data: Complaint[] }) {
+  const router = useRouter();
+
   return (
     <div className="h-[420px] overflow-auto rounded-md [scrollbar-width:thin] [scrollbar-color:theme(colors.slate.700)_transparent]">
       <Table className="min-w-[680px]">
@@ -138,7 +145,8 @@ function ComplaintsTable({ data }: { data: Complaint[] }) {
           {data.map((c) => (
             <TableRow
               key={c.id}
-              className="border-white/5 hover:bg-white/2 group cursor-pointer"
+              onClick={() => router.push(`/complaints/${c.id}`)}
+              className="border-white/5 hover:bg-white/2 cursor-pointer"
             >
               <TableCell className="text-xs font-mono text-purple-400">
                 {c.trackingId}
@@ -164,26 +172,41 @@ function ComplaintsTable({ data }: { data: Complaint[] }) {
               <TableCell>
                 <SlaTimer createdAt={c.createdAt} status={c.status} />
               </TableCell>
-              <TableCell>
+              <TableCell onClick={(e) => e.stopPropagation()}>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 text-slate-400"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white"
                     >
                       <MoreVertical size={14} />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent
                     align="end"
-                    className="bg-slate-900 border-white/10 text-slate-200 min-w-35"
+                    className="bg-slate-900 border-white/10 text-slate-200 min-w-44"
                   >
                     <DropdownMenuItem
-                      asChild
-                      className="text-xs cursor-pointer hover:bg-white/5"
+                      onClick={() => router.push(`/complaints/${c.id}`)}
+                      className="text-xs cursor-pointer hover:bg-white/5 gap-2"
                     >
-                      <Link href={`/complaints/${c.id}`}>View Details</Link>
+                      <Eye size={13} />
+                      View Details
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      asChild
+                      className="text-xs cursor-pointer hover:bg-white/5 gap-2"
+                    >
+                      <Link href={`/complaints/${c.id}/edit`}>
+                        <Edit2 size={13} />
+                        Edit Complaint
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-white/5" />
+                    <DropdownMenuItem className="text-xs cursor-pointer hover:bg-white/5 gap-2 text-red-400 focus:text-red-400">
+                      <Trash2 size={13} />
+                      Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
