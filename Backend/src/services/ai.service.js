@@ -1,15 +1,3 @@
-/**
- * AI Intelligence Layer — ai.service.js
- *
- * Three independent engines, all self-contained (no external API required):
- *
- *  1. Sentiment Analysis  — scores complaint tone (-1 negative → +1 positive)
- *  2. Priority Prediction — suggests CRITICAL/HIGH/MEDIUM/LOW with confidence
- *  3. Duplicate Detection — cosine similarity (TF) against recent tenant complaints
- *
- * The master export `analyzeComplaint()` runs all three and returns a single object
- * ready to be spread into a Prisma create/update call.
- */
 
 import { prisma } from "../config/db.js";
 

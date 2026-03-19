@@ -194,9 +194,11 @@ export const sendVerificationEmail = async (email, fullName, rawToken) => {
 
   try {
     if (!env.BREVO_API_KEY || env.BREVO_API_KEY.includes("your_brevo")) {
-      console.log(`[email] MOCK MODE: Verification email would be sent to ${email}`); 
+      console.log(
+        `[email] MOCK MODE: Verification email would be sent to ${email}`,
+      );
       console.log(`[email] MOCK URL: ${url}`);
-      return; 
+      return;
     }
     await transactionalEmailApi.sendTransacEmail({
       sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
@@ -239,7 +241,12 @@ export const sendResetPasswordEmail = async (email, fullName, rawToken) => {
   }
 };
 
-const slaBreachEmailBody = (complaintTrackingId, departmentName, createdAt, slaHours) => `
+const slaBreachEmailBody = (
+  complaintTrackingId,
+  departmentName,
+  createdAt,
+  slaHours,
+) => `
   <h2 style="margin:0 0 8px;color:#7c2d12;font-size:22px;font-weight:700;">SLA Breach Alert</h2>
   <p style="margin:0 0 24px;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb;padding-bottom:20px;">Auto-Escalation Notification — P-CRM Portal</p>
 
@@ -271,13 +278,26 @@ const slaBreachEmailBody = (complaintTrackingId, departmentName, createdAt, slaH
   </table>
 `;
 
-export const sendSlaBreachEmail = async (recipients, complaintTrackingId, departmentName, createdAt, slaHours) => {
+export const sendSlaBreachEmail = async (
+  recipients,
+  complaintTrackingId,
+  departmentName,
+  createdAt,
+  slaHours,
+) => {
   if (!recipients || recipients.length === 0) return;
 
   const html = emailWrapper(
     "linear-gradient(135deg, #dc2626 0%, #7c2d12 100%)",
-    { preheader: `SLA Breach Alert — Complaint ${complaintTrackingId} auto-escalated` },
-    slaBreachEmailBody(complaintTrackingId, departmentName, createdAt, slaHours),
+    {
+      preheader: `SLA Breach Alert — Complaint ${complaintTrackingId} auto-escalated`,
+    },
+    slaBreachEmailBody(
+      complaintTrackingId,
+      departmentName,
+      createdAt,
+      slaHours,
+    ),
   );
 
   const subject = `SLA Breach — Complaint ${complaintTrackingId} Auto-Escalated`;
@@ -285,14 +305,121 @@ export const sendSlaBreachEmail = async (recipients, complaintTrackingId, depart
   for (const { email, name } of recipients) {
     try {
       await transactionalEmailApi.sendTransacEmail({
-        sender:      { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
-        to:          [{ email, name }],
+        sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
+        to: [{ email, name }],
         subject,
         htmlContent: html,
         textContent: `SLA Breach Alert\n\nComplaint ${complaintTrackingId} has exceeded its ${slaHours}-hour SLA window and has been auto-escalated.\n\nDepartment: ${departmentName}\nFiled On: ${new Date(createdAt).toISOString()}\n\nPlease take immediate action.\n\nP-CRM Portal`,
       });
     } catch (err) {
-      console.error(`[email] Failed to send SLA breach email to ${email}:`, err?.message);
+      console.error(
+        `[email] Failed to send SLA breach email to ${email}:`,
+        err?.message,
+      );
+    }
+  }
+};
+
+// ── SLA REMINDER EMAIL (50% / 75% nudge) ──────────────────────────────────
+
+const slaReminderEmailBody = (
+  trackingId,
+  departmentName,
+  createdAt,
+  slaHours,
+  thresholdLabel,
+) => {
+  const deadline = new Date(
+    new Date(createdAt).getTime() + slaHours * 3_600_000,
+  );
+  const remaining = deadline.getTime() - Date.now();
+  const remainHrs = Math.max(0, Math.floor(remaining / 3_600_000));
+  const remainMins = Math.max(0, Math.floor((remaining % 3_600_000) / 60_000));
+  const isWarning = thresholdLabel === "75%";
+  const accentColor = isWarning ? "#f59e0b" : "#3b82f6";
+  const icon = isWarning ? "⚠️" : "🔔";
+
+  return `
+  <h2 style="margin:0 0 8px;color:#1a3a6e;font-size:22px;font-weight:700;">${icon} SLA ${thresholdLabel} Reminder</h2>
+  <p style="margin:0 0 24px;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb;padding-bottom:20px;">Grievance Management — P-CRM Portal</p>
+
+  <p style="margin:0 0 16px;color:#374151;font-size:15px;line-height:1.7;">
+    Complaint <strong>${trackingId}</strong> has consumed <strong>${thresholdLabel}</strong> of its
+    <strong>${slaHours}-hour</strong> SLA window. Please take action to resolve it before the deadline.
+  </p>
+
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-left:4px solid ${accentColor};border-radius:8px;padding:16px 20px;margin:0 0 24px;">
+    <table style="width:100%;border-collapse:collapse;font-size:14px;">
+      <tr>
+        <td style="padding:4px 0;color:#6b7280;width:140px;">Tracking ID</td>
+        <td style="padding:4px 0;color:#1e293b;font-weight:600;font-family:monospace;">${trackingId}</td>
+      </tr>
+      <tr>
+        <td style="padding:4px 0;color:#6b7280;">Department</td>
+        <td style="padding:4px 0;color:#1e293b;">${departmentName}</td>
+      </tr>
+      <tr>
+        <td style="padding:4px 0;color:#6b7280;">SLA Deadline</td>
+        <td style="padding:4px 0;color:#1e293b;">${deadline.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST</td>
+      </tr>
+      <tr>
+        <td style="padding:4px 0;color:#6b7280;">Time Remaining</td>
+        <td style="padding:4px 0;color:${accentColor};font-weight:700;">${remainHrs}h ${remainMins}m</td>
+      </tr>
+    </table>
+  </div>
+
+  <p style="margin:0 0 8px;color:#6b7280;font-size:13px;">
+    If this complaint is not resolved before the deadline it will be automatically escalated.
+  </p>
+  `;
+};
+
+export const sendSlaReminderEmail = async (
+  recipients,
+  complaintTrackingId,
+  departmentName,
+  createdAt,
+  slaHours,
+  thresholdLabel,
+) => {
+  if (!recipients || recipients.length === 0) return;
+
+  const isWarning = thresholdLabel === "75%";
+  const subject = isWarning
+    ? `⚠️ SLA Warning (75%) — Complaint ${complaintTrackingId} approaching breach`
+    : `🔔 SLA Reminder (50%) — Complaint ${complaintTrackingId} needs attention`;
+
+  const html = emailWrapper(
+    isWarning
+      ? "linear-gradient(135deg, #d97706 0%, #92400e 100%)"
+      : "linear-gradient(135deg, #1a56db 0%, #1e3a8a 100%)",
+    {
+      preheader: `SLA ${thresholdLabel} elapsed for complaint ${complaintTrackingId}`,
+    },
+    slaReminderEmailBody(
+      complaintTrackingId,
+      departmentName,
+      createdAt,
+      slaHours,
+      thresholdLabel,
+    ),
+  );
+
+  for (const { email, name } of recipients) {
+    try {
+      await transactionalEmailApi.sendTransacEmail({
+        sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
+        to: [{ email, name }],
+        subject,
+        htmlContent: html,
+        textContent: `SLA ${thresholdLabel} Reminder\n\nComplaint ${complaintTrackingId} has used ${thresholdLabel} of its ${slaHours}-hour SLA window.\n\nDepartment: ${departmentName}\nPlease resolve it before the deadline to avoid automatic escalation.\n\nP-CRM Portal`,
+      });
+    } catch (err) {
+      console.error(
+        `[email] Failed to send SLA reminder email to ${email}:`,
+        err?.message,
+      );
     }
   }
 };
@@ -300,17 +427,30 @@ export const sendSlaBreachEmail = async (recipients, complaintTrackingId, depart
 // ── STATUS CHANGE EMAIL ────────────────────────────────────────────────────
 
 const STATUS_META = {
-  OPEN:        { label: "Open",        color: "#6b7280", icon: "📋" },
-  ASSIGNED:    { label: "Assigned",    color: "#3b82f6", icon: "👤" },
+  OPEN: { label: "Open", color: "#6b7280", icon: "📋" },
+  ASSIGNED: { label: "Assigned", color: "#3b82f6", icon: "👤" },
   IN_PROGRESS: { label: "In Progress", color: "#f59e0b", icon: "⚙️" },
-  ESCALATED:   { label: "Escalated",   color: "#ef4444", icon: "🚨" },
-  RESOLVED:    { label: "Resolved",    color: "#10b981", icon: "✅" },
-  CLOSED:      { label: "Closed",      color: "#6b7280", icon: "🔒" },
+  ESCALATED: { label: "Escalated", color: "#ef4444", icon: "🚨" },
+  RESOLVED: { label: "Resolved", color: "#10b981", icon: "✅" },
+  CLOSED: { label: "Closed", color: "#6b7280", icon: "🔒" },
 };
 
-const statusChangeEmailBody = (citizenName, trackingId, oldStatus, newStatus) => {
-  const from = STATUS_META[oldStatus] ?? { label: oldStatus, color: "#6b7280", icon: "•" };
-  const to   = STATUS_META[newStatus] ?? { label: newStatus, color: "#1a56db", icon: "•" };
+const statusChangeEmailBody = (
+  citizenName,
+  trackingId,
+  oldStatus,
+  newStatus,
+) => {
+  const from = STATUS_META[oldStatus] ?? {
+    label: oldStatus,
+    color: "#6b7280",
+    icon: "•",
+  };
+  const to = STATUS_META[newStatus] ?? {
+    label: newStatus,
+    color: "#1a56db",
+    icon: "•",
+  };
 
   return `
   <h2 style="margin:0 0 8px;color:#1a3a6e;font-size:22px;font-weight:700;">Complaint Status Update</h2>
@@ -350,7 +490,9 @@ const statusChangeEmailBody = (citizenName, trackingId, oldStatus, newStatus) =>
     </tr>
   </table>
 
-  ${newStatus === "RESOLVED" || newStatus === "CLOSED" ? `
+  ${
+    newStatus === "RESOLVED" || newStatus === "CLOSED"
+      ? `
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
     <tr>
       <td style="background-color:#ecfdf5;border-left:4px solid #10b981;border-radius:6px;padding:16px 20px;">
@@ -361,7 +503,8 @@ const statusChangeEmailBody = (citizenName, trackingId, oldStatus, newStatus) =>
       </td>
     </tr>
   </table>
-  ` : `
+  `
+      : `
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
     <tr>
       <td style="background-color:#eff6ff;border-left:4px solid #3b82f6;border-radius:6px;padding:16px 20px;">
@@ -372,33 +515,47 @@ const statusChangeEmailBody = (citizenName, trackingId, oldStatus, newStatus) =>
       </td>
     </tr>
   </table>
-  `}
+  `
+  }
 `;
 };
 
-export const sendStatusChangeEmail = async (citizenEmail, citizenName, trackingId, oldStatus, newStatus) => {
+export const sendStatusChangeEmail = async (
+  citizenEmail,
+  citizenName,
+  trackingId,
+  oldStatus,
+  newStatus,
+) => {
   if (!citizenEmail) return;
 
   const from = STATUS_META[oldStatus]?.label ?? oldStatus;
-  const to   = STATUS_META[newStatus]?.label ?? newStatus;
+  const to = STATUS_META[newStatus]?.label ?? newStatus;
 
   const html = emailWrapper(
     "linear-gradient(135deg, #1a56db 0%, #1e3a8a 100%)",
-    { preheader: `Your complaint ${trackingId} status changed: ${from} → ${to}` },
+    {
+      preheader: `Your complaint ${trackingId} status changed: ${from} → ${to}`,
+    },
     statusChangeEmailBody(citizenName, trackingId, oldStatus, newStatus),
   );
 
   try {
     await transactionalEmailApi.sendTransacEmail({
-      sender:      { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
-      to:          [{ email: citizenEmail, name: citizenName }],
-      subject:     `Complaint Update: ${trackingId} — Status Changed to ${to}`,
+      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
+      to: [{ email: citizenEmail, name: citizenName }],
+      subject: `Complaint Update: ${trackingId} — Status Changed to ${to}`,
       htmlContent: html,
       textContent: `Dear ${citizenName},\n\nYour complaint (${trackingId}) status has been updated from ${from} to ${to}.\n\nTrack your complaint on the P-CRM Portal using your Tracking ID.\n\nP-CRM Portal`,
     });
-    console.log(`[email] Status change email sent to ${citizenEmail} for complaint ${trackingId}`);
+    console.log(
+      `[email] Status change email sent to ${citizenEmail} for complaint ${trackingId}`,
+    );
   } catch (err) {
-    console.error(`[email] Failed to send status change email to ${citizenEmail}:`, err?.message);
+    console.error(
+      `[email] Failed to send status change email to ${citizenEmail}:`,
+      err?.message,
+    );
   }
 };
 
@@ -440,7 +597,12 @@ const complaintConfirmationEmailBody = (citizenName, trackingId) => `
 
 // ── OFFICER ASSIGNMENT EMAIL ─────────────────────────────────────────────────
 
-const officerAssignmentEmailBody = (officerName, trackingId, category, priority) => `
+const officerAssignmentEmailBody = (
+  officerName,
+  trackingId,
+  category,
+  priority,
+) => `
   <h2 style="margin:0 0 8px;color:#1a3a6e;font-size:22px;font-weight:700;">Complaint Assigned to You</h2>
   <p style="margin:0 0 24px;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb;padding-bottom:20px;">Action Required — P-CRM Portal</p>
 
@@ -457,16 +619,24 @@ const officerAssignmentEmailBody = (officerName, trackingId, category, priority)
             <td style="color:#64748b;font-size:13px;padding:4px 0;width:130px;"><strong>Tracking ID:</strong></td>
             <td style="color:#1e293b;font-size:14px;font-weight:700;padding:4px 0;font-family:monospace;">${trackingId}</td>
           </tr>
-          ${category ? `<tr>
+          ${
+            category
+              ? `<tr>
             <td style="color:#64748b;font-size:13px;padding:4px 0;"><strong>Category:</strong></td>
             <td style="color:#1e293b;font-size:14px;padding:4px 0;">${category}</td>
-          </tr>` : ''}
-          ${priority ? `<tr>
+          </tr>`
+              : ""
+          }
+          ${
+            priority
+              ? `<tr>
             <td style="color:#64748b;font-size:13px;padding:4px 0;"><strong>Priority:</strong></td>
             <td style="padding:4px 0;">
               <span style="display:inline-block;background-color:#fef3c7;color:#92400e;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;">${priority}</span>
             </td>
-          </tr>` : ''}
+          </tr>`
+              : ""
+          }
         </table>
       </td>
     </tr>
@@ -486,50 +656,74 @@ const officerAssignmentEmailBody = (officerName, trackingId, category, priority)
   </table>
 `;
 
-export const sendOfficerAssignmentEmail = async (officerEmail, officerName, trackingId, category, priority) => {
+export const sendOfficerAssignmentEmail = async (
+  officerEmail,
+  officerName,
+  trackingId,
+  category,
+  priority,
+) => {
   if (!officerEmail) return;
 
   const html = emailWrapper(
     "linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)",
-    { preheader: `Complaint ${trackingId} has been assigned to you — action required` },
+    {
+      preheader: `Complaint ${trackingId} has been assigned to you — action required`,
+    },
     officerAssignmentEmailBody(officerName, trackingId, category, priority),
   );
 
   try {
     await transactionalEmailApi.sendTransacEmail({
-      sender:      { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
-      to:          [{ email: officerEmail, name: officerName }],
-      subject:     `Complaint Assigned: ${trackingId} — Action Required`,
+      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
+      to: [{ email: officerEmail, name: officerName }],
+      subject: `Complaint Assigned: ${trackingId} — Action Required`,
       htmlContent: html,
-      textContent: `Dear ${officerName},\n\nComplaint ${trackingId} has been assigned to you.\n\nCategory: ${category ?? 'N/A'}\nPriority: ${priority ?? 'N/A'}\n\nPlease log in to the P-CRM Portal to review and take action.\n\nP-CRM Portal`,
+      textContent: `Dear ${officerName},\n\nComplaint ${trackingId} has been assigned to you.\n\nCategory: ${category ?? "N/A"}\nPriority: ${priority ?? "N/A"}\n\nPlease log in to the P-CRM Portal to review and take action.\n\nP-CRM Portal`,
     });
-    console.log(`[email] Assignment email sent to officer ${officerEmail} for complaint ${trackingId}`);
+    console.log(
+      `[email] Assignment email sent to officer ${officerEmail} for complaint ${trackingId}`,
+    );
   } catch (err) {
-    console.error(`[email] Failed to send assignment email to officer ${officerEmail}:`, err?.message);
+    console.error(
+      `[email] Failed to send assignment email to officer ${officerEmail}:`,
+      err?.message,
+    );
   }
 };
 
 // ── COMPLAINT CONFIRMATION EMAIL (citizen self-filing) ────────────────────
 
-export const sendComplaintConfirmationEmail = async (citizenEmail, citizenName, trackingId) => {
+export const sendComplaintConfirmationEmail = async (
+  citizenEmail,
+  citizenName,
+  trackingId,
+) => {
   if (!citizenEmail) return;
 
   const html = emailWrapper(
     "linear-gradient(135deg, #059669 0%, #064e3b 100%)",
-    { preheader: `Your complaint has been registered — Tracking ID: ${trackingId}` },
+    {
+      preheader: `Your complaint has been registered — Tracking ID: ${trackingId}`,
+    },
     complaintConfirmationEmailBody(citizenName, trackingId),
   );
 
   try {
     await transactionalEmailApi.sendTransacEmail({
-      sender:      { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
-      to:          [{ email: citizenEmail, name: citizenName }],
-      subject:     `Complaint Registered — Tracking ID: ${trackingId}`,
+      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
+      to: [{ email: citizenEmail, name: citizenName }],
+      subject: `Complaint Registered — Tracking ID: ${trackingId}`,
       htmlContent: html,
       textContent: `Dear ${citizenName},\n\nYour complaint has been registered.\n\nTracking ID: ${trackingId}\n\nUse this ID to track your complaint status on the P-CRM Portal.\n\nP-CRM Portal`,
     });
-    console.log(`[email] Confirmation email sent to ${citizenEmail} for complaint ${trackingId}`);
+    console.log(
+      `[email] Confirmation email sent to ${citizenEmail} for complaint ${trackingId}`,
+    );
   } catch (err) {
-    console.error(`[email] Failed to send confirmation email to ${citizenEmail}:`, err?.message);
+    console.error(
+      `[email] Failed to send confirmation email to ${citizenEmail}:`,
+      err?.message,
+    );
   }
 };

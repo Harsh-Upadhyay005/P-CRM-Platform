@@ -2,6 +2,7 @@ import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/ApiError.js";
 import { forTenant } from "../utils/tenantScope.js";
 import { isSlaBreached, NON_SLA_STATUSES } from "../utils/slaEngine.js";
+import { buildCategorySlaLookupForComplaints, resolveEffectiveSlaHours } from "./workflow.service.js";
 
 // Max rows pulled per analytics sub-query to protect the DB under high complaint volume.
 // Real-time aggregation at this scale is intentional; a background cache/materialized view
@@ -84,6 +85,8 @@ export const getOverview = async (user, query = {}) => {
     },
     select: {
       id:         true,
+      tenantId:   true,
+      category:   true,
       createdAt:  true,
       department: { select: { slaHours: true } },
     },
@@ -91,9 +94,12 @@ export const getOverview = async (user, query = {}) => {
     take:    ANALYTICS_ROW_CAP,
   });
 
-  const slaBreachedCount = activeComplaints.filter((c) =>
-    isSlaBreached(c.createdAt, c.department?.slaHours ?? 48)
-  ).length;
+  const overviewPolicyLookup = await buildCategorySlaLookupForComplaints(activeComplaints);
+
+  const slaBreachedCount = activeComplaints.filter((c) => {
+    const slaHours = resolveEffectiveSlaHours(c, overviewPolicyLookup);
+    return isSlaBreached(c.createdAt, slaHours);
+  }).length;
 
   const activeCount = activeComplaints.length;
   const slaBreachPct = activeCount > 0
@@ -179,6 +185,8 @@ export const getDepartmentStats = async (user) => {
       where: { ...baseWhere, ...deptComplaintFilter, status: { notIn: NON_SLA_STATUSES } },
       select: {
         departmentId: true,
+        tenantId:     true,
+        category:     true,
         createdAt:    true,
         department:   { select: { slaHours: true } },
       },
@@ -215,15 +223,18 @@ export const getDepartmentStats = async (user) => {
     byDeptResolved[c.departmentId].push(c);
   }
 
+  const deptPolicyLookup = await buildCategorySlaLookupForComplaints(activeComplaints);
+
   return departments.map((dept) => {
     const statusMap = byDeptStatus[dept.id]  ?? {};
     const active    = byDeptActive[dept.id]  ?? [];
     const resolved  = byDeptResolved[dept.id] ?? [];
 
     const total      = Object.values(statusMap).reduce((s, n) => s + n, 0);
-    const slaBreached = active.filter((c) =>
-      isSlaBreached(c.createdAt, dept.slaHours)
-    ).length;
+    const slaBreached = active.filter((c) => {
+      const slaHours = resolveEffectiveSlaHours(c, deptPolicyLookup);
+      return isSlaBreached(c.createdAt, slaHours);
+    }).length;
 
     return {
       department: { id: dept.id, name: dept.name, slug: dept.slug, slaHours: dept.slaHours },
@@ -368,6 +379,8 @@ export const getOfficerLeaderboard = async (user) => {
       where: { ...baseWhere, status: { in: ["RESOLVED", "CLOSED"] }, resolvedAt: { not: null } },
       select: {
         assignedToId: true,
+        tenantId:     true,
+        category:     true,
         createdAt:    true,
         resolvedAt:   true,
         department:   { select: { slaHours: true } },
@@ -382,6 +395,8 @@ export const getOfficerLeaderboard = async (user) => {
       },
       select: {
         assignedToId: true,
+        tenantId:     true,
+        category:     true,
         createdAt:    true,
         department:   { select: { slaHours: true } },
       },
@@ -415,6 +430,9 @@ export const getOfficerLeaderboard = async (user) => {
     byOfficerActive[c.assignedToId].push(c);
   }
 
+  const activePolicyLookup = await buildCategorySlaLookupForComplaints(activeComplaints);
+  const resolvedPolicyLookup = await buildCategorySlaLookupForComplaints(resolvedComplaints);
+
   const leaderboard = officerIds.map((oid) => {
     const statusMap = byOfficerStatus[oid] ?? {};
     const resolved  = byOfficerResolved[oid] ?? [];
@@ -422,12 +440,14 @@ export const getOfficerLeaderboard = async (user) => {
 
     const totalAssigned = Object.values(statusMap).reduce((s, n) => s + n, 0);
     const resolvedCount = (statusMap.RESOLVED ?? 0) + (statusMap.CLOSED ?? 0);
-    const slaBreached   = active.filter((c) =>
-      isSlaBreached(c.createdAt, c.department?.slaHours ?? 48)
-    ).length;
+    const slaBreached = active.filter((c) => {
+      const slaHours = resolveEffectiveSlaHours(c, activePolicyLookup);
+      return isSlaBreached(c.createdAt, slaHours);
+    }).length;
 
     const resolvedWithinSla = resolved.filter((c) => {
-      const deadline = new Date(c.createdAt).getTime() + (c.department?.slaHours ?? 48) * 3_600_000;
+      const slaHours = resolveEffectiveSlaHours(c, resolvedPolicyLookup);
+      const deadline = new Date(c.createdAt).getTime() + slaHours * 3_600_000;
       return new Date(c.resolvedAt).getTime() <= deadline;
     }).length;
 
@@ -499,6 +519,8 @@ export const getSlaHeatmap = async (user, query = {}) => {
       },
       select: {
         departmentId: true,
+        tenantId:     true,
+        category:     true,
         createdAt:    true,
         resolvedAt:   true,
         status:       true,
@@ -536,6 +558,8 @@ export const getSlaHeatmap = async (user, query = {}) => {
     for (const p of periods) matrix[dept.id][p] = { total: 0, breached: 0 };
   }
 
+  const heatmapPolicyLookup = await buildCategorySlaLookupForComplaints(complaints);
+
   for (const c of complaints) {
     if (!c.departmentId || !matrix[c.departmentId]) continue;
 
@@ -546,7 +570,10 @@ export const getSlaHeatmap = async (user, query = {}) => {
     if (!periodSet.has(periodKey)) continue;
 
     const cell     = matrix[c.departmentId][periodKey];
-    const slaHours = deptMap[c.departmentId]?.slaHours ?? 48;
+    const slaHours = resolveEffectiveSlaHours(
+      { tenantId: c.tenantId, category: c.category, department: { slaHours: deptMap[c.departmentId]?.slaHours ?? 48 } },
+      heatmapPolicyLookup,
+    );
     const deadline = new Date(c.createdAt).getTime() + slaHours * 3_600_000;
 
     cell.total++;
