@@ -9,6 +9,8 @@ const deptSelect = {
   slug: true,
   slaHours: true,
   serviceAreas: true,
+  categoryTags: true,
+  routingKeywords: true,
   isActive: true,
   tenantId: true,
   createdAt: true,
@@ -29,7 +31,7 @@ const assertDeptAccess = async (deptId, user, action = "modify") => {
 };
 
 export const createDepartment = async (data, user) => {
-  const { name, slaHours, serviceAreas, tenantId: bodyTenantId } = data;
+  const { name, slaHours, serviceAreas, categoryTags, routingKeywords, tenantId: bodyTenantId } = data;
 
   // SUPER_ADMIN may target any tenant; all other roles use their own tenant
   const tenantId =
@@ -51,6 +53,8 @@ export const createDepartment = async (data, user) => {
       slug,
       slaHours:     slaHours ?? 48,
       serviceAreas: serviceAreas ?? [],
+      categoryTags: categoryTags ?? [],
+      routingKeywords: routingKeywords ?? [],
       tenantId,
     },
     select: deptSelect,
@@ -104,7 +108,7 @@ export const updateDepartment = async (id, data, user) => {
 
   await assertDeptAccess(id, user, "modify");
 
-  const { name, slaHours, isActive, serviceAreas } = data;
+  const { name, slaHours, isActive, serviceAreas, categoryTags, routingKeywords } = data;
   let slug;
 
   if (name !== undefined) {
@@ -123,6 +127,8 @@ export const updateDepartment = async (id, data, user) => {
       ...(slaHours !== undefined     && { slaHours }),
       ...(isActive !== undefined     && { isActive }),
       ...(serviceAreas !== undefined && { serviceAreas }),
+      ...(categoryTags !== undefined && { categoryTags }),
+      ...(routingKeywords !== undefined && { routingKeywords }),
     },
     select: deptSelect,
   });

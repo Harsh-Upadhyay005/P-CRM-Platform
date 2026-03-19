@@ -11,6 +11,7 @@ const ALLOWED_ENTITY_TYPES = new Set([
   "Department",
   "Role",
   "Notification",
+  "Workflow",
 ]);
 
 /**

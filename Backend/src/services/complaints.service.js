@@ -1,16 +1,37 @@
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/ApiError.js";
 import { forTenant, inTenant } from "../utils/tenantScope.js";
-import { generateTrackingId, getPagination, paginatedResponse } from "../utils/helpers.js";
+import {
+  generateTrackingId,
+  getPagination,
+  paginatedResponse,
+} from "../utils/helpers.js";
 import { assertRoleCanTransition, isTerminal } from "../utils/statusEngine.js";
-import { notifyAssignment, notifyStatusChange } from "./notification.service.js";
-import { canManageUser, ROLE_RANK } from "../utils/roleHierarchy.js";
-import { analyzeComplaint, analyzeSentiment, predictPriority } from "./ai.service.js";
-import { sendStatusChangeEmail, sendComplaintConfirmationEmail, sendOfficerAssignmentEmail } from "./email.service.js";
+import {
+  notifyAssignment,
+  notifyStatusChange,
+} from "./notification.service.js";
+import { ROLE_RANK } from "../utils/roleHierarchy.js";
+import {
+  analyzeComplaint,
+  analyzeSentiment,
+  predictPriority,
+} from "./ai.service.js";
+import {
+  sendStatusChangeEmail,
+  sendComplaintConfirmationEmail,
+  sendOfficerAssignmentEmail,
+} from "./email.service.js";
 import { buildSlaSummary, NON_SLA_STATUSES } from "../utils/slaEngine.js";
+import {
+  buildCategorySlaLookupForComplaints,
+  resolveEffectiveSlaHours,
+  runComplaintAutomationOnCreate,
+} from "./workflow.service.js";
 
 const complaintSummarySelect = {
   id: true,
+  tenantId: true,
   trackingId: true,
   citizenName: true,
   citizenPhone: true,
@@ -29,14 +50,25 @@ const complaintSummarySelect = {
 
 // Attach a computed `slaSummary` field to a complaint object.
 // Returns null when the complaint status is terminal or no SLA data is available.
-const decorateWithSla = (complaint) => {
+const decorateWithSla = (complaint, policyLookup = new Map()) => {
   if (!complaint) return complaint;
-  const slaHours = complaint.department?.slaHours;
+  const slaHours = resolveEffectiveSlaHours(complaint, policyLookup);
   const slaSummary =
     slaHours && !NON_SLA_STATUSES.includes(complaint.status)
       ? buildSlaSummary(complaint.createdAt, slaHours)
       : null;
-  return { ...complaint, slaSummary };
+  const { tenantId, ...safeComplaint } = complaint;
+  return { ...safeComplaint, slaSummary, effectiveSlaHours: slaHours };
+};
+
+const decorateWithSlaBatch = async (complaints) => {
+  const validComplaints = (complaints ?? []).filter(Boolean);
+  if (validComplaints.length === 0) return [];
+  const policyLookup =
+    await buildCategorySlaLookupForComplaints(validComplaints);
+  return validComplaints.map((complaint) =>
+    decorateWithSla(complaint, policyLookup),
+  );
 };
 
 const complaintDetailSelect = {
@@ -78,7 +110,10 @@ const getABACFilter = async (user) => {
       select: { departmentId: true },
     });
     if (!dbUser?.departmentId) {
-      throw new ApiError(403, "Department head is not assigned to any department");
+      throw new ApiError(
+        403,
+        "Department head is not assigned to any department",
+      );
     }
     return { departmentId: dbUser.departmentId };
   }
@@ -115,7 +150,10 @@ const assertComplaintAccess = async (complaint, user) => {
       where: { id: userId },
       select: { departmentId: true },
     });
-    if (!dbUser?.departmentId || complaint.departmentId !== dbUser.departmentId) {
+    if (
+      !dbUser?.departmentId ||
+      complaint.departmentId !== dbUser.departmentId
+    ) {
       throw new ApiError(404, "Complaint not found");
     }
     return;
@@ -123,13 +161,25 @@ const assertComplaintAccess = async (complaint, user) => {
 };
 
 export const createComplaint = async (data, user) => {
-  const { citizenName, citizenPhone, citizenEmail, locality, description, category, priority, departmentId } = data;
+  const {
+    citizenName,
+    citizenPhone,
+    citizenEmail,
+    locality,
+    description,
+    category,
+    priority,
+    departmentId,
+  } = data;
 
   let resolvedDepartmentId = departmentId ?? null;
 
   // Auto-route: if no department specified, match locality to service areas
   if (!resolvedDepartmentId && locality) {
-    const matchedDept = await matchLocalityToDepartment(locality, user.tenantId);
+    const matchedDept = await matchLocalityToDepartment(
+      locality,
+      user.tenantId,
+    );
     if (matchedDept) {
       resolvedDepartmentId = matchedDept.id;
     }
@@ -137,7 +187,12 @@ export const createComplaint = async (data, user) => {
 
   if (resolvedDepartmentId) {
     const dept = await prisma.department.findFirst({
-      where: { id: resolvedDepartmentId, isDeleted: false, isActive: true, ...forTenant(user) },
+      where: {
+        id: resolvedDepartmentId,
+        isDeleted: false,
+        isActive: true,
+        ...forTenant(user),
+      },
     });
     if (!dept) throw new ApiError(404, "Department not found");
   }
@@ -147,10 +202,10 @@ export const createComplaint = async (data, user) => {
   // analyzeComplaint never throws — returns safe defaults on failure.
   const aiResult = await analyzeComplaint({
     description,
-    category:  category ?? null,
-    tenantId:  user.tenantId,
+    category: category ?? null,
+    tenantId: user.tenantId,
     excludeId: null,
-    locality:  locality ?? null,
+    locality: locality ?? null,
   });
 
   // Use AI-suggested priority only when the caller did not explicitly provide one
@@ -164,15 +219,15 @@ export const createComplaint = async (data, user) => {
       citizenName,
       citizenPhone,
       citizenEmail,
-      locality:       locality ?? null,
+      locality: locality ?? null,
       description,
       category,
-      priority:       resolvedPriority,
+      priority: resolvedPriority,
       sentimentScore: aiResult.sentimentScore,
       duplicateScore: aiResult.duplicateScore,
-      aiScore:        aiResult.aiScore,
-      departmentId:   resolvedDepartmentId,
-      createdById:    user.userId,
+      aiScore: aiResult.aiScore,
+      departmentId: resolvedDepartmentId,
+      createdById: user.userId,
       ...inTenant(user),
     },
     select: complaintDetailSelect,
@@ -180,10 +235,27 @@ export const createComplaint = async (data, user) => {
 
   // Send confirmation email to citizen (fire-and-forget)
   if (citizenEmail) {
-    sendComplaintConfirmationEmail(citizenEmail, citizenName, trackingId).catch(() => {});
+    sendComplaintConfirmationEmail(citizenEmail, citizenName, trackingId).catch(
+      () => {},
+    );
   }
 
-  return decorateWithSla(complaint);
+  runComplaintAutomationOnCreate(complaint.id).catch((err) =>
+    console.error(
+      `[Automation] Failed for complaint ${complaint.id}:`,
+      err.message,
+    ),
+  );
+
+  const refreshedComplaint = await prisma.complaint.findUnique({
+    where: { id: complaint.id },
+    select: complaintDetailSelect,
+  });
+
+  const [decorated] = await decorateWithSlaBatch([
+    refreshedComplaint ?? complaint,
+  ]);
+  return decorated;
 };
 
 const TERMINAL_STATUSES = ["RESOLVED", "CLOSED"];
@@ -194,18 +266,13 @@ export const listComplaints = async (query, user) => {
 
   const abacFilter = await getABACFilter(user);
 
-  // When slaBreached=true, find non-terminal complaints older than 48h (default SLA)
-  const sla48hAgo = new Date(Date.now() - 48 * 60 * 60 * 1000);
-
   const where = {
     isDeleted: false,
     ...forTenant(user),
     ...abacFilter,
     ...(slaBreached === "true"
-      ? { status: { notIn: TERMINAL_STATUSES }, createdAt: { lt: sla48hAgo } }
-      : {
-          ...(status && { status }),
-        }),
+      ? { status: { notIn: TERMINAL_STATUSES } }
+      : { ...(status && { status }) }),
     ...(priority && { priority }),
     ...(category && { category }),
     ...(search && {
@@ -218,6 +285,40 @@ export const listComplaints = async (query, user) => {
     }),
   };
 
+  if (slaBreached === "true") {
+    const BATCH_SIZE = 500;
+    let batchSkip = 0;
+    let matchedCount = 0;
+    const paged = [];
+
+    while (true) {
+      const complaintsBatch = await prisma.complaint.findMany({
+        where,
+        select: complaintSummarySelect,
+        orderBy: [{ priority: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+        skip: batchSkip,
+        take: BATCH_SIZE,
+      });
+
+      if (complaintsBatch.length === 0) break;
+
+      const decoratedBatch = await decorateWithSlaBatch(complaintsBatch);
+
+      for (const complaint of decoratedBatch) {
+        if (!complaint.slaSummary?.breached) continue;
+
+        if (matchedCount >= skip && paged.length < limit) {
+          paged.push(complaint);
+        }
+        matchedCount++;
+      }
+
+      batchSkip += complaintsBatch.length;
+    }
+
+    return paginatedResponse(paged, matchedCount, page, limit);
+  }
+
   const [complaints, total] = await prisma.$transaction([
     prisma.complaint.findMany({
       where,
@@ -229,27 +330,41 @@ export const listComplaints = async (query, user) => {
     prisma.complaint.count({ where }),
   ]);
 
-  return paginatedResponse(complaints, total, page, limit);
+  const decorated = await decorateWithSlaBatch(complaints);
+  return paginatedResponse(decorated, total, page, limit);
 };
 
 export const getComplaint = async (id, user) => {
   const complaint = await prisma.complaint.findFirst({
     where: { id, isDeleted: false, ...forTenant(user) },
-    select: { ...complaintDetailSelect, createdById: true, assignedToId: true, departmentId: true },
+    select: {
+      ...complaintDetailSelect,
+      createdById: true,
+      assignedToId: true,
+      departmentId: true,
+    },
   });
 
   if (!complaint) throw new ApiError(404, "Complaint not found");
 
   await assertComplaintAccess(complaint, user);
 
-  const { createdById: _c, assignedToId: _a, departmentId: _d, ...safeComplaint } = complaint;
-  return decorateWithSla(safeComplaint);
+  const [decorated] = await decorateWithSlaBatch([complaint]);
+
+  const {
+    createdById: _c,
+    assignedToId: _a,
+    departmentId: _d,
+    ...safeComplaint
+  } = decorated;
+  return safeComplaint;
 };
 
 export const getComplaintByTrackingId = async (trackingId) => {
   const complaint = await prisma.complaint.findFirst({
     where: { trackingId, isDeleted: false },
     select: {
+      tenantId: true,
       trackingId: true,
       description: true,
       citizenName: true,
@@ -259,12 +374,13 @@ export const getComplaintByTrackingId = async (trackingId) => {
       createdAt: true,
       updatedAt: true,
       resolvedAt: true,
-      department: { select: { name: true } },
+      department: { select: { name: true, slaHours: true } },
     },
   });
 
   if (!complaint) throw new ApiError(404, "Complaint not found");
-  return complaint;
+  const [decorated] = await decorateWithSlaBatch([complaint]);
+  return decorated;
 };
 
 export const updateComplaint = async (id, data, user) => {
@@ -274,13 +390,13 @@ export const updateComplaint = async (id, data, user) => {
     where: { id, isDeleted: false, ...forTenant(user) },
     // Fetch description + category so we can re-score if only one of them changes
     select: {
-      id:           true,
-      status:       true,
-      createdById:  true,
+      id: true,
+      status: true,
+      createdById: true,
       assignedToId: true,
       departmentId: true,
-      description:  true,
-      category:     true,
+      description: true,
+      category: true,
     },
   });
 
@@ -296,14 +412,14 @@ export const updateComplaint = async (id, data, user) => {
   // Use whichever field is being updated; fall back to stored value for the other.
   // Duplicate score is NOT re-computed — this complaint already exists.
   let aiUpdates = {};
-  const textChanging    = description !== undefined;
+  const textChanging = description !== undefined;
   const categoryChanging = category !== undefined;
 
   if (textChanging || categoryChanging) {
-    const effectiveDesc     = description ?? complaint.description;
-    const effectiveCategory = category    ?? complaint.category ?? null;
+    const effectiveDesc = description ?? complaint.description;
+    const effectiveCategory = category ?? complaint.category ?? null;
 
-    const newSentiment  = textChanging
+    const newSentiment = textChanging
       ? analyzeSentiment(effectiveDesc)
       : undefined;
 
@@ -325,7 +441,7 @@ export const updateComplaint = async (id, data, user) => {
     where: { id },
     data: {
       ...(description !== undefined && { description }),
-      ...(category    !== undefined && { category }),
+      ...(category !== undefined && { category }),
       // Explicit priority always wins; aiUpdates.priority is only present
       // when priority was NOT passed in the request
       ...(priority !== undefined ? { priority } : {}),
@@ -334,7 +450,8 @@ export const updateComplaint = async (id, data, user) => {
     select: complaintDetailSelect,
   });
 
-  return decorateWithSla(updated);
+  const [decorated] = await decorateWithSlaBatch([updated]);
+  return decorated;
 };
 
 export const assignComplaint = async (id, data, user) => {
@@ -354,7 +471,12 @@ export const assignComplaint = async (id, data, user) => {
 
   if (departmentId) {
     const dept = await prisma.department.findFirst({
-      where: { id: departmentId, isDeleted: false, isActive: true, ...forTenant(user) },
+      where: {
+        id: departmentId,
+        isDeleted: false,
+        isActive: true,
+        ...forTenant(user),
+      },
     });
     if (!dept) throw new ApiError(404, "Department not found");
 
@@ -364,7 +486,10 @@ export const assignComplaint = async (id, data, user) => {
         select: { departmentId: true },
       });
       if (dbUser?.departmentId !== departmentId) {
-        throw new ApiError(403, "Department heads can only assign within their own department");
+        throw new ApiError(
+          403,
+          "Department heads can only assign within their own department",
+        );
       }
     }
   }
@@ -380,15 +505,28 @@ export const assignComplaint = async (id, data, user) => {
         ...forTenant(user),
         role: { type: { notIn: ["CALL_OPERATOR"] } },
       },
-      select: { id: true, departmentId: true, name: true, email: true, role: { select: { type: true } } },
+      select: {
+        id: true,
+        departmentId: true,
+        name: true,
+        email: true,
+        role: { select: { type: true } },
+      },
     });
-    if (!officer) throw new ApiError(404, "Officer not found or not eligible for assignment");
+    if (!officer)
+      throw new ApiError(
+        404,
+        "Officer not found or not eligible for assignment",
+      );
 
     // Prevent assigning to a role of higher rank than the actor
-    const actorRank   = ROLE_RANK[user.role] ?? 0;
+    const actorRank = ROLE_RANK[user.role] ?? 0;
     const officerRank = ROLE_RANK[officer.role.type] ?? 0;
     if (officerRank > actorRank) {
-      throw new ApiError(403, "You cannot assign a complaint to a user with a higher role than your own");
+      throw new ApiError(
+        403,
+        "You cannot assign a complaint to a user with a higher role than your own",
+      );
     }
 
     officerDetails = { name: officer.name, email: officer.email };
@@ -396,7 +534,10 @@ export const assignComplaint = async (id, data, user) => {
     if (user.role === "DEPARTMENT_HEAD") {
       const effectiveDeptId = departmentId ?? complaint.departmentId;
       if (effectiveDeptId && officer.departmentId !== effectiveDeptId) {
-        throw new ApiError(403, "Officer does not belong to the target department");
+        throw new ApiError(
+          403,
+          "Officer does not belong to the target department",
+        );
       }
     }
   }
@@ -434,7 +575,7 @@ export const assignComplaint = async (id, data, user) => {
       assignedToId,
       updated.createdBy?.id ?? null,
       user.userId,
-      updated.trackingId
+      updated.trackingId,
     ).catch(() => {});
 
     // Email the officer who was assigned
@@ -460,7 +601,8 @@ export const assignComplaint = async (id, data, user) => {
     ).catch(() => {});
   }
 
-  return decorateWithSla(updated);
+  const [decorated] = await decorateWithSlaBatch([updated]);
+  return decorated;
 };
 
 export const updateComplaintStatus = async (id, { newStatus, note }, user) => {
@@ -489,7 +631,10 @@ export const updateComplaintStatus = async (id, { newStatus, note }, user) => {
       where: { id: user.userId },
       select: { departmentId: true },
     });
-    if (!dbUser?.departmentId || complaint.departmentId !== dbUser.departmentId) {
+    if (
+      !dbUser?.departmentId ||
+      complaint.departmentId !== dbUser.departmentId
+    ) {
       throw new ApiError(404, "Complaint not found");
     }
   }
@@ -532,7 +677,7 @@ export const updateComplaintStatus = async (id, { newStatus, note }, user) => {
     complaint.createdById,
     complaint.assignedToId,
     user.userId,
-    updated.trackingId
+    updated.trackingId,
   ).catch(() => {});
 
   // Fire-and-forget status change email to citizen
@@ -546,7 +691,8 @@ export const updateComplaintStatus = async (id, { newStatus, note }, user) => {
     ).catch(() => {});
   }
 
-  return decorateWithSla(updated);
+  const [decorated] = await decorateWithSlaBatch([updated]);
+  return decorated;
 };
 
 export const softDeleteComplaint = async (id, user) => {
@@ -572,7 +718,10 @@ export const addInternalNote = async (complaintId, { note }, user) => {
   if (!complaint) throw new ApiError(404, "Complaint not found");
 
   if (user.role === "OFFICER" && complaint.assignedToId !== user.userId) {
-    throw new ApiError(403, "You can only add notes to your assigned complaints");
+    throw new ApiError(
+      403,
+      "You can only add notes to your assigned complaints",
+    );
   }
 
   if (user.role === "DEPARTMENT_HEAD") {
@@ -580,8 +729,14 @@ export const addInternalNote = async (complaintId, { note }, user) => {
       where: { id: user.userId },
       select: { departmentId: true },
     });
-    if (!dbUser?.departmentId || complaint.departmentId !== dbUser.departmentId) {
-      throw new ApiError(403, "You can only add notes to complaints in your department");
+    if (
+      !dbUser?.departmentId ||
+      complaint.departmentId !== dbUser.departmentId
+    ) {
+      throw new ApiError(
+        403,
+        "You can only add notes to complaints in your department",
+      );
     }
   }
 
@@ -619,7 +774,10 @@ export const getInternalNotes = async (complaintId, user) => {
       where: { id: user.userId },
       select: { departmentId: true },
     });
-    if (!dbUser?.departmentId || complaint.departmentId !== dbUser.departmentId) {
+    if (
+      !dbUser?.departmentId ||
+      complaint.departmentId !== dbUser.departmentId
+    ) {
       throw new ApiError(404, "Complaint not found");
     }
   }
@@ -676,7 +834,17 @@ const matchLocalityToDepartment = async (locality, tenantId) => {
 };
 
 export const createPublicComplaint = async (data) => {
-  const { citizenName, citizenPhone, citizenEmail, locality, description, category, priority, departmentId, tenantSlug } = data;
+  const {
+    citizenName,
+    citizenPhone,
+    citizenEmail,
+    locality,
+    description,
+    category,
+    priority,
+    departmentId,
+    tenantSlug,
+  } = data;
 
   // Resolve tenant from slug
   const tenant = await prisma.tenant.findFirst({
@@ -696,17 +864,22 @@ export const createPublicComplaint = async (data) => {
 
   if (resolvedDepartmentId) {
     const dept = await prisma.department.findFirst({
-      where: { id: resolvedDepartmentId, isDeleted: false, isActive: true, tenantId: tenant.id },
+      where: {
+        id: resolvedDepartmentId,
+        isDeleted: false,
+        isActive: true,
+        tenantId: tenant.id,
+      },
     });
     if (!dept) throw new ApiError(404, "Department not found");
   }
 
   const aiResult = await analyzeComplaint({
     description,
-    category:  category ?? null,
-    tenantId:  tenant.id,
+    category: category ?? null,
+    tenantId: tenant.id,
     excludeId: null,
-    locality:  locality ?? null,
+    locality: locality ?? null,
   });
 
   const resolvedPriority = priority ?? aiResult.suggestedPriority ?? "MEDIUM";
@@ -719,35 +892,62 @@ export const createPublicComplaint = async (data) => {
       citizenName,
       citizenPhone,
       citizenEmail,
-      locality:       locality ?? null,
+      locality: locality ?? null,
       description,
-      category:       category ?? null,
-      priority:       resolvedPriority,
+      category: category ?? null,
+      priority: resolvedPriority,
       sentimentScore: aiResult.sentimentScore,
       duplicateScore: aiResult.duplicateScore,
-      aiScore:        aiResult.aiScore,
-      departmentId:   resolvedDepartmentId,
-      createdById:    null,
+      aiScore: aiResult.aiScore,
+      departmentId: resolvedDepartmentId,
+      createdById: null,
     },
     select: {
+      id: true,
       trackingId: true,
       citizenName: true,
       status: true,
       priority: true,
       category: true,
       createdAt: true,
+      tenantId: true,
+      department: { select: { name: true, slaHours: true } },
     },
   });
 
   // Send confirmation email fire-and-forget
-  sendComplaintConfirmationEmail(citizenEmail, citizenName, trackingId).catch(() => {});
+  sendComplaintConfirmationEmail(citizenEmail, citizenName, trackingId).catch(
+    () => {},
+  );
 
-  return complaint;
+  runComplaintAutomationOnCreate(complaint.id).catch((err) =>
+    console.error(
+      `[Automation] Failed for complaint ${complaint.id}:`,
+      err.message,
+    ),
+  );
+
+  const refreshed = await prisma.complaint.findUnique({
+    where: { id: complaint.id },
+    select: {
+      tenantId: true,
+      trackingId: true,
+      citizenName: true,
+      status: true,
+      priority: true,
+      category: true,
+      createdAt: true,
+      department: { select: { name: true, slaHours: true } },
+    },
+  });
+
+  const [decorated] = await decorateWithSlaBatch([refreshed ?? complaint]);
+  return decorated;
 };
 
 // ── PUBLIC TENANT / DEPARTMENT LOOKUP ────────────────────────────────────
 
-export const searchPublicTenants = async ({ q = '' } = {}) => {
+export const searchPublicTenants = async ({ q = "" } = {}) => {
   const search = String(q).trim().slice(0, 100);
   return prisma.tenant.findMany({
     where: {
@@ -755,15 +955,15 @@ export const searchPublicTenants = async ({ q = '' } = {}) => {
       ...(search
         ? {
             OR: [
-              { name: { contains: search, mode: 'insensitive' } },
-              { slug: { contains: search, mode: 'insensitive' } },
+              { name: { contains: search, mode: "insensitive" } },
+              { slug: { contains: search, mode: "insensitive" } },
             ],
           }
         : {}),
     },
     select: { name: true, slug: true },
-    take:   12,
-    orderBy: { name: 'asc' },
+    take: 12,
+    orderBy: { name: "asc" },
   });
 };
 
@@ -771,11 +971,11 @@ export const getPublicDepartments = async (slug) => {
   const tenant = await prisma.tenant.findFirst({
     where: { slug, isActive: true },
   });
-  if (!tenant) throw new ApiError(404, 'Portal not found');
+  if (!tenant) throw new ApiError(404, "Portal not found");
   return prisma.department.findMany({
-    where:   { tenantId: tenant.id, isActive: true, isDeleted: false },
-    select:  { id: true, name: true },
-    orderBy: { name: 'asc' },
+    where: { tenantId: tenant.id, isActive: true, isDeleted: false },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
   });
 };
 
@@ -790,19 +990,29 @@ export const submitFeedback = async (id, { rating, comment }, user) => {
   if (!complaint) throw new ApiError(404, "Complaint not found");
 
   if (complaint.status !== "RESOLVED" && complaint.status !== "CLOSED") {
-    throw new ApiError(422, "Feedback can only be submitted for resolved or closed complaints");
+    throw new ApiError(
+      422,
+      "Feedback can only be submitted for resolved or closed complaints",
+    );
   }
 
   // Only the staff member who originally filed the complaint may submit feedback
   if (complaint.createdById !== user.userId) {
-    throw new ApiError(403, "Only the person who filed this complaint can submit feedback");
+    throw new ApiError(
+      403,
+      "Only the person who filed this complaint can submit feedback",
+    );
   }
 
   // Check for existing feedback (@unique on complaintId)
   const existing = await prisma.complaintFeedback.findUnique({
     where: { complaintId: complaint.id },
   });
-  if (existing) throw new ApiError(409, "Feedback has already been submitted for this complaint");
+  if (existing)
+    throw new ApiError(
+      409,
+      "Feedback has already been submitted for this complaint",
+    );
 
   const feedback = await prisma.complaintFeedback.create({
     data: {
@@ -811,9 +1021,9 @@ export const submitFeedback = async (id, { rating, comment }, user) => {
       comment: comment ?? null,
     },
     select: {
-      id:          true,
-      rating:      true,
-      comment:     true,
+      id: true,
+      rating: true,
+      comment: true,
       submittedAt: true,
     },
   });
@@ -834,14 +1044,18 @@ export const getFeedback = async (complaintId, user) => {
   const feedback = await prisma.complaintFeedback.findUnique({
     where: { complaintId },
     select: {
-      id:          true,
-      rating:      true,
-      comment:     true,
+      id: true,
+      rating: true,
+      comment: true,
       submittedAt: true,
     },
   });
 
-  if (!feedback) throw new ApiError(404, "No feedback has been submitted for this complaint");
+  if (!feedback)
+    throw new ApiError(
+      404,
+      "No feedback has been submitted for this complaint",
+    );
 
   return feedback;
 };
@@ -850,7 +1064,15 @@ export const getFeedback = async (complaintId, user) => {
 const EXPORT_CAP = 10_000;
 
 export const exportComplaints = async (query, user) => {
-  const { status, priority, category, search, startDate, endDate, departmentId } = query;
+  const {
+    status,
+    priority,
+    category,
+    search,
+    startDate,
+    endDate,
+    departmentId,
+  } = query;
 
   const abacFilter = await getABACFilter(user);
 
@@ -858,22 +1080,22 @@ export const exportComplaints = async (query, user) => {
     isDeleted: false,
     ...forTenant(user),
     ...abacFilter,
-    ...(status       && { status }),
-    ...(priority     && { priority }),
-    ...(category     && { category }),
+    ...(status && { status }),
+    ...(priority && { priority }),
+    ...(category && { category }),
     ...(departmentId && { departmentId }),
     ...((startDate || endDate) && {
       createdAt: {
         ...(startDate && { gte: new Date(startDate) }),
-        ...(endDate   && { lte: new Date(endDate)   }),
+        ...(endDate && { lte: new Date(endDate) }),
       },
     }),
     ...(search && {
       OR: [
-        { trackingId:   { contains: search, mode: "insensitive" } },
-        { citizenName:  { contains: search, mode: "insensitive" } },
+        { trackingId: { contains: search, mode: "insensitive" } },
+        { citizenName: { contains: search, mode: "insensitive" } },
         { citizenPhone: { contains: search, mode: "insensitive" } },
-        { description:  { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
       ],
     }),
   };
@@ -881,23 +1103,23 @@ export const exportComplaints = async (query, user) => {
   const complaints = await prisma.complaint.findMany({
     where,
     select: {
-      trackingId:     true,
-      citizenName:    true,
-      citizenPhone:   true,
-      citizenEmail:   true,
-      category:       true,
-      priority:       true,
-      status:         true,
-      description:    true,
-      aiScore:        true,
+      trackingId: true,
+      citizenName: true,
+      citizenPhone: true,
+      citizenEmail: true,
+      category: true,
+      priority: true,
+      status: true,
+      description: true,
+      aiScore: true,
       sentimentScore: true,
       duplicateScore: true,
-      resolvedAt:     true,
-      createdAt:      true,
-      updatedAt:      true,
+      resolvedAt: true,
+      createdAt: true,
+      updatedAt: true,
       department: { select: { name: true } },
       assignedTo: { select: { name: true } },
-      createdBy:  { select: { name: true } },
+      createdBy: { select: { name: true } },
     },
     orderBy: [{ priority: "desc" }, { createdAt: "desc" }],
     take: EXPORT_CAP,

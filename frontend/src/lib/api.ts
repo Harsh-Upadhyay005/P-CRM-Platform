@@ -1,5 +1,19 @@
 import axios, { AxiosError } from 'axios';
-import { User, Complaint, Department, Notification, Tenant, AuditLog, Note, Attachment, PaginatedResponse } from '@/types';
+import {
+  User,
+  Complaint,
+  Department,
+  Notification,
+  Tenant,
+  AuditLog,
+  Note,
+  Attachment,
+  PaginatedResponse,
+  WorkflowSettings,
+  WorkflowAssignmentRule,
+  CategorySlaPolicy,
+  Priority,
+} from '@/types';
 
 /**
  * All API calls use a relative base URL (/api/v1) so they are routed through
@@ -318,7 +332,7 @@ export const departmentsApi = {
     const response = await api.get<ApiResponse<Department>>(`/departments/${id}`);
     return response.data;
   },
-  create: async (data: { name: string; slug?: string; slaHours?: number; serviceAreas?: string[]; tenantId?: string }) => {
+  create: async (data: { name: string; slug?: string; slaHours?: number; serviceAreas?: string[]; categoryTags?: string[]; routingKeywords?: string[]; tenantId?: string }) => {
     const response = await api.post<ApiResponse<Department>>('/departments', data);
     return response.data;
   },
@@ -333,6 +347,99 @@ export const departmentsApi = {
   // Assign a user to this department (or unassign with null) without changing their role
   assignUser: async (userId: string, departmentId: string | null) => {
     const response = await api.patch<ApiResponse<User>>(`/users/${userId}/department`, { departmentId });
+    return response.data;
+  },
+};
+
+// ─── Workflow Automation API ────────────────────────────────────────────────
+export const workflowApi = {
+  getSettings: async (tenantId?: string) => {
+    const response = await api.get<ApiResponse<WorkflowSettings>>('/workflow/settings', {
+      params: tenantId ? { tenantId } : undefined,
+    });
+    return response.data;
+  },
+
+  updateSettings: async (data: {
+    smartRoutingEnabled?: boolean;
+    autoCloseEnabled?: boolean;
+    autoCloseAfterDays?: number;
+    tenantId?: string;
+  }) => {
+    const response = await api.patch<ApiResponse<WorkflowSettings>>('/workflow/settings', data);
+    return response.data;
+  },
+
+  listAssignmentRules: async (params?: Record<string, string | number | boolean | undefined>) => {
+    const response = await api.get<ApiResponse<PaginatedResponse<WorkflowAssignmentRule>>>('/workflow/assignment-rules', {
+      params,
+    });
+    return response.data;
+  },
+
+  createAssignmentRule: async (data: {
+    name: string;
+    description?: string | null;
+    isActive?: boolean;
+    priority?: number;
+    stopOnMatch?: boolean;
+    categoryPatterns?: string[];
+    areaPatterns?: string[];
+    keywordPatterns?: string[];
+    departmentId?: string | null;
+    assignToId?: string | null;
+    setPriority?: Priority | null;
+    tenantId?: string;
+  }) => {
+    const response = await api.post<ApiResponse<WorkflowAssignmentRule>>('/workflow/assignment-rules', data);
+    return response.data;
+  },
+
+  updateAssignmentRule: async (id: string, data: {
+    name?: string;
+    description?: string | null;
+    isActive?: boolean;
+    priority?: number;
+    stopOnMatch?: boolean;
+    categoryPatterns?: string[];
+    areaPatterns?: string[];
+    keywordPatterns?: string[];
+    departmentId?: string | null;
+    assignToId?: string | null;
+    setPriority?: Priority | null;
+    tenantId?: string;
+  }) => {
+    const response = await api.patch<ApiResponse<WorkflowAssignmentRule>>(`/workflow/assignment-rules/${id}`, data);
+    return response.data;
+  },
+
+  deleteAssignmentRule: async (id: string, tenantId?: string) => {
+    const response = await api.delete<ApiResponse<null>>(`/workflow/assignment-rules/${id}`, {
+      params: tenantId ? { tenantId } : undefined,
+    });
+    return response.data;
+  },
+
+  listCategorySla: async (params?: Record<string, string | number | boolean | undefined>) => {
+    const response = await api.get<ApiResponse<CategorySlaPolicy[]>>('/workflow/category-sla', { params });
+    return response.data;
+  },
+
+  upsertCategorySla: async (data: {
+    categoryLabel: string;
+    categoryKey?: string;
+    slaHours: number;
+    isActive?: boolean;
+    tenantId?: string;
+  }) => {
+    const response = await api.post<ApiResponse<CategorySlaPolicy>>('/workflow/category-sla', data);
+    return response.data;
+  },
+
+  deleteCategorySla: async (id: string, tenantId?: string) => {
+    const response = await api.delete<ApiResponse<null>>(`/workflow/category-sla/${id}`, {
+      params: tenantId ? { tenantId } : undefined,
+    });
     return response.data;
   },
 };

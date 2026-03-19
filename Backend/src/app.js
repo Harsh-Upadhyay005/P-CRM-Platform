@@ -17,6 +17,7 @@ import analyticsRoute from "./routes/analytics.routes.js";
 import notificationsRoute from "./routes/notifications.routes.js";
 import auditLogRoute from "./routes/auditLog.routes.js";
 import tenantRoute from "./routes/tenant.routes.js";
+import workflowRoute from "./routes/workflow.routes.js";
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.use("/api/v1/analytics",     analyticsRoute);
 app.use("/api/v1/notifications", notificationsRoute);
 app.use("/api/v1/audit-logs",    auditLogRoute);
 app.use("/api/v1/tenants",        tenantRoute);
+app.use("/api/v1/workflow",      workflowRoute);
 
 app.use((req, res, next) => {
   next(new ApiError(404, "Route not found"));

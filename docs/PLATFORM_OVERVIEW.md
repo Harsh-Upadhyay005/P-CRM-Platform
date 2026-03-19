@@ -143,6 +143,28 @@ Each department has a configurable response deadline (default: 48 hours). The sy
 
 ---
 
+### 5A. Workflow Automation Engine (Admin)
+
+P-CRM now includes a dedicated workflow automation layer configurable from the admin dashboard:
+
+- **Smart Routing Toggle** — enable/disable AI + service-area based routing.
+- **Auto-Close Toggle + Days** — automatically close resolved complaints after N days with no feedback.
+- **Assignment Rules** — rule priority based matching on:
+  - category patterns
+  - area/locality patterns
+  - keyword patterns in complaint text
+  - optional priority override
+  - optional stop-on-match behavior
+- **Category SLA Policies** — define SLA per category (e.g. Water 24h, Road 72h).
+
+All these controls are available in the frontend under:
+
+- **Workflow** (`/workflow`) for `ADMIN` and `SUPER_ADMIN`
+
+For super admins, tenant-specific workflow settings can be scoped by tenant selection.
+
+---
+
 ### 6. Real-Time Notifications
 
 Every relevant staff member receives instant in-app notifications — no refreshing, no polling:

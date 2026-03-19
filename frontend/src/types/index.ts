@@ -55,6 +55,7 @@ export interface Complaint {
   duplicateScore: number | null;
   potentialDuplicateId: string | null;
   slaSummary: SlaSummary | null;
+  effectiveSlaHours?: number;
   resolvedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -78,11 +79,59 @@ export interface Department {
   slug: string;
   slaHours: number;
   serviceAreas: string[];
+  categoryTags: string[];
+  routingKeywords: string[];
   isActive: boolean;
   tenantId: string;
   createdAt: string;
   updatedAt: string;
   _count: { users: number; complaints: number };
+}
+
+export interface WorkflowSettings {
+  id: string | null;
+  tenantId: string;
+  smartRoutingEnabled: boolean;
+  autoCloseEnabled: boolean;
+  autoCloseAfterDays: number;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface WorkflowAssignmentRule {
+  id: string;
+  tenantId: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  priority: number;
+  stopOnMatch: boolean;
+  categoryPatterns: string[];
+  areaPatterns: string[];
+  keywordPatterns: string[];
+  setPriority: Priority | null;
+  createdAt: string;
+  updatedAt: string;
+  department: { id: string; name: string; slug: string } | null;
+  assignee: {
+    id: string;
+    name: string;
+    email: string;
+    departmentId: string | null;
+    role: { type: RoleType };
+  } | null;
+  createdBy: { id: string; name: string } | null;
+}
+
+export interface CategorySlaPolicy {
+  id: string;
+  tenantId: string;
+  categoryKey: string;
+  categoryLabel: string;
+  slaHours: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Notification {

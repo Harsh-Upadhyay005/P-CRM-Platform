@@ -74,7 +74,7 @@ No complaint is lost. No deadline is invisible. No step goes undocumented.
 | Resource             | URL                                                 |
 | -------------------- | --------------------------------------------------- |
 | **Live Application** | https://p-crm-platform.vercel.app                   |
-| **YouTube Demo**     | https://youtu.be/mSzsh3HA2A8                      |
+| **YouTube Demo**     | https://youtu.be/mSzsh3HA2A8                        |
 | **GitHub Repo**      | https://github.com/Harsh-Upadhyay005/P-CRM-Platform |
 
 ---
@@ -93,6 +93,9 @@ No complaint is lost. No deadline is invisible. No step goes undocumented.
 - **AI-powered triage** — every complaint is automatically scored for priority (CRITICAL/HIGH/MEDIUM/LOW), sentiment, and duplicate detection — no external API, zero subscription cost
 - **Role-gated workflow** — 5-level RBAC ensures officers only see their cases, department heads only see their department, and admins see everything
 - **SLA auto-enforcement** — complaints that breach their department deadline are automatically escalated by a background job every 30 minutes; breach emails are dispatched to the assigned officer and department head
+- **Workflow automation engine** — admins can configure rule-based auto-assignment by category, area, and keywords, plus smart routing using AI + department service metadata
+- **Category SLA policy** — set SLA per category (for example: Water = 24h, Road = 72h) with automatic fallback to department SLA
+- **Auto-close automation** — resolved complaints can be auto-closed after configurable no-feedback days
 - **Real-time notifications** — Server-Sent Events (SSE) push instant alerts to staff on complaint assignment and status changes — no polling, no reload
 - **File attachments** — photos, PDFs, site reports stored securely in Supabase with signed (1-hour) access links
 - **Internal notes** — staff discussion inside the complaint record, never visible to citizens
@@ -291,7 +294,13 @@ Every transition is enforced by a two-layer engine: **graph validity check** (`4
 
 ## SLA Engine
 
-Each department has a configurable `slaHours` deadline (default: 48h).
+SLA is resolved in this order:
+
+1. Active category SLA policy (tenant-level)
+2. Department `slaHours`
+3. Platform default (48h)
+
+This allows department defaults while still enforcing business-specific category windows like `Water=24h` and `Road=72h`.
 
 | SLA State  | Condition                       | System Action                                                    |
 | ---------- | ------------------------------- | ---------------------------------------------------------------- |
@@ -457,16 +466,17 @@ On browser disconnect:
 
 All 7 reports are ABAC-scoped — DEPT_HEAD sees own department only; ADMIN sees full tenant; SUPER_ADMIN sees all tenants.
 
-| Endpoint | Description |
-|----------|-------------|
-| `GET /overview` | Status/priority breakdown, average resolution time, and SLA breach count |
-| `GET /trends` | Daily filed and resolved complaint volume over a selected date range |
-| `GET /departments` | Per-department open/resolved complaints and average resolution time |
-| `GET /officers` | Officer leaderboard showing resolved complaint count and average resolution time |
-| `GET /sla-heatmap` | SLA breach rate categorized by department and priority |
-| `GET /escalation-trends` | Daily escalation counts over a configurable date range |
-| `GET /category-distribution` | Complaint volume grouped by category |
-| `GET /export` | Download reports as CSV — `?report=overview`, `departments`, `officers`, or `categories` |
+| Endpoint                     | Description                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------------- |
+| `GET /overview`              | Status/priority breakdown, average resolution time, and SLA breach count                 |
+| `GET /trends`                | Daily filed and resolved complaint volume over a selected date range                     |
+| `GET /departments`           | Per-department open/resolved complaints and average resolution time                      |
+| `GET /officers`              | Officer leaderboard showing resolved complaint count and average resolution time         |
+| `GET /sla-heatmap`           | SLA breach rate categorized by department and priority                                   |
+| `GET /escalation-trends`     | Daily escalation counts over a configurable date range                                   |
+| `GET /category-distribution` | Complaint volume grouped by category                                                     |
+| `GET /export`                | Download reports as CSV — `?report=overview`, `departments`, `officers`, or `categories` |
+
 ### Notifications · `/api/v1/notifications`
 
 | Method  | Endpoint        | Description                                                    |
