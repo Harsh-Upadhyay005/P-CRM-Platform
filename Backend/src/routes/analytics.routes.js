@@ -50,6 +50,13 @@ router.get(
 );
 
 router.get(
+  "/map-stats",
+  authorizeMinimum("CALL_OPERATOR"),
+  controller.getMapStats,
+);
+
+
+router.get(
   "/export",
   authorizeMinimum("DEPARTMENT_HEAD"),
   controller.exportAnalytics,

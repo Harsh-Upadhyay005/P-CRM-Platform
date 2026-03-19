@@ -262,7 +262,7 @@ const TERMINAL_STATUSES = ["RESOLVED", "CLOSED"];
 
 export const listComplaints = async (query, user) => {
   const { page, limit, skip } = getPagination(query);
-  const { status, priority, category, search, slaBreached } = query;
+  const { status, priority, category, search, slaBreached, assignedToId } = query;
 
   const abacFilter = await getABACFilter(user);
 
@@ -275,6 +275,7 @@ export const listComplaints = async (query, user) => {
       : { ...(status && { status }) }),
     ...(priority && { priority }),
     ...(category && { category }),
+    ...(assignedToId && { assignedToId }),
     ...(search && {
       OR: [
         { trackingId: { contains: search, mode: "insensitive" } },
