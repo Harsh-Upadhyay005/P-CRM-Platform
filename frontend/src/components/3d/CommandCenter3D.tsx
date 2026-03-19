@@ -145,26 +145,26 @@ function WavyBand({ color, yOffset, height, opacity = 0.15, emission = false }: 
   );
 }
 
-function WavyFlagBackground() {
-  return (
-    <group>
-      {/* Upper Saffron Band */}
-      <WavyBand color="#FF9933" yOffset={3.0} height={3.0} opacity={0.15} />
+// function WavyFlagBackground() {
+//   return (
+//     <group>
+//       {/* Upper Saffron Band */}
+//       <WavyBand color="#FF9933" yOffset={3.0} height={3.0} opacity={0.85} />
       
-      {/* Top Wavy Line */}
-      <WavyBand color="#FFFFFF" yOffset={1.5} height={0.03} opacity={0.4} emission />
+//       {/* Top Wavy Line */}
+//       <WavyBand color="#FFFFFF" yOffset={1.5} height={0.03} opacity={1.0} emission />
 
-      {/* Middle White Band */}
-      <WavyBand color="#FFFFFF" yOffset={0} height={3.0} opacity={0.08} />
+//       {/* Middle White Band */}
+//       <WavyBand color="#FFFFFF" yOffset={0} height={3.0} opacity={0.85} />
 
-      {/* Bottom Wavy Line */}
-      <WavyBand color="#FFFFFF" yOffset={-1.5} height={0.03} opacity={0.4} emission />
+//       {/* Bottom Wavy Line */}
+//       <WavyBand color="#FFFFFF" yOffset={-1.5} height={0.03} opacity={1.0} emission />
 
-      {/* Lower Green Band */}
-      <WavyBand color="#138808" yOffset={-3.0} height={3.0} opacity={0.15} />
-    </group>
-  );
-}
+//       {/* Lower Green Band */}
+//       <WavyBand color="#138808" yOffset={-3.0} height={3.0} opacity={0.85} />
+//     </group>
+//   );
+// }
 
 // ── Orbiting data particles (represent states/complaints)
 function DataOrbit() {
@@ -262,8 +262,8 @@ function TricolorAccents() {
 export function CommandCenter3D() {
   return (
     <div
-      className="relative w-full h-70 rounded-2xl overflow-hidden border border-white/5 shadow-2xl"
-      style={{ background: 'linear-gradient(135deg, rgba(15,23,42,0.95) 0%, rgba(30,41,59,0.9) 50%, rgba(15,23,42,0.95) 100%)' }}
+      className="relative w-full h-70 rounded-2xl overflow-hidden shadow-2xl"
+      style={{ background: 'linear-gradient(180deg, rgba(255,153,51,0.9) 0%, rgba(255,153,51,0.9) 33.3%, rgba(255,255,255,0.9) 33.3%, rgba(255,255,255,0.9) 66.6%, rgba(19,136,8,0.9) 66.6%, rgba(19,136,8,0.9) 100%)' }}
     >
       {/* Top tricolor bar */}
       <div className="absolute top-0 left-0 right-0 h-0.5 z-10" style={{ background: 'linear-gradient(90deg, #FF9933 33%, #FFFFFF 33%, #FFFFFF 66%, #138808 66%)' }} />
@@ -307,7 +307,7 @@ export function CommandCenter3D() {
         <pointLight position={[0, 0, 5]} intensity={0.2} color="#FFFFFF" />
 
         <React.Suspense fallback={null}>
-          <WavyFlagBackground />
+          {/* <WavyFlagBackground /> */}
           <Float speed={0.8} rotationIntensity={0.05} floatIntensity={0.2}>
             <AshokaChakra />
             <DataOrbit />
