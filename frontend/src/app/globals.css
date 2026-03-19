@@ -184,3 +184,15 @@
 .geoapify-close-button {
   display: none !important;
 }
+
+/* Hide scrollbars globally but allow scrolling */
+::-webkit-scrollbar {
+  display: none;
+  width: 0px;
+  background: transparent;
+}
+
+* {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}

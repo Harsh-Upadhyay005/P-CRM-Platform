@@ -51,7 +51,7 @@ api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config;
-    
+
     // If 401 and not already retrying, try to refresh token
     // Exclude login and refresh endpoints to prevent infinite loops
     // Also skip entirely if we're already on an auth page (no point refreshing)
@@ -64,8 +64,8 @@ api.interceptors.response.use(
       window.location.pathname.startsWith('/resend-verification')
     );
     if (
-      error.response?.status === 401 && 
-      originalRequest && 
+      error.response?.status === 401 &&
+      originalRequest &&
       !onAuthPage &&
       !originalRequest.url?.includes('/auth/login') &&
       !originalRequest.url?.includes('/auth/refresh') &&
@@ -73,7 +73,7 @@ api.interceptors.response.use(
       !('_retry' in originalRequest)
     ) {
       (originalRequest as { _retry?: boolean })._retry = true;
-      
+
       try {
         // Use the Next.js proxy route so the frontend-domain mirror cookie
         // is also refreshed (the backend cookie is refreshed via cookie forwarding).
@@ -90,7 +90,7 @@ api.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -500,6 +500,21 @@ export const analyticsApi = {
     const disposition = (response.headers['content-disposition'] as string) ?? '';
     const match = disposition.match(/filename="?([^";\r\n]+)"?/);
     triggerDownload(response.data as Blob, match?.[1] ?? `analytics-${report}-${new Date().toISOString().slice(0, 10)}.csv`);
+  },
+
+  getMapStats: async (): Promise<ApiResponse<{
+    states: {
+      id: string;
+      complaints: number;
+      resolved: number;
+      pending: number;
+      critical: number;
+      cities: { name: string; complaints: number }[];
+    }[];
+    unlocatedCount: number;
+  }>> => {
+    const response = await api.get('/analytics/map-stats');
+    return response.data;
   },
 };
 

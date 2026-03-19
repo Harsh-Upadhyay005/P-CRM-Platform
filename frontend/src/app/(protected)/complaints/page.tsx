@@ -141,11 +141,7 @@ export default function ComplaintsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">
-            {isOfficerOnly
-              ? "My Assigned Complaints"
-              : isCitizen
-                ? "My Complaints"
-                : "Complaints"}
+            {isOfficerOnly ? "My Assigned Complaints" : isCitizen ? "My Complaints" : "Complaints"}
           </h1>
           <p className="text-slate-400 text-sm mt-1">
             {isOfficerOnly
