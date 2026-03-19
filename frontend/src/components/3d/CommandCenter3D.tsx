@@ -100,6 +100,72 @@ function AshokaChakra() {
   );
 }
 
+// ── Wavy Flag Background
+function WavyBand({ color, yOffset, height, opacity = 0.15, emission = false }: { color: string, yOffset: number, height: number, opacity?: number, emission?: boolean }) {
+  const planeGeoRef = useRef<THREE.PlaneGeometry>(null!);
+  const initialPositions = useRef<Float32Array | null>(null);
+
+  useFrame(({ clock }) => {
+    if (!planeGeoRef.current || !initialPositions.current) return;
+    const t = clock.getElapsedTime() * 0.4;
+    const positions = planeGeoRef.current.attributes.position;
+    
+    for (let i = 0; i < positions.count; i++) {
+      const idx = i * 3;
+      const x = initialPositions.current[idx];
+      const baseY = initialPositions.current[idx + 1];
+      const baseZ = initialPositions.current[idx + 2];
+      
+      const waveY = Math.sin(x * 0.4 - t * 2.0) * 0.5;
+      const waveZ = Math.cos(x * 0.3 - t * 1.5) * 0.6;
+      
+      positions.setXYZ(i, x, baseY + waveY, baseZ + waveZ);
+    }
+    positions.needsUpdate = true;
+    planeGeoRef.current.computeVertexNormals();
+  });
+
+  return (
+    <mesh position={[0, yOffset, -2.5]}>
+      <planeGeometry 
+        ref={(geom) => {
+          if (geom && !initialPositions.current) {
+            planeGeoRef.current = geom;
+            initialPositions.current = new Float32Array(geom.attributes.position.array);
+          }
+        }} 
+        args={[24, height, 64, 4]} 
+      />
+      {emission ? (
+        <meshBasicMaterial color={color} transparent opacity={opacity} side={THREE.DoubleSide} />
+      ) : (
+        <meshStandardMaterial color={color} transparent opacity={opacity} metalness={0.7} roughness={0.3} side={THREE.DoubleSide} />
+      )}
+    </mesh>
+  );
+}
+
+function WavyFlagBackground() {
+  return (
+    <group>
+      {/* Upper Saffron Band */}
+      <WavyBand color="#FF9933" yOffset={3.0} height={3.0} opacity={0.15} />
+      
+      {/* Top Wavy Line */}
+      <WavyBand color="#FFFFFF" yOffset={1.5} height={0.03} opacity={0.4} emission />
+
+      {/* Middle White Band */}
+      <WavyBand color="#FFFFFF" yOffset={0} height={3.0} opacity={0.08} />
+
+      {/* Bottom Wavy Line */}
+      <WavyBand color="#FFFFFF" yOffset={-1.5} height={0.03} opacity={0.4} emission />
+
+      {/* Lower Green Band */}
+      <WavyBand color="#138808" yOffset={-3.0} height={3.0} opacity={0.15} />
+    </group>
+  );
+}
+
 // ── Orbiting data particles (represent states/complaints)
 function DataOrbit() {
   const ref = useRef<THREE.Group>(null!);
@@ -241,6 +307,7 @@ export function CommandCenter3D() {
         <pointLight position={[0, 0, 5]} intensity={0.2} color="#FFFFFF" />
 
         <React.Suspense fallback={null}>
+          <WavyFlagBackground />
           <Float speed={0.8} rotationIntensity={0.05} floatIntensity={0.2}>
             <AshokaChakra />
             <DataOrbit />
