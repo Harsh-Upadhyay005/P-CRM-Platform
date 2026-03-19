@@ -81,7 +81,9 @@ export const getOverview = async (user, query = {}) => {
   const activeComplaints = await prisma.complaint.findMany({
     where: {
       ...baseWhere,
-      status: { notIn: NON_SLA_STATUSES },
+      // Escalated complaints are still unresolved and should remain visible in
+      // SLA breached KPI; only terminal states are excluded here.
+      status: { notIn: ["RESOLVED", "CLOSED"] },
     },
     select: {
       id: true,
@@ -182,7 +184,11 @@ export const getDepartmentStats = async (user) => {
       _count: { _all: true },
     }),
     prisma.complaint.findMany({
-      where: { ...baseWhere, ...deptComplaintFilter, status: { notIn: NON_SLA_STATUSES } },
+      where: {
+        ...baseWhere,
+        ...deptComplaintFilter,
+        status: { notIn: ["RESOLVED", "CLOSED"] },
+      },
       select: {
         departmentId: true,
         tenantId: true,
@@ -266,6 +272,18 @@ const getISOWeekKey = (date) => {
   const week1 = new Date(d.getFullYear(), 0, 4);
   const weekNum = 1 + Math.round(((d - week1) / 86_400_000 - 3 + ((week1.getDay() + 6) % 7)) / 7);
   return `${d.getFullYear()}-W${String(weekNum).padStart(2, "0")}`;
+};
+
+const INDIA_TIME_ZONE = "Asia/Kolkata";
+
+const getDayKeyInTimeZone = (date, timeZone = INDIA_TIME_ZONE) => {
+  // en-CA yields stable YYYY-MM-DD formatting across runtimes.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(date));
 };
 
 export const getTrends = async (user, query = {}) => {
@@ -391,7 +409,8 @@ export const getOfficerLeaderboard = async (user) => {
     prisma.complaint.findMany({
       where: {
         ...baseWhere,
-        status: { notIn: NON_SLA_STATUSES },
+        // Escalated is unresolved and should be considered for active SLA breach.
+        status: { notIn: ["RESOLVED", "CLOSED"] },
       },
       select: {
         assignedToId: true,
@@ -515,7 +534,9 @@ export const getSlaHeatmap = async (user, query = {}) => {
         departmentId: { not: null },
         ...(deptIdFilter.id && { departmentId: deptIdFilter.id }),
         createdAt: { gte: since },
-        status: { not: "ESCALATED" },
+        // Include escalated complaints in SLA analytics; only terminal states
+        // are considered complete and excluded from active breach checks.
+        status: { notIn: ["RESOLVED", "CLOSED"] },
       },
       select: {
         departmentId: true,
@@ -630,6 +651,7 @@ export const getEscalationTrend = async (user, query = {}) => {
         changedAt: { gte: since },
         complaint: { isDeleted: false, ...tenantFilter, ...abacFilter },
       },
+      orderBy: { changedAt: "asc" },
       select: {
         changedAt: true,
         complaint: {
@@ -664,7 +686,7 @@ export const getEscalationTrend = async (user, query = {}) => {
     }
   } else {
     for (let i = 0; i < days; i++) {
-      const key = new Date(since.getTime() + i * 86_400_000).toISOString().slice(0, 10);
+      const key = getDayKeyInTimeZone(new Date(since.getTime() + i * 86_400_000));
       periods.push(key);
       periodSet.add(key);
     }
@@ -677,14 +699,14 @@ export const getEscalationTrend = async (user, query = {}) => {
   for (const c of allComplaints) {
     const key = granularity === "weekly"
       ? getISOWeekKey(c.createdAt)
-      : new Date(c.createdAt).toISOString().slice(0, 10);
+      : getDayKeyInTimeZone(c.createdAt);
     if (key in totalBucket) totalBucket[key]++;
   }
 
   for (const e of escalationEvents) {
     const key = granularity === "weekly"
       ? getISOWeekKey(e.changedAt)
-      : new Date(e.changedAt).toISOString().slice(0, 10);
+      : getDayKeyInTimeZone(e.changedAt);
     if (key in escalationBucket) escalationBucket[key]++;
 
     const deptId = e.complaint.departmentId;

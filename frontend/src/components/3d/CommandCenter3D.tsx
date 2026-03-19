@@ -202,16 +202,6 @@ export function CommandCenter3D() {
       {/* Overlay Vignette */}
       <div className="absolute inset-0 bg-linear-to-t from-slate-950/90 via-transparent to-slate-950/40 pointer-events-none z-10" />
 
-      {/* Typography Overlay */}
-      <div className="absolute top-5 left-6 z-20 flex flex-col gap-1">
-        <h2 className="text-xl sm:text-2xl text-white font-semibold tracking-wider font-sans drop-shadow-md">
-          MAJESTIC PLATFORM
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-300 font-mono tracking-[0.25em] uppercase">
-          National Command Center
-        </p>
-      </div>
-
       <div className="absolute bottom-5 left-6 z-20 flex items-center gap-3">
         <div className="flex gap-1.5">
           <div className="w-2 h-2 rounded-full bg-[#FF9933] shadow-[0_0_8px_#FF9933]" />
