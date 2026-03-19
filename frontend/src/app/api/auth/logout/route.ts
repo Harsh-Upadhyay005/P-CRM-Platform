@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getBackendApiBaseUrl } from '@/lib/backend-api-base';
 
-const BACKEND = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000/api/v1';
+const BACKEND = getBackendApiBaseUrl();
 const IS_PROD  = process.env.NODE_ENV === 'production';
 
 export async function POST(req: NextRequest) {

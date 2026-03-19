@@ -56,7 +56,6 @@ api.interceptors.response.use(
       !originalRequest.url?.includes('/auth/login') &&
       !originalRequest.url?.includes('/auth/refresh') &&
       !originalRequest.url?.includes('/api/auth/') &&
-      !originalRequest.url?.includes('/users/me') &&
       !('_retry' in originalRequest)
     ) {
       (originalRequest as { _retry?: boolean })._retry = true;
