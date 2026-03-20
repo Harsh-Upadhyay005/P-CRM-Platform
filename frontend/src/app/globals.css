@@ -180,12 +180,10 @@
   color: #94a3b8 !important;
 }
 
-/* Hide Geoapify close button */
 .geoapify-close-button {
   display: none !important;
 }
 
-/* Hide scrollbars globally but allow scrolling */
 ::-webkit-scrollbar {
   display: none;
   width: 0px;
@@ -195,4 +193,28 @@
 * {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
+}
+
+.recharts-pie-sector {
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.4s ease;
+  transform-origin: center;
+  transform-box: fill-box;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.recharts-pie-sector:hover {
+  transform: scale(1.1);
+  filter: drop-shadow(0 0px 14px rgba(168, 85, 247, 0.8)) drop-shadow(0 0px 4px rgba(255, 255, 255, 0.3));
+  stroke-linejoin: round;
+}
+
+.recharts-bar-rectangle path {
+  transition: filter 0.3s ease, opacity 0.3s ease;
+  cursor: pointer;
+}
+
+.recharts-bar-rectangle path:hover {
+  filter: brightness(1.25) drop-shadow(0 4px 12px rgba(168, 85, 247, 0.5));
+  opacity: 1 !important;
 }

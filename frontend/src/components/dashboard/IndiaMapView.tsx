@@ -707,6 +707,7 @@ function StatsSummary({ states }: { states: StateData[] }) {
 
 // ── Top States List
 function TopStates({ states }: { states: StateData[] }) {
+  const totalComplaints = states.reduce((sum, state) => sum + state.complaints, 0);
   const sorted = [...states]
     .sort((a, b) => b.complaints - a.complaints)
     .slice(0, 8);
@@ -720,10 +721,12 @@ function TopStates({ states }: { states: StateData[] }) {
       </h4>
       {sorted.map((state, i) => {
         const pct = max > 0 ? (state.complaints / max) * 100 : 0;
-        const resolvedPct =
-          state.complaints > 0
-            ? Math.round((state.resolved / state.complaints) * 100)
-            : 0;
+        const complaintShare =
+          totalComplaints > 0 ? (state.complaints / totalComplaints) * 100 : 0;
+        const complaintShareLabel =
+          state.complaints > 0 && complaintShare < 0.1
+            ? "<0.1%"
+            : `${complaintShare.toFixed(1)}%`;
         return (
           <div key={state.id} className="state-bar-item group">
             <div className="flex items-center justify-between mb-1">
@@ -737,7 +740,7 @@ function TopStates({ states }: { states: StateData[] }) {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-[10px] text-emerald-400/70 font-mono">
-                  {resolvedPct}%
+                  {complaintShareLabel}
                 </span>
                 <span className="text-xs font-mono font-bold text-white">
                   {state.complaints.toLocaleString()}

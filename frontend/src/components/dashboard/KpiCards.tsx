@@ -91,45 +91,45 @@ export function KpiCards() {
   // getOverview returns { total, byStatus, byPriority, sla, avgResolutionTime, resolvedCount }
   const stats: KpiStatItem[] = overview
     ? [
-        {
-          label: "Total Complaints",
-          value: overview.total ?? 0,
-          icon: Inbox,
-          color: "saffron",
-        },
-        {
-          label: "Open",
-          value: overview.byStatus?.OPEN ?? 0,
-          icon: Clock,
-          color: "navy",
-        },
-        {
-          label: "In Progress",
-          value:
-            (overview.byStatus?.IN_PROGRESS ?? 0) +
-            (overview.byStatus?.ASSIGNED ?? 0),
-          icon: Loader,
-          color: "indigo",
-        },
-        {
-          label: "Resolved",
-          value: overview.resolvedCount ?? 0,
-          icon: CheckCircle,
-          color: "emerald",
-        },
-        {
-          label: "SLA Breached",
-          value: overview.sla?.breachedCount ?? 0,
-          icon: AlertTriangle,
-          color: "red",
-        },
-        {
-          label: "Escalated",
-          value: overview.byStatus?.ESCALATED ?? 0,
-          icon: Zap,
-          color: "amber",
-        },
-      ]
+      {
+        label: "Total Complaints",
+        value: overview.total ?? 0,
+        icon: Inbox,
+        color: "saffron",
+      },
+      {
+        label: "Open",
+        value: overview.byStatus?.OPEN ?? 0,
+        icon: Clock,
+        color: "navy",
+      },
+      {
+        label: "In Progress",
+        value:
+          (overview.byStatus?.IN_PROGRESS ?? 0) +
+          (overview.byStatus?.ASSIGNED ?? 0),
+        icon: Loader,
+        color: "indigo",
+      },
+      {
+        label: "Resolved",
+        value: overview.resolvedCount ?? 0,
+        icon: CheckCircle,
+        color: "emerald",
+      },
+      {
+        label: "SLA Breached",
+        value: overview.sla?.breachedCount ?? 0,
+        icon: AlertTriangle,
+        color: "red",
+      },
+      {
+        label: "Escalated",
+        value: overview.byStatus?.ESCALATED ?? 0,
+        icon: Zap,
+        color: "amber",
+      },
+    ]
     : [];
 
   if (isLoading) {
