@@ -1145,7 +1145,7 @@ const CITY_KEYWORD_MAP = [
  * Given a locality string, return the 2-letter state ID or null.
  * Tries each keyword group in order; first match wins.
  */
-const localityToStateId = (locality) => {
+export const localityToStateId = (locality) => {
   if (!locality) return null;
   const lower = locality.toLowerCase();
   for (const entry of LOCALITY_KEYWORD_MAP) {

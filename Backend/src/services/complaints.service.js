@@ -28,6 +28,7 @@ import {
   resolveEffectiveSlaHours,
   runComplaintAutomationOnCreate,
 } from "./workflow.service.js";
+import { localityToStateId } from "./analytics.service.js";
 
 const complaintSummarySelect = {
   id: true,
@@ -262,7 +263,7 @@ const TERMINAL_STATUSES = ["RESOLVED", "CLOSED"];
 
 export const listComplaints = async (query, user) => {
   const { page, limit, skip } = getPagination(query);
-  const { status, priority, category, search, slaBreached, assignedToId } = query;
+  const { status, priority, category, search, slaBreached, assignedToId, stateId } = query;
 
   const abacFilter = await getABACFilter(user);
 
@@ -282,11 +283,13 @@ export const listComplaints = async (query, user) => {
         { citizenName: { contains: search, mode: "insensitive" } },
         { citizenPhone: { contains: search, mode: "insensitive" } },
         { description: { contains: search, mode: "insensitive" } },
+        { locality: { contains: search, mode: "insensitive" } },
+        { category: { contains: search, mode: "insensitive" } },
       ],
     }),
   };
 
-  if (slaBreached === "true") {
+  if (slaBreached === "true" || stateId) {
     const BATCH_SIZE = 500;
     let batchSkip = 0;
     let matchedCount = 0;
@@ -306,7 +309,8 @@ export const listComplaints = async (query, user) => {
       const decoratedBatch = await decorateWithSlaBatch(complaintsBatch);
 
       for (const complaint of decoratedBatch) {
-        if (!complaint.slaSummary?.breached) continue;
+        if (slaBreached === "true" && !complaint.slaSummary?.breached) continue;
+        if (stateId && localityToStateId(complaint.locality) !== stateId) continue;
 
         if (matchedCount >= skip && paged.length < limit) {
           paged.push(complaint);
