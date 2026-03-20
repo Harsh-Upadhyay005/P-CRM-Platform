@@ -39,6 +39,8 @@ export interface StateData {
 
 interface IndiaMapViewProps {
   visibleStateIds?: string[];
+  windowDays?: 1 | 7 | 30;
+  onStateSelect?: (stateId: string) => void;
 }
 
 // ── Static base: geographic / city info only — numbers start at zero
@@ -794,7 +796,11 @@ function MapSkeleton() {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export function IndiaMapView({ visibleStateIds }: IndiaMapViewProps = {}) {
+export function IndiaMapView({
+  visibleStateIds,
+  windowDays = 7,
+  onStateSelect,
+}: IndiaMapViewProps = {}) {
   const mapRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredState, setHoveredState] = useState<string | null>(null);
@@ -812,7 +818,7 @@ export function IndiaMapView({ visibleStateIds }: IndiaMapViewProps = {}) {
     setIsLoading(true);
     setLoadError(false);
     try {
-      const response = await analyticsApi.getMapStats();
+      const response = await analyticsApi.getMapStats(windowDays);
       const apiStates = response.data.states;
 
       // Build a lookup map from API response — include real per-city counts
@@ -881,7 +887,7 @@ export function IndiaMapView({ visibleStateIds }: IndiaMapViewProps = {}) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [windowDays]);
 
   useEffect(() => {
     fetchMapStats();
@@ -984,7 +990,8 @@ export function IndiaMapView({ visibleStateIds }: IndiaMapViewProps = {}) {
 
   const handleStateClick = useCallback((stateId: string) => {
     setSelectedState((prev) => (prev === stateId ? null : stateId));
-  }, []);
+    onStateSelect?.(stateId);
+  }, [onStateSelect]);
 
   const hoveredData = visibleStateData.find((s) => s.id === hoveredState);
   const selectedData = visibleStateData.find((s) => s.id === selectedState);

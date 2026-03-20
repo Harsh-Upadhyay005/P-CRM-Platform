@@ -857,7 +857,7 @@ const LOCALITY_KEYWORD_MAP = [
   // Rajasthan
   { keywords: ["jaipur", "jodhpur", "udaipur", "kota", "ajmer", "bikaner", "alwar", "bharatpur", "pushkar", "sikar", "pali", "barmer", "jaisalmer", "chittorgarh", "bhilwara", "tonk", "nagaur", "rajasthan"], id: "RJ" },
   // Uttar Pradesh
-  { keywords: ["lucknow", "noida", "varanasi", "agra", "kanpur", "prayagraj", "allahabad", "ghaziabad", "meerut", "mathura", "vrindavan", "gorakhpur", "aligarh", "bareilly", "moradabad", "saharanpur", "jhansi", "firozabad", "muzaffarnagar", "hapur", "shahjahanpur", "rampur", "etawah", "faizabad", "ayodhya", "sitapur", "lakhimpur", "uttar pradesh"], id: "UP" },
+  { keywords: ["lucknow", "noida", "varanasi", "agra", "kanpur", "prayagraj", "allahabad", "ghaziabad", "raj nagar", "meerut", "mathura", "vrindavan", "gorakhpur", "aligarh", "bareilly", "moradabad", "saharanpur", "jhansi", "firozabad", "muzaffarnagar", "hapur", "shahjahanpur", "rampur", "etawah", "faizabad", "ayodhya", "sitapur", "lakhimpur", "uttar pradesh"], id: "UP" },
   // Bihar
   { keywords: ["patna", "gaya", "muzaffarpur", "bhagalpur", "darbhanga", "purnea", "araria", "begusarai", "motihari", "samastipur", "siwan", "buxar", "sasaram", "bihar sharif", "nalanda", "katihar", "bihar"], id: "BR" },
   // Sikkim
@@ -982,7 +982,7 @@ const CITY_KEYWORD_MAP = [
   { keywords: ["agra"], city: "Agra", stateId: "UP" },
   { keywords: ["kanpur"], city: "Kanpur", stateId: "UP" },
   { keywords: ["prayagraj", "allahabad"], city: "Prayagraj", stateId: "UP" },
-  { keywords: ["ghaziabad"], city: "Ghaziabad", stateId: "UP" },
+  { keywords: ["ghaziabad", "raj nagar"], city: "Ghaziabad", stateId: "UP" },
   { keywords: ["meerut"], city: "Meerut", stateId: "UP" },
   { keywords: ["mathura", "vrindavan"], city: "Mathura", stateId: "UP" },
   { keywords: ["gorakhpur"], city: "Gorakhpur", stateId: "UP" },
@@ -1176,52 +1176,144 @@ const localityToCity = (locality) => {
  * Returns per-state complaint aggregates + per-city counts derived from the
  * locality field.  Roles: CALL_OPERATOR and above (ABAC-scoped).
  */
-export const getMapStats = async (user) => {
+export const getMapStats = async (user, query = {}) => {
   const [abacFilter, tenantFilter] = await Promise.all([
     getABACFilter(user),
     Promise.resolve(forTenant(user)),
   ]);
 
+  const parsedWindowDays = Number.parseInt(query.windowDays, 10);
+  const windowDays = [1, 7, 30].includes(parsedWindowDays) ? parsedWindowDays : 7;
+  const now = new Date();
+  const windowStart = new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000);
+  const previousWindowStart = new Date(windowStart.getTime() - windowDays * 24 * 60 * 60 * 1000);
+
   const complaints = await prisma.complaint.findMany({
-    where: { isDeleted: false, ...tenantFilter, ...abacFilter },
+    where: {
+      isDeleted: false,
+      ...tenantFilter,
+      ...abacFilter,
+      createdAt: { gte: previousWindowStart },
+    },
     select: {
+      id: true,
+      trackingId: true,
       locality: true,
+      category: true,
+      description: true,
       status: true,
       priority: true,
+      assignedToId: true,
+      createdAt: true,
+      resolvedAt: true,
+      department: { select: { slaHours: true } },
+      tenantId: true,
     },
     orderBy: { createdAt: "desc" },
     take: ANALYTICS_ROW_CAP,
   });
 
+  const currentComplaints = complaints.filter((c) => new Date(c.createdAt) >= windowStart);
+  const previousComplaints = complaints.filter(
+    (c) => new Date(c.createdAt) < windowStart && new Date(c.createdAt) >= previousWindowStart
+  );
+
+  const activeForSla = currentComplaints.filter(
+    (c) => !NON_SLA_STATUSES.includes(c.status)
+  );
+  const slaLookup = await buildCategorySlaLookupForComplaints(activeForSla);
+
   // stateMap: id → { complaints, resolved, pending, critical, cities: Map<cityName, count> }
   const stateMap = {};
+  const previousStateCounts = {};
+  const cityVolumeMap = {};
   const RESOLVED_STATUSES = new Set(["RESOLVED", "CLOSED"]);
+  const timelineMap = {};
+  const localityQualityMap = {};
 
-  for (const c of complaints) {
+  for (const c of previousComplaints) {
     const stateId = localityToStateId(c.locality);
     if (!stateId) continue;
+    previousStateCounts[stateId] = (previousStateCounts[stateId] ?? 0) + 1;
+  }
+
+  for (const c of currentComplaints) {
+    const stateId = localityToStateId(c.locality);
+
+    if (!stateId) {
+      const key = (c.locality ?? "Unknown / Empty locality").trim();
+      localityQualityMap[key] = (localityQualityMap[key] ?? 0) + 1;
+      continue;
+    }
 
     if (!stateMap[stateId]) {
-      stateMap[stateId] = { id: stateId, complaints: 0, resolved: 0, pending: 0, critical: 0, cities: {} };
+      stateMap[stateId] = {
+        id: stateId,
+        complaints: 0,
+        resolved: 0,
+        pending: 0,
+        critical: 0,
+        assignedOpen: 0,
+        unassignedOpen: 0,
+        slaBreached: 0,
+        cities: {},
+        categories: {},
+        recent: [],
+        resolutionTimes: [],
+      };
     }
 
     const entry = stateMap[stateId];
     entry.complaints++;
 
+    const dayKey = new Date(c.createdAt).toISOString().slice(0, 10);
+    if (!timelineMap[dayKey]) {
+      timelineMap[dayKey] = { date: dayKey, total: 0, critical: 0 };
+    }
+    timelineMap[dayKey].total++;
+
     if (RESOLVED_STATUSES.has(c.status)) {
       entry.resolved++;
+      if (c.resolvedAt) {
+        entry.resolutionTimes.push(new Date(c.resolvedAt).getTime() - new Date(c.createdAt).getTime());
+      }
     } else {
       entry.pending++;
+
+      if (c.assignedToId) entry.assignedOpen++;
+      else entry.unassignedOpen++;
+
+      const slaHours = resolveEffectiveSlaHours(c, slaLookup);
+      if (isSlaBreached(c.createdAt, slaHours)) {
+        entry.slaBreached++;
+      }
     }
 
     if (c.priority === "CRITICAL") {
       entry.critical++;
+      timelineMap[dayKey].critical++;
+    }
+
+    const categoryKey = (c.category ?? "Uncategorized").trim() || "Uncategorized";
+    entry.categories[categoryKey] = (entry.categories[categoryKey] ?? 0) + 1;
+
+    if (entry.recent.length < 5) {
+      entry.recent.push({
+        trackingId: c.trackingId,
+        createdAt: c.createdAt,
+        priority: c.priority,
+        status: c.status,
+        category: categoryKey,
+        locality: c.locality,
+        excerpt: (c.description ?? "").slice(0, 120),
+      });
     }
 
     // City-level bucketing
     const cityMatch = localityToCity(c.locality);
     if (cityMatch && cityMatch.stateId === stateId) {
       entry.cities[cityMatch.city] = (entry.cities[cityMatch.city] ?? 0) + 1;
+      cityVolumeMap[cityMatch.city] = (cityVolumeMap[cityMatch.city] ?? 0) + 1;
     }
   }
 
@@ -1232,13 +1324,90 @@ export const getMapStats = async (user) => {
     resolved: s.resolved,
     pending: s.pending,
     critical: s.critical,
+    assignedOpen: s.assignedOpen,
+    unassignedOpen: s.unassignedOpen,
+    capacityStressPct:
+      s.pending > 0 ? +((s.unassignedOpen / s.pending) * 100).toFixed(1) : 0,
+    avgResolutionHours:
+      s.resolutionTimes.length > 0
+        ? +(
+            s.resolutionTimes.reduce((sum, ms) => sum + ms, 0) /
+            s.resolutionTimes.length /
+            3_600_000
+          ).toFixed(1)
+        : null,
+    slaBreachPct: s.pending > 0 ? +((s.slaBreached / s.pending) * 100).toFixed(1) : 0,
+    changePct: (() => {
+      const prev = previousStateCounts[s.id] ?? 0;
+      if (prev === 0) return s.complaints > 0 ? 100 : 0;
+      return +(((s.complaints - prev) / prev) * 100).toFixed(1);
+    })(),
+    anomalyScore: (() => {
+      const prev = previousStateCounts[s.id] ?? 0;
+      if (prev === 0) return s.complaints >= 4 ? 1 : 0;
+      return +((s.complaints - prev) / Math.max(1, Math.sqrt(prev))).toFixed(2);
+    })(),
+    badges: [
+      s.pending > 0 && s.pending / s.complaints >= 0.45 ? "Backlog Heavy" : null,
+      s.critical >= 3 ? "Critical Spike" : null,
+      s.slaBreached >= 2 ? "SLA Risk" : null,
+      s.unassignedOpen >= 3 ? "Assignment Stress" : null,
+    ].filter(Boolean),
     cities: Object.entries(s.cities)
       .map(([name, count]) => ({ name, complaints: count }))
       .sort((a, b) => b.complaints - a.complaints),
+    topCategories: Object.entries(s.categories)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5),
+    recentComplaints: s.recent,
   }));
+
+  const sortedTimeline = Object.values(timelineMap).sort((a, b) => a.date.localeCompare(b.date));
+  const totalMapped = states.reduce((sum, state) => sum + state.complaints, 0);
+  const unlocatedCount = currentComplaints.length - totalMapped;
+
+  const ambiguousLocalities = Object.entries(localityQualityMap)
+    .map(([locality, count]) => ({ locality, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 8);
+
+  const routePlan = Object.entries(cityVolumeMap)
+    .map(([city, complaints]) => ({ city, complaints }))
+    .sort((a, b) => b.complaints - a.complaints)
+    .slice(0, 10)
+    .map((entry, index) => ({ ...entry, sequence: index + 1 }));
+
+  const anomalyStates = states
+    .filter((s) => s.anomalyScore >= 2 || s.changePct >= 80)
+    .sort((a, b) => b.anomalyScore - a.anomalyScore)
+    .slice(0, 8)
+    .map((s) => ({ id: s.id, anomalyScore: s.anomalyScore, changePct: s.changePct, complaints: s.complaints }));
 
   return {
     states,
-    unlocatedCount: complaints.length - states.reduce((s, e) => s + e.complaints, 0),
+    unlocatedCount,
+    dataQuality: {
+      windowDays,
+      mappedCount: totalMapped,
+      unmappedPct: currentComplaints.length > 0 ? +((unlocatedCount / currentComplaints.length) * 100).toFixed(1) : 0,
+      ambiguousLocalities,
+    },
+    comparison: {
+      windowDays,
+      currentWindowStart: windowStart,
+      previousWindowStart,
+      currentTotal: currentComplaints.length,
+      previousTotal: previousComplaints.length,
+      deltaPct:
+        previousComplaints.length > 0
+          ? +(((currentComplaints.length - previousComplaints.length) / previousComplaints.length) * 100).toFixed(1)
+          : currentComplaints.length > 0
+            ? 100
+            : 0,
+    },
+    timeline: sortedTimeline,
+    anomalyStates,
+    routePlan,
   };
 };

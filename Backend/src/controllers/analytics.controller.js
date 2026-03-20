@@ -38,7 +38,7 @@ export const getCategoryDistribution = asyncHandler(async (req, res) => {
 });
 
 export const getMapStats = asyncHandler(async (req, res) => {
-  const data = await service.getMapStats(req.user);
+  const data = await service.getMapStats(req.user, req.query);
   res.json(new ApiResponse(200, data, "Map statistics retrieved"));
 });
 
