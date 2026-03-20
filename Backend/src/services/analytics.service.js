@@ -857,7 +857,7 @@ const LOCALITY_KEYWORD_MAP = [
   // Rajasthan
   { keywords: ["jaipur", "jodhpur", "udaipur", "kota", "ajmer", "bikaner", "alwar", "bharatpur", "pushkar", "sikar", "pali", "barmer", "jaisalmer", "chittorgarh", "bhilwara", "tonk", "nagaur", "rajasthan"], id: "RJ" },
   // Uttar Pradesh
-  { keywords: ["lucknow", "noida", "varanasi", "agra", "kanpur", "prayagraj", "allahabad", "ghaziabad", "raj nagar", "meerut", "mathura", "vrindavan", "gorakhpur", "aligarh", "bareilly", "moradabad", "saharanpur", "jhansi", "firozabad", "muzaffarnagar", "hapur", "shahjahanpur", "rampur", "etawah", "faizabad", "ayodhya", "sitapur", "lakhimpur", "uttar pradesh"], id: "UP" },
+  { keywords: ["lucknow", "noida", "varanasi", "agra", "kanpur", "prayagraj", "allahabad", "ghaziabad", "sahibabad", "raj nagar", "meerut", "mathura", "vrindavan", "gorakhpur", "aligarh", "bareilly", "moradabad", "saharanpur", "jhansi", "firozabad", "muzaffarnagar", "hapur", "shahjahanpur", "rampur", "etawah", "faizabad", "ayodhya", "sitapur", "lakhimpur", "uttar pradesh"], id: "UP" },
   // Bihar
   { keywords: ["patna", "gaya", "muzaffarpur", "bhagalpur", "darbhanga", "purnea", "araria", "begusarai", "motihari", "samastipur", "siwan", "buxar", "sasaram", "bihar sharif", "nalanda", "katihar", "bihar"], id: "BR" },
   // Sikkim
@@ -982,7 +982,7 @@ const CITY_KEYWORD_MAP = [
   { keywords: ["agra"], city: "Agra", stateId: "UP" },
   { keywords: ["kanpur"], city: "Kanpur", stateId: "UP" },
   { keywords: ["prayagraj", "allahabad"], city: "Prayagraj", stateId: "UP" },
-  { keywords: ["ghaziabad", "raj nagar"], city: "Ghaziabad", stateId: "UP" },
+  { keywords: ["ghaziabad", "sahibabad", "raj nagar"], city: "Ghaziabad", stateId: "UP" },
   { keywords: ["meerut"], city: "Meerut", stateId: "UP" },
   { keywords: ["mathura", "vrindavan"], city: "Mathura", stateId: "UP" },
   { keywords: ["gorakhpur"], city: "Gorakhpur", stateId: "UP" },
@@ -1182,18 +1182,24 @@ export const getMapStats = async (user, query = {}) => {
     Promise.resolve(forTenant(user)),
   ]);
 
-  const parsedWindowDays = Number.parseInt(query.windowDays, 10);
-  const windowDays = [1, 7, 30].includes(parsedWindowDays) ? parsedWindowDays : 7;
+  const parsedWindowDays = query.windowDays === "all" ? "all" : Number.parseInt(query.windowDays, 10);
+  const windowDays = query.windowDays === "all" ? "all" : ([1, 7, 30].includes(parsedWindowDays) ? parsedWindowDays : 7);
   const now = new Date();
-  const windowStart = new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000);
-  const previousWindowStart = new Date(windowStart.getTime() - windowDays * 24 * 60 * 60 * 1000);
+  
+  // For all-time, fetch from very beginning; for windowed, use calculated dates
+  const windowStart = windowDays === "all" 
+    ? new Date(0) // Beginning of time
+    : new Date(now.getTime() - windowDays * 24 * 60 * 60 * 1000);
+  const previousWindowStart = windowDays === "all"
+    ? new Date(0) // No "previous" period for all-time
+    : new Date(windowStart.getTime() - windowDays * 24 * 60 * 60 * 1000);
 
   const complaints = await prisma.complaint.findMany({
     where: {
       isDeleted: false,
       ...tenantFilter,
       ...abacFilter,
-      createdAt: { gte: previousWindowStart },
+      createdAt: { gte: windowDays === "all" ? undefined : previousWindowStart },
     },
     select: {
       id: true,
@@ -1214,9 +1220,11 @@ export const getMapStats = async (user, query = {}) => {
   });
 
   const currentComplaints = complaints.filter((c) => new Date(c.createdAt) >= windowStart);
-  const previousComplaints = complaints.filter(
-    (c) => new Date(c.createdAt) < windowStart && new Date(c.createdAt) >= previousWindowStart
-  );
+  const previousComplaints = windowDays === "all" 
+    ? [] // No previous period for all-time comparison
+    : complaints.filter(
+        (c) => new Date(c.createdAt) < windowStart && new Date(c.createdAt) >= previousWindowStart
+      );
 
   const activeForSla = currentComplaints.filter(
     (c) => !NON_SLA_STATUSES.includes(c.status)
