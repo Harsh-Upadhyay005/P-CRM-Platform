@@ -39,7 +39,7 @@ export interface StateData {
 
 interface IndiaMapViewProps {
   visibleStateIds?: string[];
-  windowDays?: 1 | 7 | 30;
+  windowDays?: 1 | 7 | 30 | "all";
   onStateSelect?: (stateId: string) => void;
 }
 

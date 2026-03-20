@@ -502,7 +502,7 @@ export const analyticsApi = {
     triggerDownload(response.data as Blob, match?.[1] ?? `analytics-${report}-${new Date().toISOString().slice(0, 10)}.csv`);
   },
 
-  getMapStats: async (windowDays: 1 | 7 | 30 = 7): Promise<ApiResponse<{
+  getMapStats: async (windowDays: 1 | 7 | 30 | "all" = 7): Promise<ApiResponse<{
     states: {
       id: string;
       complaints: number;

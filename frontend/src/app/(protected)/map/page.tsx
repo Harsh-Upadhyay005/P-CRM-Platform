@@ -457,18 +457,43 @@ export default function MapPage() {
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-slate-900/45 p-4">
-          <h2 className="text-sm font-semibold text-white mb-3">Data Quality Monitor</h2>
-          <div className="rounded-lg border border-cyan-300/20 bg-cyan-500/5 p-3 mb-3">
-            <p className="text-xs text-cyan-200">Unmapped Localities</p>
-            <p className="text-xl font-bold text-cyan-100 mt-1">{data?.data?.unlocatedCount ?? 0} ({data?.data?.dataQuality?.unmappedPct?.toFixed(1) ?? '0.0'}%)</p>
-          </div>
+          <h2 className="text-sm font-semibold text-white mb-3">Top Complaint Categories</h2>
           <div className="space-y-2">
-            {(data?.data?.dataQuality?.ambiguousLocalities ?? []).slice(0, 6).map((item, idx) => (
-              <div key={`${item.locality}-${idx}`} className="flex items-center justify-between rounded bg-white/5 px-3 py-2 text-[11px]">
-                <span className="text-slate-300 truncate">{item.locality}</span>
-                <span className="text-slate-500 font-mono">{item.count}</span>
-              </div>
-            ))}
+            {computed.filtered
+              .flatMap((state) =>
+                state.topCategories.map((cat) => ({
+                  name: cat.name,
+                  count: cat.count,
+                })),
+              )
+              .reduce((acc, item) => {
+                const existing = acc.find((x) => x.name === item.name);
+                if (existing) {
+                  existing.count += item.count;
+                } else {
+                  acc.push(item);
+                }
+                return acc;
+              }, [] as { name: string; count: number }[])
+              .sort((a, b) => b.count - a.count)
+              .slice(0, 8)
+              .map((category) => {
+                const pct = computed.totalComplaints > 0 ? (category.count / computed.totalComplaints) * 100 : 0;
+                return (
+                  <div key={category.name} className="rounded-lg border border-white/8 bg-slate-950/40 px-3 py-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs text-slate-200 truncate">{category.name}</p>
+                      <p className="text-xs font-mono text-[#FFB66B]">{category.count}</p>
+                    </div>
+                    <div className="w-full bg-slate-800/50 rounded-full h-1.5">
+                      <div
+                        className="bg-gradient-to-r from-[#FF9933] to-[#FFB66B] h-1.5 rounded-full"
+                        style={{ width: `${Math.max(pct, 5)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
       </div>

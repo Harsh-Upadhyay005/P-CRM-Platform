@@ -140,7 +140,7 @@ export default function Dashboard() {
 
       {/* ── India Map ──────────────────────────────────────── */}
       <div className="dashboard-section">
-        <IndiaMapView />
+        <IndiaMapView windowDays="all" />
       </div>
 
       {/* ── Analytics + Alerts ─────────────────────────────── */}
