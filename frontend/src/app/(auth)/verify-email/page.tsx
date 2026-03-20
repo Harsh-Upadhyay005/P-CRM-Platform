@@ -185,7 +185,7 @@ function VerifyEmailContent() {
         </div>
 
         <div className="text-center mt-6 text-[10px] text-zinc-600 uppercase tracking-widest">
-          &copy; 2026 P-CRM Platform. Secure Access.
+          &copy; 2026 BharatSetu Platform. Secure Access.
         </div>
       </motion.div>
     </div>

@@ -67,7 +67,7 @@ export default function LoginPage() {
                     <ShieldCheck className="w-8 h-8 text-emerald-300/80" />
                 </div>
                 <h2 className="text-2xl font-light text-white tracking-wide">Secure Access</h2>
-                <p className="text-xs text-zinc-400 mt-2 uppercase tracking-widest">P-CRM Portal</p>
+                <p className="text-xs text-zinc-400 mt-2 uppercase tracking-widest">BharatSetu Portal</p>
             </div>
 
             {error && (
@@ -159,7 +159,7 @@ export default function LoginPage() {
         
         {/* Footer */}
         <div className="text-center mt-6 text-[10px] text-zinc-600 uppercase tracking-widest">
-            &copy; 2026 P-CRM Platform. Secure Access.
+            &copy; 2026 BharatSetu Platform. Secure Access.
         </div>
       </motion.div>
     </div>
