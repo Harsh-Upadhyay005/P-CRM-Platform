@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "P-CRM Platform",
+  title: "BharatSetu Platform",
   description: "Customer Relationship Management Platform",
 };
 
