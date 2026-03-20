@@ -97,9 +97,7 @@ export default function Home() {
     if (!isLoading && user) router.push("/dashboard");
   }, [user, isLoading, router]);
 
-  // Don't block the landing page on auth resolution — logged-in users get
-  // redirected via the useEffect above once auth resolves. Unauthenticated
-  // visitors (the majority of cold-start traffic) see the page instantly.
+  
 
   return (
     <div className="relative min-h-screen bg-[#020617] text-slate-100 font-sans selection:bg-emerald-500/30 overflow-x-hidden">
@@ -127,7 +125,7 @@ export default function Home() {
               </div>
               <div className="leading-none">
                 <p className="text-[14px] font-bold tracking-tight text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-linear-to-r group-hover:from-emerald-300 group-hover:to-teal-200 transition-all duration-300">
-                  P&#8209;CRM
+                  Bharat&#8209;Setu
                 </p>
                 <p className="text-[9px] uppercase tracking-[0.2em] text-emerald-400/70 mt-0.5 group-hover:text-emerald-300 transition-colors duration-300">
                   Grievance Platform
@@ -443,7 +441,7 @@ export default function Home() {
               <Reveal delay={0.1}>
                 <div className="rounded-2xl border border-zinc-700/50 bg-zinc-900/60 p-7 h-full transition-all duration-300 hover:border-zinc-500/50 hover:bg-zinc-800/60 hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] hover:-translate-y-1 ease-out">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400 mb-5">
-                    Without P&#8209;CRM
+                    Without Bharat&#8209;Setu
                   </p>
                   <ul className="space-y-4">
                     {[
@@ -487,7 +485,7 @@ export default function Home() {
               <Reveal delay={0.18}>
                 <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.08] p-7 h-full transition-all duration-300 hover:border-emerald-500/50 hover:bg-emerald-500/[0.1] hover:shadow-[0_8px_30px_rgba(16,185,129,0.15)] hover:-translate-y-1 ease-out">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-400 mb-5">
-                    With P&#8209;CRM
+                    With Bharat&#8209;Setu
                   </p>
                   <ul className="space-y-4">
                     {[
@@ -640,7 +638,7 @@ export default function Home() {
                         Incoming complaint
                       </p>
                       <code className="font-mono text-[10.5px] text-zinc-500">
-                        PCRM-20260301-A4F7B3C2
+                        BharatSetu-20260301-A4F7B3C2
                       </code>
                     </div>
                     <div className="space-y-3">
@@ -1096,7 +1094,7 @@ export default function Home() {
                   <span>Capability</span>
                   <span className="text-center">Generic helpdesk</span>
                   <span className="text-center text-emerald-400">
-                    P&#8209;CRM
+                    Bharat&#8209;Setu
                   </span>
                 </div>
                 {[
@@ -1238,7 +1236,7 @@ export default function Home() {
                     <ShieldCheck className="h-4 w-4 text-white" />
                   </div>
                   <span className="text-[14px] font-bold text-white">
-                    P&#8209;CRM
+                    Bharat&#8209;Setu
                   </span>
                 </Link>
                 <p className="text-[12.5px] text-zinc-400 leading-relaxed max-w-[200px]">
