@@ -50,7 +50,7 @@ const emailWrapper = (headerColor, headerContent, bodyContent) => `
             <td style="background:${headerColor};padding:40px 32px 36px;text-align:center;">
               <!-- Emblem placeholder circle -->
               <div style="display:inline-block;width:60px;height:60px;border-radius:50%;background:rgba(255,255,255,0.18);margin-bottom:16px;line-height:60px;font-size:28px;">🏛️</div>
-              <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:0.5px;">P-CRM Portal</h1>
+              <h1 style="margin:0;color:#ffffff;font-size:26px;font-weight:700;letter-spacing:0.5px;">BharatSetu Portal</h1>
               <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:13px;letter-spacing:1px;">Smart Political CRM — Citizen Grievance Management</p>
             </td>
           </tr>
@@ -71,11 +71,11 @@ const emailWrapper = (headerColor, headerContent, bodyContent) => `
           <tr>
             <td style="background-color:#1a3a6e;padding:28px 32px;text-align:center;">
               <p style="margin:0;color:#93c5fd;font-size:12px;line-height:1.6;">
-                This is an automated message from the <strong style="color:#ffffff;">P-CRM Government Portal</strong>.<br/>
+                This is an automated message from the <strong style="color:#ffffff;">BharatSetu Government Portal</strong>.<br/>
                 Please do not reply to this email.
               </p>
               <p style="margin:12px 0 0;color:rgba(255,255,255,0.4);font-size:11px;">
-                © ${new Date().getFullYear()} P-CRM Portal &nbsp;|&nbsp; All Rights Reserved
+                © ${new Date().getFullYear()} BharatSetu Portal &nbsp;|&nbsp; All Rights Reserved
               </p>
             </td>
           </tr>
@@ -98,7 +98,7 @@ const verificationEmailBody = (fullName, url, expiryMinutes) => `
 
   <p style="margin:0 0 8px;color:#374151;font-size:16px;">Dear <strong>${fullName}</strong>,</p>
   <p style="margin:0 0 24px;color:#4b5563;font-size:15px;line-height:1.7;">
-    Welcome to the <strong>P-CRM Portal</strong>. Your staff account has been created successfully.
+    Welcome to the <strong>BharatSetu Portal</strong>. Your staff account has been created successfully.
     To activate your account and gain access to the system, please verify your official email address.
   </p>
 
@@ -120,7 +120,7 @@ const verificationEmailBody = (fullName, url, expiryMinutes) => `
       <td style="background-color:#fffbeb;border-left:4px solid #f59e0b;border-radius:6px;padding:16px 20px;">
         <p style="margin:0;color:#92400e;font-size:13px;line-height:1.6;">
           <strong>⏳ Expires in ${expiryMinutes} minutes.</strong>
-          If you did not sign up for P-CRM, please disregard this email.
+          If you did not sign up for BharatSetu, please disregard this email.
           Your account will not be activated without verification.
         </p>
       </td>
@@ -137,11 +137,11 @@ const verificationEmailBody = (fullName, url, expiryMinutes) => `
 const resetPasswordEmailBody = (fullName, url, expiryMinutes) => `
   <!-- Greeting -->
   <h2 style="margin:0 0 8px;color:#991b1b;font-size:22px;font-weight:700;">Password Reset Request</h2>
-  <p style="margin:0 0 24px;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb;padding-bottom:20px;">Security Notification — P-CRM Portal</p>
+  <p style="margin:0 0 24px;color:#6b7280;font-size:13px;border-bottom:1px solid #e5e7eb;padding-bottom:20px;">Security Notification — BharatSetu Portal</p>
 
   <p style="margin:0 0 8px;color:#374151;font-size:16px;">Dear <strong>${fullName}</strong>,</p>
   <p style="margin:0 0 24px;color:#4b5563;font-size:15px;line-height:1.7;">
-    We received a request to reset the password for your <strong>P-CRM Portal</strong> account.
+    We received a request to reset the password for your <strong>BharatSetu Portal</strong> account.
     Click the button below to create a new password. If you did not make this request, no action is needed.
   </p>
 

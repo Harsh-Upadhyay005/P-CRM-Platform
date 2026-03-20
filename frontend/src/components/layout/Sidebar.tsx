@@ -192,7 +192,7 @@ export function Sidebar() {
                   "linear-gradient(135deg, #FF9933 10%, #FFFFFF 50%, #138808 90%)",
               }}
             >
-              P-CRM
+              BharatSetu
             </h1>
             <p className="text-[9px] text-[#FFFFFF]/70 uppercase tracking-widest font-mono flex items-center gap-1.5 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#138808] animate-pulse" />
