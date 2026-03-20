@@ -94,6 +94,12 @@ const STATE_LABELS: Record<string, string> = {
   WB: 'West Bengal',
 };
 
+const premiumCardShell =
+  'rounded-2xl border border-white/10 bg-slate-900/45 p-4 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-slate-900/55 hover:shadow-[0_14px_34px_rgba(2,6,23,0.45)]';
+
+const premiumItemShell =
+  'rounded-lg border border-white/8 bg-slate-950/40 px-3 py-2 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-slate-900/70 hover:shadow-[0_10px_24px_rgba(2,6,23,0.35)]';
+
 function csvEscape(value: string | number): string {
   const text = String(value);
   if (text.includes(',') || text.includes('"') || text.includes('\n')) {
@@ -242,7 +248,7 @@ export default function MapPage() {
 
   return (
     <div className="w-full flex flex-col gap-6 pb-24">
-      <div className="relative flex flex-wrap items-center justify-between gap-4 bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-2xl shadow-lg overflow-hidden">
+      <div className="relative flex flex-wrap items-center justify-between gap-4 bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 ease-out hover:border-white/20 hover:bg-white/6.5 hover:shadow-[0_18px_36px_rgba(2,6,23,0.45)]">
         <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: 'linear-gradient(90deg, #FF9933 33%, #FFFFFF 33%, #FFFFFF 66%, #138808 66%)' }} />
         <div className="w-10 h-10 rounded-xl bg-[#FF9933]/10 flex items-center justify-center border border-[#FF9933]/20">
           <Globe2 size={20} className="text-[#FF9933]" />
@@ -277,22 +283,22 @@ export default function MapPage() {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <div className="rounded-xl border border-white/10 bg-slate-900/40 p-4">
+        <div className="rounded-xl border border-white/10 bg-slate-900/40 p-4 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-slate-900/55 hover:shadow-[0_12px_28px_rgba(2,6,23,0.4)]">
           <p className="text-[11px] uppercase tracking-wider text-slate-400">Total Complaints</p>
           <p className="text-2xl font-bold text-white mt-1">{computed.totalComplaints.toLocaleString()}</p>
           <p className="text-[11px] text-slate-500 mt-1">Across {computed.activeStates} active states</p>
         </div>
-        <div className="rounded-xl border border-amber-400/20 bg-amber-500/5 p-4">
+        <div className="rounded-xl border border-amber-400/20 bg-amber-500/5 p-4 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-amber-300/35 hover:bg-amber-500/10 hover:shadow-[0_12px_28px_rgba(120,53,15,0.28)]">
           <p className="text-[11px] uppercase tracking-wider text-amber-300">Pending Queue</p>
           <p className="text-2xl font-bold text-amber-200 mt-1">{computed.totalPending.toLocaleString()}</p>
           <p className="text-[11px] text-amber-200/70 mt-1">{computed.totalComplaints > 0 ? `${((computed.totalPending / computed.totalComplaints) * 100).toFixed(1)}% of total` : '0.0% of total'}</p>
         </div>
-        <div className="rounded-xl border border-red-400/20 bg-red-500/5 p-4">
+        <div className="rounded-xl border border-red-400/20 bg-red-500/5 p-4 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-red-300/35 hover:bg-red-500/10 hover:shadow-[0_12px_28px_rgba(127,29,29,0.3)]">
           <p className="text-[11px] uppercase tracking-wider text-red-300">Critical Exposure</p>
           <p className="text-2xl font-bold text-red-200 mt-1">{computed.totalCritical.toLocaleString()}</p>
           <p className="text-[11px] text-red-200/70 mt-1">{computed.totalComplaints > 0 ? `${((computed.totalCritical / computed.totalComplaints) * 100).toFixed(1)}% critical` : '0.0% critical'}</p>
         </div>
-        <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/5 p-4">
+        <div className="rounded-xl border border-cyan-400/20 bg-cyan-500/5 p-4 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-cyan-500/10 hover:shadow-[0_12px_28px_rgba(14,116,144,0.28)]">
           <p className="text-[11px] uppercase tracking-wider text-cyan-300">Period Delta</p>
           <p className="text-2xl font-bold text-cyan-200 mt-1">{data?.data?.comparison?.deltaPct?.toFixed(1) ?? '0.0'}%</p>
           <p className="text-[11px] text-cyan-200/70 mt-1">vs previous {windowDays} days</p>
@@ -306,7 +312,7 @@ export default function MapPage() {
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="xl:col-span-2 rounded-2xl border border-white/10 bg-slate-900/45 p-4">
+        <div className={`xl:col-span-2 ${premiumCardShell}`}>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-white">State Hotspot Ranking</h2>
             <span className="text-[11px] text-slate-500">{computed.filtered.length} states in current view</span>
@@ -318,7 +324,7 @@ export default function MapPage() {
           ) : (
             <div className="space-y-2">
               {computed.byVolume.slice(0, 10).map((state, index) => (
-                <div key={state.id} className="rounded-lg border border-white/8 bg-slate-950/40 px-3 py-2 cursor-pointer hover:border-[#FF9933]/50" onClick={() => setSelectedStateId(state.id)}>
+                <div key={state.id} className={`${premiumItemShell} cursor-pointer hover:border-[#FF9933]/55`} onClick={() => setSelectedStateId(state.id)}>
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-[11px] font-mono text-slate-500 w-5">{String(index + 1).padStart(2, '0')}</span>
@@ -345,7 +351,7 @@ export default function MapPage() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-slate-900/45 p-4">
+        <div className={premiumCardShell}>
           <h2 className="text-sm font-semibold text-white mb-3">State Drill-Down</h2>
           {!selectedState ? (
             <p className="text-sm text-slate-400">Click any state in the map or ranking to view categories, SLA, recent complaints, and route cues.</p>
@@ -365,7 +371,7 @@ export default function MapPage() {
               </div>
               <div className="space-y-1.5">
                 {selectedState.recentComplaints.slice(0, 3).map((complaint) => (
-                  <div key={complaint.trackingId} className="rounded border border-white/10 bg-slate-950/45 p-2">
+                  <div key={complaint.trackingId} className="rounded border border-white/10 bg-slate-950/45 p-2 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-white/20 hover:bg-slate-900/65 hover:shadow-[0_8px_18px_rgba(2,6,23,0.28)]">
                     <p className="text-[11px] text-white font-mono">{complaint.trackingId}</p>
                     <p className="text-[11px] text-slate-300 truncate">{complaint.excerpt || complaint.category}</p>
                   </div>
@@ -380,7 +386,7 @@ export default function MapPage() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <div className="rounded-2xl border border-white/10 bg-slate-900/45 p-4">
+        <div className={premiumCardShell}>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-white">Incident Timeline Playback</h2>
             <button onClick={() => setIsTimelinePlaying((prev) => !prev)} className="text-xs inline-flex items-center gap-1 rounded border border-white/15 px-2 py-1 text-slate-200">
@@ -412,11 +418,11 @@ export default function MapPage() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-slate-900/45 p-4">
+        <div className={premiumCardShell}>
           <h2 className="text-sm font-semibold text-white mb-3">Capacity Stress Overlay</h2>
           <div className="space-y-2">
             {computed.byStress.slice(0, 6).map((state) => (
-              <div key={state.id} className="rounded-lg bg-slate-950/40 border border-white/8 px-3 py-2">
+              <div key={state.id} className={premiumItemShell}>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-200">{state.name}</span>
                   <span className="text-amber-200">{state.capacityStressPct.toFixed(1)}%</span>
@@ -427,11 +433,11 @@ export default function MapPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-slate-900/45 p-4">
+        <div className={premiumCardShell}>
           <h2 className="text-sm font-semibold text-white mb-3">Geo Anomaly Detection</h2>
           <div className="space-y-2">
             {(data?.data?.anomalyStates ?? []).slice(0, 6).map((state) => (
-              <div key={state.id} className="rounded-lg border border-fuchsia-300/25 bg-fuchsia-500/10 px-3 py-2">
+              <div key={state.id} className="rounded-lg border border-fuchsia-300/25 bg-fuchsia-500/10 px-3 py-2 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-fuchsia-200/40 hover:bg-fuchsia-500/15 hover:shadow-[0_10px_24px_rgba(112,26,117,0.28)]">
                 <p className="text-xs text-fuchsia-100">{STATE_LABELS[state.id] ?? state.id}</p>
                 <p className="text-[11px] text-fuchsia-200/90">Anomaly {state.anomalyScore.toFixed(2)} | Change {state.changePct.toFixed(1)}%</p>
               </div>
@@ -444,11 +450,11 @@ export default function MapPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-white/10 bg-slate-900/45 p-4">
+        <div className={premiumCardShell}>
           <h2 className="text-sm font-semibold text-white mb-3">Field Route Optimization Queue</h2>
           <div className="space-y-2">
             {(data?.data?.routePlan ?? []).slice(0, 8).map((city) => (
-              <div key={city.city} className="flex items-center justify-between rounded-lg bg-slate-950/40 border border-white/8 px-3 py-2">
+              <div key={city.city} className={`flex items-center justify-between ${premiumItemShell}`}>
                 <p className="text-sm text-slate-200">#{city.sequence} {city.city}</p>
                 <p className="text-sm font-mono text-[#FFB66B]">{city.complaints}</p>
               </div>
@@ -456,7 +462,7 @@ export default function MapPage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-slate-900/45 p-4">
+        <div className={premiumCardShell}>
           <h2 className="text-sm font-semibold text-white mb-3">Top Complaint Categories</h2>
           <div className="space-y-2">
             {computed.filtered
@@ -480,14 +486,14 @@ export default function MapPage() {
               .map((category) => {
                 const pct = computed.totalComplaints > 0 ? (category.count / computed.totalComplaints) * 100 : 0;
                 return (
-                  <div key={category.name} className="rounded-lg border border-white/8 bg-slate-950/40 px-3 py-2">
+                  <div key={category.name} className={premiumItemShell}>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs text-slate-200 truncate">{category.name}</p>
                       <p className="text-xs font-mono text-[#FFB66B]">{category.count}</p>
                     </div>
                     <div className="w-full bg-slate-800/50 rounded-full h-1.5">
                       <div
-                        className="bg-gradient-to-r from-[#FF9933] to-[#FFB66B] h-1.5 rounded-full"
+                        className="bg-linear-to-r from-[#FF9933] to-[#FFB66B] h-1.5 rounded-full"
                         style={{ width: `${Math.max(pct, 5)}%` }}
                       />
                     </div>
@@ -499,7 +505,7 @@ export default function MapPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-2xl border border-white/10 bg-slate-900/45 p-4">
+        <div className={premiumCardShell}>
           <h2 className="text-sm font-semibold text-white mb-3">Top Cities By Volume</h2>
           {isLoading ? (
             <div className="h-48 rounded-xl bg-white/5 animate-pulse" />
@@ -508,7 +514,7 @@ export default function MapPage() {
           ) : (
             <div className="space-y-2">
               {computed.topCities.map((entry, index) => (
-                <div key={`${entry.state}-${entry.city}-${index}`} className="flex items-center justify-between rounded-lg bg-slate-950/40 border border-white/8 px-3 py-2">
+                <div key={`${entry.state}-${entry.city}-${index}`} className={`flex items-center justify-between ${premiumItemShell}`}>
                   <div>
                     <p className="text-sm text-slate-200">{entry.city}</p>
                     <p className="text-[11px] text-slate-500">{entry.state}</p>
@@ -520,11 +526,11 @@ export default function MapPage() {
           )}
         </div>
 
-        <div className="rounded-2xl border border-white/10 bg-slate-900/45 p-4">
+        <div className={premiumCardShell}>
           <h2 className="text-sm font-semibold text-white mb-3">Escalation Badges Summary</h2>
           <div className="space-y-2">
             {computed.byVolume.filter((state) => state.badges.length > 0).slice(0, 8).map((state) => (
-              <div key={state.id} className="rounded-lg border border-red-400/20 bg-red-500/5 p-3">
+              <div key={state.id} className="rounded-lg border border-red-400/20 bg-red-500/5 p-3 transition-all duration-300 ease-out hover:-translate-y-0.5 hover:border-red-300/35 hover:bg-red-500/10 hover:shadow-[0_10px_24px_rgba(127,29,29,0.28)]">
                 <div className="flex items-center justify-between">
                   <p className="text-sm text-red-100">{state.name}</p>
                   <p className="text-[11px] text-red-200 font-mono">{state.badges.length} badges</p>
