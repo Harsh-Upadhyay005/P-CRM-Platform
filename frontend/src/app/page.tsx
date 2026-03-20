@@ -85,7 +85,7 @@ function SectionH2({
 }
 
 export default function Home() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isAuthChecked } = useAuth();
   const router = useRouter();
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll();
@@ -94,8 +94,11 @@ export default function Home() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
-    if (!isLoading && user) router.push("/dashboard");
-  }, [user, isLoading, router]);
+    // Only redirect after auth check is complete to prevent premature redirects
+    if (isAuthChecked && !isLoading && user) {
+      router.push("/dashboard");
+    }
+  }, [user, isLoading, isAuthChecked, router]);
 
   
 

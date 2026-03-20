@@ -7,6 +7,7 @@ import { queryClient } from './query-client';
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
+  isAuthChecked: boolean;
   login: (data: { email: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -32,15 +33,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   })();
 
   const [user, setUser] = useState<User | null>(cachedUser);
-  // If we already have a cached user we start as NOT loading — the UI is ready.
-  // We still fire a background validation; if it fails we clear the cache.
+  
   const [isLoading, setIsLoading] = useState(!cachedUser);
+  // Track whether we've completed the auth check (separate from isLoading)
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
 
   useEffect(() => {
     const initAuth = async () => {
       try {
-        // Race the API call against a 7-second timeout so a cold Render
-        // backend never freezes the spinner indefinitely.
+        
         const response = await Promise.race([
           authApi.getMe(),
           new Promise<never>((_, reject) =>
@@ -57,8 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err: any) {
         if (err?.message === 'auth-timeout') {
-          // Backend is cold-starting — keep the cached user (if any) so the UI
-          // stays usable; the next request will succeed once warmed up.
+          
           if (!cachedUser) setUser(null);
         } else {
           // 401 / network error — clear cache
@@ -67,6 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } finally {
         setIsLoading(false);
+        setIsAuthChecked(true);
       }
     };
     initAuth();
@@ -78,8 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (response.success && response.data) {
       setUser(response.data.user);
       try { localStorage.setItem(USER_CACHE_KEY, JSON.stringify(response.data.user)); } catch {}
-      // Hard navigation so the Next.js middleware re-evaluates the request
-      // against the freshly mirrored accessToken cookie on the frontend domain.
+      
       window.location.href = '/dashboard';
     } else {
         throw new Error(response.message || 'Login failed');
@@ -116,6 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        isAuthChecked,
         isLoading,
         login,
         logout,

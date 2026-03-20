@@ -998,7 +998,7 @@ export function IndiaMapView({
 
   return (
     <div
-      className="relative w-full rounded-2xl border border-white/5 shadow-2xl"
+      className="relative w-full rounded-2xl border border-white/5 shadow-2xl transition-all duration-500 hover:border-white/10 hover:shadow-[0_8px_40px_-12px_rgba(255,153,51,0.15)] group"
       style={{
         background:
           "linear-gradient(135deg, rgba(15,23,42,0.98) 0%, rgba(30,41,59,0.95) 100%)",
@@ -1074,7 +1074,7 @@ export function IndiaMapView({
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
               {/* ── Map Area ── */}
               <div ref={containerRef} className="lg:col-span-8 relative">
-                <div className="relative bg-slate-900/50 rounded-xl border border-white/5 p-4 overflow-hidden">
+                <div className="relative bg-slate-900/50 rounded-xl border border-white/5 p-4 overflow-hidden transition-all duration-500 hover:bg-slate-900/60 hover:border-white/10 hover:shadow-[0_0_30px_rgba(255,153,51,0.05)]">
                   {/* Background grid pattern */}
                   <div
                     className="absolute inset-0 opacity-[0.03] pointer-events-none"
@@ -1174,9 +1174,13 @@ export function IndiaMapView({
                             style={{
                               cursor: "pointer",
                               transition:
-                                "fill-opacity 0.2s, stroke 0.2s, stroke-width 0.2s",
+                                "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
                               filter:
                                 isHovered || isSelected ? "url(#glow)" : "none",
+                              transform: isHovered ? "translateY(-2px) scale(1.01)" : "translateY(0px) scale(1)",
+                              transformOrigin: "center",
+                              transformBox: "fill-box",
+                              zIndex: isHovered ? 10 : 1,
                             }}
                             onMouseMove={(e) => handleMouseMove(e, state.id)}
                             onMouseLeave={() => setHoveredState(null)}

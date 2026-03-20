@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { SidebarProvider, useSidebar } from '@/lib/sidebar-context';
 
 function ProtectedLayoutInner({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isAuthChecked } = useAuth();
   const { isOpen, close, isDesktopCollapsed } = useSidebar();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
@@ -18,10 +18,11 @@ function ProtectedLayoutInner({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!isLoading && !user) {
+    // Only check auth after initial validation is complete
+    if (isAuthChecked && !isLoading && !user) {
       router.replace('/login');
     }
-  }, [isLoading, user, router]);
+  }, [isAuthChecked, isLoading, user, router]);
 
   if (!mounted || isLoading || !user) {
     return (

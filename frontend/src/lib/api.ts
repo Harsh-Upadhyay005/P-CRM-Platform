@@ -15,18 +15,7 @@ import {
   Priority,
 } from '@/types';
 
-/**
- * All API calls use a relative base URL (/api/v1) so they are routed through
- * the Next.js rewrite proxy defined in next.config.ts:
- *
- *   /api/v1/:path*  →  BACKEND_URL/api/v1/:path*
- *
- * This ensures the frontend-domain accessToken cookie is forwarded to the
- * backend transparently, regardless of whether the deployment is local or
- * cross-origin (Vercel frontend + Render backend).
- *
- * For server-side use inside Route Handlers we still have NEXT_PUBLIC_API_URL.
- */
+
 const api = axios.create({
   baseURL: '/api/v1',   // relative — always routed through Next.js rewrite proxy
   withCredentials: true,
@@ -52,9 +41,7 @@ api.interceptors.response.use(
   async (error: AxiosError) => {
     const originalRequest = error.config;
 
-    // If 401 and not already retrying, try to refresh token
-    // Exclude login and refresh endpoints to prevent infinite loops
-    // Also skip entirely if we're already on an auth page (no point refreshing)
+    
     const onAuthPage = typeof window !== 'undefined' && (
       window.location.pathname.startsWith('/login') ||
       window.location.pathname.startsWith('/register') ||
@@ -70,6 +57,7 @@ api.interceptors.response.use(
       !originalRequest.url?.includes('/auth/login') &&
       !originalRequest.url?.includes('/auth/refresh') &&
       !originalRequest.url?.includes('/api/auth/') &&
+      !originalRequest.url?.includes('/users/me') &&
       !('_retry' in originalRequest)
     ) {
       (originalRequest as { _retry?: boolean })._retry = true;
