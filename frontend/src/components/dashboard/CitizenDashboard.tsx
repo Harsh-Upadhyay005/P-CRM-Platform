@@ -71,11 +71,11 @@ function StatCard({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.4 }}
-      className={`relative rounded-xl border ${borderClass} ${colorClass} p-4 overflow-hidden backdrop-blur-md
-        hover:scale-[1.03] transition-all duration-300 cursor-default shadow-md`}
+      className={`relative group rounded-xl border ${borderClass} ${colorClass} p-4 overflow-hidden backdrop-blur-md
+        hover:-translate-y-1.5 hover:scale-[1.02] hover:shadow-xl hover:border-white/20 transition-all duration-500 cursor-default shadow-md`}
     >
       <div
-        className={`absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-25 ${colorClass}`}
+        className={`absolute -top-8 -right-8 w-24 h-24 rounded-full blur-2xl opacity-25 ${colorClass} group-hover:opacity-60 group-hover:scale-150 transition-all duration-700`}
       />
       <div className="relative z-10">
         <div
@@ -274,7 +274,7 @@ export function CitizenDashboard() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: i * 0.06 }}
-                  className="flex items-center gap-4 px-4 py-3 hover:bg-white/5 transition-colors group"
+                  className="flex items-center gap-4 px-4 py-3 hover:bg-slate-800/60 hover:shadow-md transition-all duration-300 group cursor-pointer"
                 >
                   {/* Status dot */}
                   <div
@@ -350,7 +350,7 @@ export function CitizenDashboard() {
         className="grid grid-cols-1 sm:grid-cols-2 gap-4"
       >
         {/* Track by Tracking ID */}
-        <div className="flex items-start gap-4 bg-white/5 border border-white/10 rounded-xl p-5">
+        <div className="flex items-start gap-4 bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/10 hover:-translate-y-1 hover:shadow-xl hover:border-white/20 transition-all duration-500 group">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
             <Search size={18} className="text-emerald-400" />
           </div>
@@ -373,7 +373,7 @@ export function CitizenDashboard() {
         </div>
 
         {/* File New */}
-        <div className="flex items-start gap-4 bg-white/5 border border-white/10 rounded-xl p-5">
+        <div className="flex items-start gap-4 bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/10 hover:-translate-y-1 hover:shadow-xl hover:border-white/20 transition-all duration-500 group">
           <div className="w-10 h-10 rounded-xl bg-[#FF9933]/10 border border-[#FF9933]/20 flex items-center justify-center shrink-0">
             <PlusCircle size={18} className="text-[#FF9933]" />
           </div>

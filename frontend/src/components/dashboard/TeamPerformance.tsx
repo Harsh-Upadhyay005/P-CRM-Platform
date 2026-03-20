@@ -78,7 +78,7 @@ export function TeamPerformance() {
   }
 
   return (
-    <Card className="bg-slate-900/40 backdrop-blur-md border-white/5 shadow-lg">
+    <Card className="bg-slate-900/40 backdrop-blur-md border-white/5 shadow-lg group hover:bg-slate-900/50 hover:border-white/10 hover:shadow-xl hover:shadow-purple-500/5 transition-all duration-500">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-medium text-slate-300 flex items-center gap-2">
           <Users size={16} className="text-purple-400" />
@@ -107,10 +107,10 @@ export function TeamPerformance() {
               >
                 <Link
                   href={`/complaints/assigned/${officerId}`}
-                  className={`block rounded-xl border border-white/5 p-4 cursor-pointer transition-all duration-200
+                  className={`block rounded-xl border border-white/5 p-4 cursor-pointer transition-all duration-500 hover:-translate-y-1 hover:shadow-xl
                     ${isTop
-                      ? "bg-linear-to-br from-amber-500/5 to-transparent ring-1 ring-amber-500/20 hover:bg-slate-800/60"
-                      : "bg-slate-800/30 hover:bg-slate-800/60 hover:ring-white/10"
+                      ? "bg-linear-to-br from-amber-500/5 to-transparent ring-1 ring-amber-500/20 hover:bg-slate-800/60 hover:ring-amber-500/40 hover:shadow-amber-500/10"
+                      : "bg-slate-800/30 hover:bg-slate-800/60 hover:border-white/20 hover:shadow-purple-500/5"
                     }`}
                 >
                   <div className="flex items-center gap-3 mb-3">

@@ -106,7 +106,7 @@ export function AlertsPanel() {
   alerts.splice(15);
 
   return (
-    <Card className="bg-slate-900/40 backdrop-blur-md border-white/5 shadow-lg h-full flex flex-col">
+    <Card className="bg-slate-900/40 backdrop-blur-md border-white/5 shadow-lg h-full flex flex-col group hover:bg-slate-900/50 hover:border-white/10 hover:shadow-xl hover:shadow-purple-500/5 transition-all duration-500">
       <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
         <CardTitle className="text-sm font-medium text-slate-300 flex items-center gap-2">
           <ShieldAlert size={16} className="text-red-400" />
@@ -119,8 +119,9 @@ export function AlertsPanel() {
           {isLoading ? "…" : alerts.length}
         </Badge>
       </CardHeader>
-      <CardContent className="pt-0 flex-1 min-h-0">
-        <ScrollArea className="h-85 pr-2">
+      <CardContent className="pt-0 flex-1 min-h-0 relative">
+        <div className="absolute inset-x-0 bottom-0 top-0 px-6 pb-6 mt-2">
+          <ScrollArea className="h-full pr-3">
           {isLoading ? (
             <div className="space-y-2">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -148,7 +149,7 @@ export function AlertsPanel() {
                   >
                     <Link href={`/complaints/${alert.id}`}>
                       <div
-                        className={`group relative rounded-lg border ${cfg.badge} p-3 cursor-pointer hover:scale-[1.01] transition-all duration-200`}
+                        className={`group/item relative rounded-lg border ${cfg.badge} p-3 cursor-pointer hover:scale-[1.02] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300`}
                       >
                         <div className="flex items-start gap-2.5">
                           <div
@@ -186,7 +187,8 @@ export function AlertsPanel() {
               })}
             </div>
           )}
-        </ScrollArea>
+          </ScrollArea>
+        </div>
       </CardContent>
     </Card>
   );
