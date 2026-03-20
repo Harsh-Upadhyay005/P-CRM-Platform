@@ -24,11 +24,7 @@ function jwtMaxAge(token: string): number {
   }
 }
 
-/**
- * Parse the refreshToken value from the backend's Set-Cookie headers.
- * node 18+ `Response` supports `.headers.getSetCookie()` (array);
- * older runtimes fall back to the comma-joined `.get('set-cookie')`.
- */
+
 function extractRefreshToken(backendRes: Response): string | null {
   const headers: string[] =
     typeof (backendRes.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie === 'function'
@@ -63,8 +59,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    /* Mirror refreshToken — scoped to /api/auth so it is forwarded to
-       the refresh proxy route but not exposed to all frontend requests */
+    
     const rt = extractRefreshToken(backendRes);
     if (rt) {
       response.cookies.set('refreshToken', rt, {
