@@ -37,6 +37,10 @@ export interface StateData {
   cities: { name: string; complaints: number; lat: number; lng: number }[];
 }
 
+interface IndiaMapViewProps {
+  visibleStateIds?: string[];
+}
+
 // ── Static base: geographic / city info only — numbers start at zero
 // Real counts are merged from the API response.
 const BASE_INDIA_STATES: StateData[] = [
@@ -550,7 +554,7 @@ function StateTooltip({
   position,
 }: {
   state: StateData;
-  position: { x: number; y: number };
+  position: { x: number; y: number; isRight?: boolean; isBottom?: boolean };
 }) {
   const resolvedPct =
     state.complaints > 0
@@ -564,7 +568,15 @@ function StateTooltip({
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ duration: 0.15 }}
       className="absolute z-50 pointer-events-none"
-      style={{ left: position.x + 15, top: position.y - 10 }}
+      style={{
+        left: position.x,
+        top: position.y,
+        transform: `translate(${
+          position.isRight ? 'calc(-100% - 15px)' : '15px'
+        }, ${
+          position.isBottom ? 'calc(-100% - 15px)' : '15px'
+        })`
+      }}
     >
       <div className="bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-xl p-4 shadow-2xl min-w-60">
         <div className="flex items-center gap-2 mb-3">
@@ -782,11 +794,11 @@ function MapSkeleton() {
 // ═══════════════════════════════════════════════════════════════
 // MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
-export function IndiaMapView() {
+export function IndiaMapView({ visibleStateIds }: IndiaMapViewProps = {}) {
   const mapRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoveredState, setHoveredState] = useState<string | null>(null);
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0, isRight: false, isBottom: false });
   const [selectedState, setSelectedState] = useState<string | null>(null);
 
   // ── Real data state
@@ -875,9 +887,36 @@ export function IndiaMapView() {
     fetchMapStats();
   }, [fetchMapStats]);
 
+  const visibleStateSet = useMemo(() => {
+    if (!visibleStateIds || visibleStateIds.length === 0) return null;
+    return new Set(visibleStateIds);
+  }, [visibleStateIds]);
+
+  const visibleStateData = useMemo(() => {
+    if (!visibleStateSet) return stateData;
+    return stateData.map((state) => {
+      if (visibleStateSet.has(state.id)) return state;
+      return {
+        ...state,
+        complaints: 0,
+        resolved: 0,
+        pending: 0,
+        critical: 0,
+        cities: state.cities.map((city) => ({ ...city, complaints: 0 })),
+      };
+    });
+  }, [stateData, visibleStateSet]);
+
+  useEffect(() => {
+    if (!visibleStateSet || !selectedState) return;
+    if (!visibleStateSet.has(selectedState)) {
+      setSelectedState(null);
+    }
+  }, [selectedState, visibleStateSet]);
+
   const maxComplaints = useMemo(
-    () => Math.max(...stateData.map((s) => s.complaints), 1),
-    [stateData],
+    () => Math.max(...visibleStateData.map((s) => s.complaints), 1),
+    [visibleStateData],
   );
 
   // ── GSAP Entry Animation
@@ -932,7 +971,12 @@ export function IndiaMapView() {
     (e: React.MouseEvent, stateId: string) => {
       const rect = containerRef.current?.getBoundingClientRect();
       if (!rect) return;
-      setTooltipPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+      setTooltipPos({ 
+        x: e.clientX - rect.left, 
+        y: e.clientY - rect.top,
+        isRight: (e.clientX - rect.left) > rect.width / 2,
+        isBottom: (e.clientY - rect.top) > rect.height / 2
+      });
       setHoveredState(stateId);
     },
     [],
@@ -942,12 +986,12 @@ export function IndiaMapView() {
     setSelectedState((prev) => (prev === stateId ? null : stateId));
   }, []);
 
-  const hoveredData = stateData.find((s) => s.id === hoveredState);
-  const selectedData = stateData.find((s) => s.id === selectedState);
+  const hoveredData = visibleStateData.find((s) => s.id === hoveredState);
+  const selectedData = visibleStateData.find((s) => s.id === selectedState);
 
   return (
     <div
-      className="relative w-full rounded-2xl overflow-hidden border border-white/5 shadow-2xl"
+      className="relative w-full rounded-2xl border border-white/5 shadow-2xl"
       style={{
         background:
           "linear-gradient(135deg, rgba(15,23,42,0.98) 0%, rgba(30,41,59,0.95) 100%)",
@@ -955,7 +999,7 @@ export function IndiaMapView() {
     >
       {/* Top gradient accent bar */}
       <div
-        className="absolute top-0 left-0 right-0 h-0.5"
+        className="absolute top-0 left-0 right-0 h-0.5 rounded-t-2xl"
         style={{
           background: "linear-gradient(90deg, #FF9933, #FFFFFF, #138808)",
         }}
@@ -1001,7 +1045,7 @@ export function IndiaMapView() {
 
       {/* Main Content */}
       <div className="p-5 pt-2">
-        {isLoading && stateData.every((s) => s.complaints === 0) ? (
+        {isLoading && visibleStateData.every((s) => s.complaints === 0) ? (
           <MapSkeleton />
         ) : (
           <>
@@ -1089,7 +1133,7 @@ export function IndiaMapView() {
                     </defs>
 
                     {/* ── State Paths ── */}
-                    {stateData.map((state) => {
+                    {visibleStateData.map((state) => {
                       const path = STATE_PATHS[state.id];
                       if (!path) return null;
                       const isHovered = hoveredState === state.id;
@@ -1136,7 +1180,7 @@ export function IndiaMapView() {
                     })}
 
                     {/* ── City Markers & State Dots ── */}
-                    {stateData.map((state) => {
+                    {visibleStateData.map((state) => {
                       const center = STATE_CENTERS[state.id];
                       if (!center) return null;
                       const [cx, cy] = center;
@@ -1222,14 +1266,14 @@ export function IndiaMapView() {
                       );
                     })}
                   </svg>
-
-                  {/* Tooltip */}
-                  <AnimatePresence>
-                    {hoveredData && (
-                      <StateTooltip state={hoveredData} position={tooltipPos} />
-                    )}
-                  </AnimatePresence>
                 </div>
+                
+                {/* Tooltip - Moved outside overflow-hidden to prevent cutting off */}
+                <AnimatePresence>
+                  {hoveredData && (
+                    <StateTooltip state={hoveredData} position={tooltipPos} />
+                  )}
+                </AnimatePresence>
               </div>
 
               {/* ── Side Panel ── */}
@@ -1330,14 +1374,14 @@ export function IndiaMapView() {
 
                 {/* Top States List */}
                 <div className="bg-white/[0.03] rounded-xl border border-white/5 p-4 flex-1 overflow-auto">
-                  <TopStates states={stateData} />
+                  <TopStates states={visibleStateData} />
                 </div>
               </div>
             </div>
 
             {/* Summary Stats */}
             <div className="mt-4">
-              <StatsSummary states={stateData} />
+              <StatsSummary states={visibleStateData} />
             </div>
           </>
         )}
