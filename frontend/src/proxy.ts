@@ -25,6 +25,7 @@ export default function middleware(request: NextRequest) {
   // Define protected routes
   const isProtectedPath = 
     request.nextUrl.pathname.startsWith('/dashboard') ||
+    request.nextUrl.pathname.startsWith('/map') ||
     request.nextUrl.pathname.startsWith('/complaints') ||
     request.nextUrl.pathname.startsWith('/users') ||
     request.nextUrl.pathname.startsWith('/departments') ||

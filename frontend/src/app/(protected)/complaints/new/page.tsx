@@ -17,7 +17,7 @@ const createComplaintSchema = z.object({
   citizenName: z.string().min(2, 'Name is too short'),
   citizenPhone: z.string().regex(/^\+?[\d\s\-().]{7,20}$/, 'Invalid phone number'),
   citizenEmail: z.union([z.string().email(), z.literal('')]).optional(),
-  locality: z.string().min(2, 'Locality is too short').max(150).optional().or(z.literal('')),
+  locality: z.string().min(2, 'Location/Area is required').max(150),
   description: z.string().min(10, 'Description must be at least 10 characters').max(5000),
   category: z.string().optional(),
   priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional(),
@@ -142,12 +142,13 @@ export default function NewComplaintPage() {
             </div>
 
             <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-300">Locality / Area <span className="text-slate-500 font-normal">(optional)</span></label>
+                <label className="text-sm font-medium text-slate-300">Locality / Area <span className="text-red-400">*</span></label>
                 <LocationAutocomplete
                     value={watch('locality')}
                     onChange={(value) => setValue('locality', value)}
                     placeholder="e.g. BHU, Varanasi"
                     name="locality"
+                    required={true}
                     className="[&_.geoapify-autocomplete-input]:w-full [&_.geoapify-autocomplete-input]:bg-slate-950/50 [&_.geoapify-autocomplete-input]:border [&_.geoapify-autocomplete-input]:border-white/10 [&_.geoapify-autocomplete-input]:rounded-lg [&_.geoapify-autocomplete-input]:px-4 [&_.geoapify-autocomplete-input]:py-2.5 [&_.geoapify-autocomplete-input]:text-white [&_.geoapify-autocomplete-input]:focus:outline-none [&_.geoapify-autocomplete-input]:focus:ring-2 [&_.geoapify-autocomplete-input]:focus:ring-blue-500/50 [&_.geoapify-autocomplete-input]:placeholder:text-slate-600"
                 />
                 <p className="text-slate-500 text-xs">Helps route the complaint to the right officer and prevents false duplicates from other areas.</p>

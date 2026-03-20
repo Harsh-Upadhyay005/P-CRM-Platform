@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { complaintsApi, departmentsApi } from "@/lib/api";
 import { Complaint, ComplaintStatus, Priority, Department } from "@/types";
@@ -60,6 +61,7 @@ function StatusBadge({ status }: { status: ComplaintStatus }) {
 }
 
 export default function ComplaintsPage() {
+  const searchParams = useSearchParams();
   const { role, isCitizen } = useRole();
   const isOfficerOnly = role === "OFFICER";
   const canExport =
@@ -68,8 +70,33 @@ export default function ComplaintsPage() {
   const [statusFilter, setStatusFilter] = useState<ComplaintStatus | "">("");
   const [priorityFilter, setPriorityFilter] = useState<Priority | "">("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
+  const [stateIdFilter, setStateIdFilter] = useState<string>("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    const status = searchParams.get("status");
+    const priority = searchParams.get("priority");
+    const searchQuery = searchParams.get("search");
+    const pageQuery = searchParams.get("page");
+    const deptQuery = searchParams.get("departmentId");
+    const stateIdQuery = searchParams.get("stateId");
+
+    setStatusFilter(
+      status && STATUS_FILTERS.some((s) => s.value === status)
+        ? (status as ComplaintStatus)
+        : "",
+    );
+    setPriorityFilter(
+      priority && PRIORITY_FILTERS.some((p) => p.value === priority)
+        ? (priority as Priority)
+        : "",
+    );
+    setSearch(searchQuery ?? "");
+    setDepartmentFilter(deptQuery ?? "");
+    setStateIdFilter(stateIdQuery ?? "");
+    setPage(pageQuery && Number(pageQuery) > 0 ? Number(pageQuery) : 1);
+  }, [searchParams]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: [
@@ -78,6 +105,7 @@ export default function ComplaintsPage() {
       statusFilter,
       priorityFilter,
       departmentFilter,
+      stateIdFilter,
       search,
       page,
     ],
@@ -88,6 +116,7 @@ export default function ComplaintsPage() {
         ...(statusFilter ? { status: statusFilter } : {}),
         ...(priorityFilter ? { priority: priorityFilter } : {}),
         ...(departmentFilter ? { departmentId: departmentFilter } : {}),
+        ...(stateIdFilter ? { stateId: stateIdFilter } : {}),
         ...(search ? { search } : {}),
       }),
     staleTime: 15_000,

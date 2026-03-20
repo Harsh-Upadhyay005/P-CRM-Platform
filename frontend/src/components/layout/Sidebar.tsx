@@ -18,6 +18,7 @@ import {
   LogOut,
   X,
   Settings2,
+  Map,
 } from "lucide-react";
 import clsx from "clsx";
 import { useAuth } from "@/hooks/useAuth";
@@ -92,6 +93,12 @@ export function Sidebar() {
       href: "/dashboard",
       icon: LayoutDashboard,
       show: isAnyUser,
+    },
+    {
+      label: "Map",
+      href: "/map",
+      icon: Map,
+      show: !isCitizen,
     },
     {
       label: "Complaints",

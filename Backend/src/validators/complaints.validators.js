@@ -9,7 +9,7 @@ export const createComplaintSchema = z.object({
     .string()
     .regex(/^\+?[\d\s\-()\/.]{7,20}$/, "Invalid phone number"),
   citizenEmail: z.string().email("Invalid citizen email").optional().nullable(),
-  locality:     z.string().min(2, "Locality must be at least 2 characters").max(150).optional().nullable(),
+  locality:     z.string().min(2, "Location/Area is required").max(150),
   description:  z.string().min(10, "Description must be at least 10 characters").max(5000),
   category:     z.string().min(2).max(100).optional().nullable(),
   priority:     Priority.optional(),
@@ -53,7 +53,7 @@ export const publicCreateComplaintSchema = z.object({
     .string()
     .regex(/^\+?[\d\s\-()\/.]{7,20}$/, "Invalid phone number"),
   citizenEmail: z.string().email("A valid email is required to receive updates"),
-  locality:     z.string().min(2, "Locality must be at least 2 characters").max(150).optional().nullable(),
+  locality:     z.string().min(2, "Location/Area is required").max(150),
   description:  z.string().min(10, "Description must be at least 10 characters").max(5000),
   category:     z.string().min(2).max(100).optional().nullable(),
   priority:     Priority.optional(),

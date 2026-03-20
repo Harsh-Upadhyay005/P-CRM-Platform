@@ -502,18 +502,53 @@ export const analyticsApi = {
     triggerDownload(response.data as Blob, match?.[1] ?? `analytics-${report}-${new Date().toISOString().slice(0, 10)}.csv`);
   },
 
-  getMapStats: async (): Promise<ApiResponse<{
+  getMapStats: async (windowDays: 1 | 7 | 30 = 7): Promise<ApiResponse<{
     states: {
       id: string;
       complaints: number;
       resolved: number;
       pending: number;
       critical: number;
+      assignedOpen: number;
+      unassignedOpen: number;
+      capacityStressPct: number;
+      avgResolutionHours: number | null;
+      slaBreachPct: number;
+      changePct: number;
+      anomalyScore: number;
+      badges: string[];
       cities: { name: string; complaints: number }[];
+      topCategories: { name: string; count: number }[];
+      recentComplaints: {
+        trackingId: string;
+        createdAt: string;
+        priority: string;
+        status: string;
+        category: string;
+        locality?: string;
+        excerpt: string;
+      }[];
     }[];
     unlocatedCount: number;
+    dataQuality: {
+      windowDays: number;
+      mappedCount: number;
+      unmappedPct: number;
+      ambiguousLocalities: { locality: string; count: number }[];
+    };
+    comparison: {
+      windowDays: number;
+      currentWindowStart: string;
+      previousWindowStart: string;
+      currentTotal: number;
+      previousTotal: number;
+      deltaPct: number;
+    };
+    timeline: { date: string; total: number; critical: number }[];
+    anomalyStates: { id: string; anomalyScore: number; changePct: number; complaints: number }[];
+    routePlan: { city: string; complaints: number; sequence: number }[];
   }>> => {
-    const response = await api.get('/analytics/map-stats');
+    const response = await api.get('/analytics/map-stats', { params: { windowDays } });
     return response.data;
   },
 };
