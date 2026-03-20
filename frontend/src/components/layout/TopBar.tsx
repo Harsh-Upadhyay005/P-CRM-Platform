@@ -2,12 +2,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { notificationsApi, getErrorMessage } from '@/lib/api';
-import { Bell, User, Check, CheckCheck, Menu } from 'lucide-react';
+import { Bell, User, Check, CheckCheck, Menu, PanelLeftOpen, PanelLeftClose } from 'lucide-react';
 import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator,
+  DropdownMenu, DropdownMenuContent, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
@@ -29,7 +28,7 @@ function timeAgo(ts: string) {
 
 export function TopBar() {
   const { user } = useAuth();
-  const { toggle } = useSidebar();
+  const { toggle, isDesktopCollapsed, toggleDesktopCollapse } = useSidebar();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const sseRef = useRef<EventSource | null>(null);
@@ -115,10 +114,18 @@ export function TopBar() {
       <div className="absolute top-0 right-0 left-0 h-0.5 bg-linear-to-r from-transparent via-[#138808]/50 to-transparent opacity-50" />
       
       <div className="flex items-center gap-3">
+        <button
+          onClick={toggleDesktopCollapse}
+          className="hidden lg:inline-flex p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
+          aria-label={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={isDesktopCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {isDesktopCollapsed ? <PanelLeftOpen size={20} /> : <PanelLeftClose size={20} />}
+        </button>
         {/* Mobile hamburger */}
         <button
           onClick={toggle}
-          className="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/[0.05] transition-colors"
+          className="lg:hidden p-2 text-slate-400 hover:text-white rounded-lg hover:bg-white/5 transition-colors"
           aria-label="Toggle sidebar"
         >
           <Menu size={20} />

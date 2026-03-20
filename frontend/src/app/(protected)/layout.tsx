@@ -1,6 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import clsx from 'clsx';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { TopBar } from '@/components/layout/TopBar';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,7 +9,7 @@ import { SidebarProvider, useSidebar } from '@/lib/sidebar-context';
 
 function ProtectedLayoutInner({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
-  const { isOpen, close } = useSidebar();
+  const { isOpen, close, isDesktopCollapsed } = useSidebar();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
@@ -39,7 +40,12 @@ function ProtectedLayoutInner({ children }: { children: React.ReactNode }) {
           onClick={close}
         />
       )}
-      <div className="flex-1 flex flex-col lg:ml-64 transition-all duration-300 min-w-0">
+      <div
+        className={clsx(
+          'flex-1 flex flex-col transition-all duration-300 min-w-0',
+          isDesktopCollapsed ? 'lg:ml-0' : 'lg:ml-64',
+        )}
+      >
         <TopBar />
         <main className="flex-1 p-4 sm:p-6 relative overflow-y-auto overflow-x-hidden scroll-smooth">
           <div className="absolute inset-0 pointer-events-none">

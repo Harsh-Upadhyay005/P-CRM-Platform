@@ -28,7 +28,7 @@ export function Sidebar() {
   const { role, isSuperAdmin, isAdmin, isDeptHead, isCallOperator, isCitizen } =
     useRole();
   const { logout } = useAuth();
-  const { isOpen, close } = useSidebar();
+  const { isOpen, close, isDesktopCollapsed } = useSidebar();
 
   const sidebarRef = useRef<HTMLElement>(null);
   const linksRef = useRef<(HTMLAnchorElement | null)[]>([]);
@@ -147,7 +147,8 @@ export function Sidebar() {
       ref={sidebarRef}
       className={clsx(
         "fixed left-0 top-0 h-full w-64 bg-slate-900/90 backdrop-blur-xl border-r border-[#FF9933]/20 text-white z-50 flex flex-col shadow-[4px_0_24px_rgba(0,0,0,0.4)] transition-transform duration-300",
-        isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        isOpen ? "translate-x-0" : "-translate-x-full",
+        isDesktopCollapsed ? "lg:-translate-x-full" : "lg:translate-x-0",
       )}
     >
       <div className="brand-header p-6 border-b border-[#138808]/20 relative overflow-hidden">
