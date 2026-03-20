@@ -63,12 +63,12 @@ function OverviewTab() {
   // getOverview returns { total, byStatus, byPriority, sla, avgResolutionTime, resolvedCount }
   const stats = o
     ? [
-        { label: 'Total Complaints', value: o.total ?? 0, color: 'text-blue-400', icon: BarChart2, bg: 'bg-blue-500/10', border: 'border-blue-500/20', accent: 'bg-blue-500' },
-        { label: 'Open', value: o.byStatus?.OPEN ?? 0, color: 'text-amber-400', icon: AlertTriangle, bg: 'bg-amber-500/10', border: 'border-amber-500/20', accent: 'bg-amber-500' },
-        { label: 'Resolved', value: o.resolvedCount ?? 0, color: 'text-emerald-400', icon: CheckCircle, bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', accent: 'bg-emerald-500' },
-        { label: 'Avg Resolution', value: o.avgResolutionTime ?? '—', color: 'text-purple-400', icon: Clock, bg: 'bg-purple-500/10', border: 'border-purple-500/20', accent: 'bg-purple-500' },
-        { label: 'SLA Breached', value: o.sla?.breachedCount ?? 0, color: 'text-red-400', icon: ShieldAlert, bg: 'bg-red-500/10', border: 'border-red-500/20', accent: 'bg-red-500' },
-        { label: 'Escalated', value: o.byStatus?.ESCALATED ?? 0, color: 'text-orange-400', icon: Zap, bg: 'bg-orange-500/10', border: 'border-orange-500/20', accent: 'bg-orange-500' },
+        { label: 'Total Complaints', value: o.total ?? 0, color: 'text-blue-400', icon: BarChart2, bg: 'bg-blue-500/10', border: 'border-blue-500/20', accent: 'bg-blue-500', glow: 'hover:shadow-blue-500/40' },
+        { label: 'Open', value: o.byStatus?.OPEN ?? 0, color: 'text-amber-400', icon: AlertTriangle, bg: 'bg-amber-500/10', border: 'border-amber-500/20', accent: 'bg-amber-500', glow: 'hover:shadow-amber-500/40' },
+        { label: 'Resolved', value: o.resolvedCount ?? 0, color: 'text-emerald-400', icon: CheckCircle, bg: 'bg-emerald-500/10', border: 'border-emerald-500/20', accent: 'bg-emerald-500', glow: 'hover:shadow-emerald-500/40' },
+        { label: 'Avg Resolution', value: o.avgResolutionTime ?? '—', color: 'text-purple-400', icon: Clock, bg: 'bg-purple-500/10', border: 'border-purple-500/20', accent: 'bg-purple-500', glow: 'hover:shadow-purple-500/40' },
+        { label: 'SLA Breached', value: o.sla?.breachedCount ?? 0, color: 'text-red-400', icon: ShieldAlert, bg: 'bg-red-500/10', border: 'border-red-500/20', accent: 'bg-red-500', glow: 'hover:shadow-red-500/40' },
+        { label: 'Escalated', value: o.byStatus?.ESCALATED ?? 0, color: 'text-orange-400', icon: Zap, bg: 'bg-orange-500/10', border: 'border-orange-500/20', accent: 'bg-orange-500', glow: 'hover:shadow-orange-500/40' },
       ]
     : [];
 
@@ -110,7 +110,7 @@ function OverviewTab() {
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.06 }}
-                  className={`rounded-xl border ${s.border} ${s.bg} p-4 backdrop-blur-md relative overflow-hidden`}
+                  className={`rounded-xl border ${s.border} ${s.bg} p-4 backdrop-blur-md relative overflow-hidden transition-all duration-400 ease-[cubic-bezier(0.175,0.885,0.32,1.275)] hover:scale-105 hover:-translate-y-1 hover:shadow-2xl ${s.glow} cursor-pointer z-0 hover:z-10`}
                 >
                   <div className={`absolute bottom-0 left-0 right-0 h-0.5 ${s.accent} opacity-60`} />
                   <Icon size={18} className={`${s.color} mb-3`} />
@@ -153,7 +153,7 @@ function OverviewTab() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                   <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, outline: 'none' }} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+                  <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, outline: 'none' }} cursor={false} />
                   <Bar dataKey="value" name="Complaints" radius={[4, 4, 0, 0]}>
                     {priorityData.map((e, i) => <Cell key={i} fill={e.fill} />)}
                   </Bar>
@@ -298,7 +298,7 @@ function DepartmentTab() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={false} />
                 <Bar dataKey="total" name="Total" fill="#a855f7" radius={[4, 4, 0, 0]} opacity={0.85} />
                 <Bar dataKey="resolved" name="Resolved" fill="#10b981" radius={[4, 4, 0, 0]} opacity={0.85} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
@@ -381,7 +381,7 @@ function OfficersTab() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={80} />
-                <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={false} />
                 <Bar dataKey="assigned" name="Assigned" fill="#3b82f6" radius={[0, 4, 4, 0]} opacity={0.85} />
                 <Bar dataKey="completed" name="Resolved" fill="#10b981" radius={[0, 4, 4, 0]} opacity={0.85} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
@@ -473,7 +473,7 @@ function SlaHeatmapTab() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
               <XAxis type="number" unit="%" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={90} />
-              <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+              <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={false} />
               <Bar dataKey="breachPct" name="Breach %" fill="#ef4444" radius={[0, 4, 4, 0]} opacity={0.85} />
               <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
             </BarChart>
@@ -551,12 +551,12 @@ function CategoryTab() {
         </CardHeader>
         <CardContent>
           {isLoading ? <LoadingCard height={280} /> : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={categoryData} margin={{ top: 5, right: 10, left: -20, bottom: 40 }}>
+            <ResponsiveContainer width="100%" height={290}>
+              <BarChart data={categoryData} margin={{ top: 5, right: 10, left: -20, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} angle={-35} textAnchor="end" />
+                <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#94a3b8' }} tickMargin={25} axisLine={false} tickLine={false} angle={-35} textAnchor="end" />
                 <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={false} />
                 <Bar dataKey="value" name="Complaints" radius={[4, 4, 0, 0]}>
                   {categoryData.map((e, i) => <Cell key={i} fill={e.fill} opacity={0.85} />)}
                 </Bar>

@@ -141,15 +141,15 @@ export function CategoryChart() {
               <TabsTrigger value="pie" className="text-xs text-slate-400 data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400">Pie</TabsTrigger>
             </TabsList>
             <TabsContent value="bar" className="mt-0">
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={categoryData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={categoryData} margin={{ top: 5, right: 10, left: -20, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#94a3b8' }} tickMargin={20} axisLine={false} tickLine={false} angle={-35} textAnchor="end" />
                   <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                   <Tooltip
                     content={<CustomTooltip />}
                     wrapperStyle={{ background: 'transparent', border: 'none', boxShadow: 'none', padding: 0, outline: 'none' }}
-                    cursor={{ fill: 'rgba(255,255,255,0.04)' }}
+                    cursor={false}
                   />
                   <Bar dataKey="value" name="Complaints" radius={[4, 4, 0, 0]}>
                     {categoryData.map((entry, idx) => <Cell key={idx} fill={entry.fill} opacity={0.85} />)}
