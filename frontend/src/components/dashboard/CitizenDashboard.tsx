@@ -3,6 +3,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
+import dynamic from "next/dynamic";
 import { useAuth } from "@/hooks/useAuth";
 import { complaintsApi } from "@/lib/api";
 import { Complaint, ComplaintStatus } from "@/types";
@@ -22,6 +23,19 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+
+const CommandCenter3D = dynamic(
+  () =>
+    import("@/components/3d/CommandCenter3D").then((m) => ({
+      default: m.CommandCenter3D,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-70 rounded-2xl bg-slate-900/40 border border-white/5 animate-pulse" />
+    ),
+  },
+);
 
 // ── Status Badge ────────────────────────────────────────────────────────────
 
@@ -141,21 +155,15 @@ export function CitizenDashboard() {
         />
 
         <div>
-          <h1 className="text-2xl font-bold text-white">
-            Welcome back,{" "}
-            <span
-              className="bg-clip-text text-transparent"
+          <h1 className="text-xl font-black tracking-tight bg-clip-text text-transparent"
               style={{
                 backgroundImage:
-                  "linear-gradient(135deg, #FF9933, #FFFFFF, #138808)",
-              }}
-            >
-              {firstName}
-            </span>
+                  "linear-gradient(135deg, #FF9933 10%, #FFFFFF 50%, #138808 90%)",
+              }}>
+            Citizen Service Center
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Here&apos;s a summary of your filed complaints and their current
-            status.
+            Welcome back, <span className="text-white font-semibold">{firstName}</span>. Here&apos;s a summary of your filed complaints and their current status.
           </p>
         </div>
 
@@ -177,6 +185,11 @@ export function CitizenDashboard() {
           </Link>
         </div>
       </motion.div>
+
+      {/* ── Flag + Ashok Chakra Visual ─────────────────────────────────── */}
+      <div>
+        <CommandCenter3D />
+      </div>
 
       {/* ── Stats Row ───────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
