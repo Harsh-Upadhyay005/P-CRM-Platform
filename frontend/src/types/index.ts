@@ -41,6 +41,7 @@ export interface User {
 
 export interface Complaint {
   id: string;
+  tenantId?: string;
   trackingId: string;
   citizenName: string;
   citizenPhone: string;

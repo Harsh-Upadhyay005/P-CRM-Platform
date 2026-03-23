@@ -73,6 +73,11 @@ export default function UsersPage() {
   const [createDeptId, setCreateDeptId] = useState<string>('');
   const [createTenantId, setCreateTenantId] = useState<string>('');
 
+  // For SUPER_ADMIN, department lists must be explicitly tenant-scoped.
+  const scopedDeptTenantId = isSuperAdmin
+    ? (assignRoleUser?.tenant?.id ?? createTenantId ?? tenantIdFilter ?? '')
+    : '';
+
   const { data, isLoading, isError } = useQuery({
     queryKey: [
       'users',
@@ -98,11 +103,12 @@ export default function UsersPage() {
   const pagination = data?.data?.pagination;
 
   const { data: departmentsData } = useQuery({
-    queryKey: ['departments-list', isSuperAdmin ? tenantIdFilter : 'self'],
+    queryKey: ['departments-list', isSuperAdmin ? (scopedDeptTenantId || 'none') : 'self'],
     queryFn: () => departmentsApi.list({
       limit: 100,
-      ...(isSuperAdmin && tenantIdFilter ? { tenantId: tenantIdFilter } : {}),
+      ...(isSuperAdmin && scopedDeptTenantId ? { tenantId: scopedDeptTenantId } : {}),
     }),
+    enabled: !isSuperAdmin || !!scopedDeptTenantId,
     staleTime: 60_000,
   });
   const departments: Department[] = departmentsData?.data?.data ?? [];
@@ -114,6 +120,15 @@ export default function UsersPage() {
     staleTime: 60_000,
   });
   const tenants: Tenant[] = tenantsData?.data?.data ?? [];
+
+  const { data: superAdminData } = useQuery({
+    queryKey: ['users', 'super-admin-count'],
+    queryFn: () => usersApi.list({ page: 1, limit: 1, roleType: 'SUPER_ADMIN' }),
+    enabled: isSuperAdmin,
+    staleTime: 60_000,
+  });
+  const hasSuperAdmin = (superAdminData?.data?.pagination?.total ?? 0) > 0;
+  const allowSelectingSuperAdmin = isSuperAdmin && !hasSuperAdmin;
 
   const assignRoleMutation = useMutation({
     mutationFn: ({ id, role, departmentId }: { id: string; role: RoleType; departmentId?: string | null }) =>
@@ -221,6 +236,7 @@ export default function UsersPage() {
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
                 <SelectItem value="all">All Roles</SelectItem>
+                {isSuperAdmin && <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>}
                 <SelectItem value="ADMIN">Admin</SelectItem>
                 <SelectItem value="DEPARTMENT_HEAD">Dept. Head</SelectItem>
                 <SelectItem value="OFFICER">Officer</SelectItem>
@@ -299,7 +315,9 @@ export default function UsersPage() {
                       </Badge>
                     </TableCell>
                     {isSuperAdmin && (
-                      <TableCell className="text-xs text-slate-400">{u.tenant?.name ?? '—'}</TableCell>
+                      <TableCell className="text-xs text-slate-400">
+                        {u.role.type === 'SUPER_ADMIN' ? 'Platform Scope' : (u.tenant?.name ?? '—')}
+                      </TableCell>
                     )}
                     <TableCell className="text-xs text-slate-400">
                       {u.department?.name ?? '—'}
@@ -403,6 +421,9 @@ export default function UsersPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
+                {isSuperAdmin && (allowSelectingSuperAdmin || assignRoleUser?.role.type === 'SUPER_ADMIN' || newRole === 'SUPER_ADMIN') && (
+                  <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                )}
                 <SelectItem value="CALL_OPERATOR">Call Operator</SelectItem>
                 <SelectItem value="OFFICER">Officer</SelectItem>
                 <SelectItem value="DEPARTMENT_HEAD">Department Head</SelectItem>
@@ -519,6 +540,9 @@ export default function UsersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
+                  {isSuperAdmin && (allowSelectingSuperAdmin || createRole === 'SUPER_ADMIN') && (
+                    <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                  )}
                   <SelectItem value="CALL_OPERATOR">Call Operator</SelectItem>
                   <SelectItem value="OFFICER">Officer</SelectItem>
                   <SelectItem value="DEPARTMENT_HEAD">Department Head</SelectItem>
