@@ -73,6 +73,11 @@ export default function UsersPage() {
   const [createDeptId, setCreateDeptId] = useState<string>('');
   const [createTenantId, setCreateTenantId] = useState<string>('');
 
+  // For SUPER_ADMIN, department lists must be explicitly tenant-scoped.
+  const scopedDeptTenantId = isSuperAdmin
+    ? (assignRoleUser?.tenant?.id ?? createTenantId ?? tenantIdFilter ?? '')
+    : '';
+
   const { data, isLoading, isError } = useQuery({
     queryKey: [
       'users',
@@ -98,11 +103,12 @@ export default function UsersPage() {
   const pagination = data?.data?.pagination;
 
   const { data: departmentsData } = useQuery({
-    queryKey: ['departments-list', isSuperAdmin ? tenantIdFilter : 'self'],
+    queryKey: ['departments-list', isSuperAdmin ? (scopedDeptTenantId || 'none') : 'self'],
     queryFn: () => departmentsApi.list({
       limit: 100,
-      ...(isSuperAdmin && tenantIdFilter ? { tenantId: tenantIdFilter } : {}),
+      ...(isSuperAdmin && scopedDeptTenantId ? { tenantId: scopedDeptTenantId } : {}),
     }),
+    enabled: !isSuperAdmin || !!scopedDeptTenantId,
     staleTime: 60_000,
   });
   const departments: Department[] = departmentsData?.data?.data ?? [];
