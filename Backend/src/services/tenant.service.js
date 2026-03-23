@@ -32,9 +32,9 @@ export const listTenants = async (query = {}) => {
         updatedAt: true,
         _count: {
           select: {
-            users:       true,
-            departments: true,
-            complaints:  true,
+            users:       { where: { isDeleted: false } },
+            departments: { where: { isDeleted: false } },
+            complaints:  { where: { isDeleted: false } },
           },
         },
       },
@@ -58,9 +58,9 @@ export const getTenantById = async (id) => {
       updatedAt: true,
       _count: {
         select: {
-          users:       true,
-          departments: true,
-          complaints:  true,
+          users:       { where: { isDeleted: false } },
+          departments: { where: { isDeleted: false } },
+          complaints:  { where: { isDeleted: false } },
         },
       },
     },

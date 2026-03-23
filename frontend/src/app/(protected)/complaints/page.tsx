@@ -70,6 +70,7 @@ export default function ComplaintsPage() {
   const [statusFilter, setStatusFilter] = useState<ComplaintStatus | "">("");
   const [priorityFilter, setPriorityFilter] = useState<Priority | "">("");
   const [departmentFilter, setDepartmentFilter] = useState<string>("");
+  const [tenantIdFilter, setTenantIdFilter] = useState<string>("");
   const [stateIdFilter, setStateIdFilter] = useState<string>("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -80,6 +81,7 @@ export default function ComplaintsPage() {
     const searchQuery = searchParams.get("search");
     const pageQuery = searchParams.get("page");
     const deptQuery = searchParams.get("departmentId");
+    const tenantIdQuery = searchParams.get("tenantId");
     const stateIdQuery = searchParams.get("stateId");
 
     setStatusFilter(
@@ -94,6 +96,7 @@ export default function ComplaintsPage() {
     );
     setSearch(searchQuery ?? "");
     setDepartmentFilter(deptQuery ?? "");
+    setTenantIdFilter(tenantIdQuery ?? "");
     setStateIdFilter(stateIdQuery ?? "");
     setPage(pageQuery && Number(pageQuery) > 0 ? Number(pageQuery) : 1);
   }, [searchParams]);
@@ -102,6 +105,7 @@ export default function ComplaintsPage() {
     queryKey: [
       "complaints",
       "list",
+      tenantIdFilter,
       statusFilter,
       priorityFilter,
       departmentFilter,
@@ -116,6 +120,9 @@ export default function ComplaintsPage() {
         ...(statusFilter ? { status: statusFilter } : {}),
         ...(priorityFilter ? { priority: priorityFilter } : {}),
         ...(departmentFilter ? { departmentId: departmentFilter } : {}),
+        ...(role === "SUPER_ADMIN" && tenantIdFilter
+          ? { tenantId: tenantIdFilter }
+          : {}),
         ...(stateIdFilter ? { stateId: stateIdFilter } : {}),
         ...(search ? { search } : {}),
       }),
@@ -149,8 +156,14 @@ export default function ComplaintsPage() {
   });
 
   const { data: deptsData } = useQuery({
-    queryKey: ["departments-list"],
-    queryFn: () => departmentsApi.list({ limit: 100 }),
+    queryKey: ["departments-list", role === "SUPER_ADMIN" ? tenantIdFilter : "self"],
+    queryFn: () =>
+      departmentsApi.list({
+        limit: 100,
+        ...(role === "SUPER_ADMIN" && tenantIdFilter
+          ? { tenantId: tenantIdFilter }
+          : {}),
+      }),
     staleTime: 60_000,
     enabled: !isCitizen,
   });
@@ -167,6 +180,14 @@ export default function ComplaintsPage() {
 
   return (
     <div className="space-y-6">
+      {(tenantIdFilter || departmentFilter) && (
+        <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-xs text-blue-200 flex items-center justify-between gap-2">
+          <span>Showing complaints only for selected scope.</span>
+          <Link href="/complaints" className="text-blue-100 hover:text-white underline underline-offset-2">
+            Back to all complaints
+          </Link>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white">
@@ -196,6 +217,9 @@ export default function ComplaintsPage() {
                     ...(priorityFilter ? { priority: priorityFilter } : {}),
                     ...(departmentFilter
                       ? { departmentId: departmentFilter }
+                      : {}),
+                    ...(role === "SUPER_ADMIN" && tenantIdFilter
+                      ? { tenantId: tenantIdFilter }
                       : {}),
                     ...(search ? { search } : {}),
                   });
