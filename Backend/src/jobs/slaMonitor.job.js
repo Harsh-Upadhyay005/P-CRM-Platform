@@ -53,6 +53,8 @@ export const runSlaTick = async () => {
           trackingId: true,
           status: true,
           category: true,
+          citizenName: true,
+          citizenEmail: true,
           createdAt: true,
           assignedToId: true,
           createdById: true,
@@ -217,6 +219,7 @@ const sendSlaReminder = async (complaint, threshold) => {
 
 const escalateComplaint = async (complaint, tenantAdminMap) => {
   let adminIds = tenantAdminMap[complaint.tenantId] ?? [];
+  const deptHead = complaint.department?.users?.[0] ?? null;
 
   // Last-resort: if no admin was found for this tenant in the pre-fetched map, query now
   if (adminIds.length === 0) {
@@ -233,10 +236,29 @@ const escalateComplaint = async (complaint, tenantAdminMap) => {
     adminIds = admins.map((a) => a.id);
   }
 
-  const actorId = adminIds[0] ?? complaint.createdById;
+  let actorId =
+    adminIds[0] ??
+    complaint.createdById ??
+    complaint.assignedToId ??
+    deptHead?.id ??
+    null;
 
-  // createdById is non-nullable in ComplaintStatusHistory schema — need a real user
-  if (!actorId) return;
+  if (!actorId) {
+    const fallbackUser = await prisma.user.findFirst({
+      where: {
+        tenantId: complaint.tenantId,
+        isDeleted: false,
+        isActive: true,
+      },
+      select: { id: true },
+      orderBy: { createdAt: "asc" },
+    });
+    actorId = fallbackUser?.id ?? null;
+  }
+
+  if (!actorId) {
+    throw new Error("No active tenant user available for escalation actor");
+  }
 
   await prisma.$transaction([
     prisma.complaint.update({
@@ -287,6 +309,17 @@ const notifyEscalation = async (complaint, adminIds) => {
       email: complaint.createdBy.email,
       name: complaint.createdBy.name,
     });
+  }
+  if (complaint.citizenEmail) {
+    const alreadyAdded = emailRecipients.some(
+      (r) => r.email === complaint.citizenEmail,
+    );
+    if (!alreadyAdded) {
+      emailRecipients.push({
+        email: complaint.citizenEmail,
+        name: complaint.citizenName ?? "Citizen",
+      });
+    }
   }
   if (complaint.assignedTo?.email) {
     const alreadyAdded = emailRecipients.some(
