@@ -65,11 +65,16 @@ export const createDepartment = async (data, user) => {
 
 export const listDepartments = async (query, user) => {
   const { page, limit, skip } = getPagination(query);
-  const { search, isActive } = query;
+  const { search, isActive, tenantId: tenantIdParam } = query;
+
+  const tenantFilter =
+    user.role === "SUPER_ADMIN" && tenantIdParam
+      ? { tenantId: tenantIdParam }
+      : forTenant(user);
 
   const where = {
     isDeleted: false,
-    ...forTenant(user),
+    ...tenantFilter,
     ...(isActive !== undefined && { isActive: isActive === "true" }),
     ...(search && {
       name: { contains: search, mode: "insensitive" },

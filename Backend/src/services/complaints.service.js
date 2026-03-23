@@ -263,13 +263,27 @@ const TERMINAL_STATUSES = ["RESOLVED", "CLOSED"];
 
 export const listComplaints = async (query, user) => {
   const { page, limit, skip } = getPagination(query);
-  const { status, priority, category, search, slaBreached, assignedToId, stateId } = query;
+  const {
+    status,
+    priority,
+    category,
+    search,
+    slaBreached,
+    assignedToId,
+    stateId,
+    tenantId: tenantIdParam,
+  } = query;
+
+  const tenantFilter =
+    user.role === "SUPER_ADMIN" && tenantIdParam
+      ? { tenantId: tenantIdParam }
+      : forTenant(user);
 
   const abacFilter = await getABACFilter(user);
 
   const where = {
     isDeleted: false,
-    ...forTenant(user),
+    ...tenantFilter,
     ...abacFilter,
     ...(slaBreached === "true"
       ? { status: { notIn: TERMINAL_STATUSES } }
@@ -1077,13 +1091,19 @@ export const exportComplaints = async (query, user) => {
     startDate,
     endDate,
     departmentId,
+    tenantId: tenantIdParam,
   } = query;
+
+  const tenantFilter =
+    user.role === "SUPER_ADMIN" && tenantIdParam
+      ? { tenantId: tenantIdParam }
+      : forTenant(user);
 
   const abacFilter = await getABACFilter(user);
 
   const where = {
     isDeleted: false,
-    ...forTenant(user),
+    ...tenantFilter,
     ...abacFilter,
     ...(status && { status }),
     ...(priority && { priority }),
