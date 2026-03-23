@@ -12,78 +12,80 @@ import * as THREE from 'three';
 // ── Ashoka Chakra (spinning ring with 24 spokes)
 function AshokaChakra() {
   const groupRef = useRef<THREE.Group>(null!);
-  const ringRef = useRef<THREE.Mesh>(null!);
+  const rimRef = useRef<THREE.Mesh>(null!);
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
     if (groupRef.current) {
-      groupRef.current.rotation.z = t * 0.5;
+      groupRef.current.rotation.z = -t * 0.4; // Slowly spinning CW
     }
-    if (ringRef.current) {
-      ringRef.current.rotation.z = -t * 0.2;
+    if (rimRef.current) {
+      rimRef.current.rotation.z = -t * 0.4;
     }
   });
 
-  const spokes = useMemo(() => {
-    return Array.from({ length: 24 }, (_, i) => {
-      const angle = (i / 24) * Math.PI * 2;
-      return { angle, key: i };
-    });
-  }, []);
-
+  // Authentic Navy Blue Material for the Chakra
   const chakraMaterial = useMemo(() => new THREE.MeshPhysicalMaterial({
-    color: "#000080",
-    metalness: 0.9,
-    roughness: 0.1,
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.1,
+    color: "#000080", // Standard Navy Blue
+    metalness: 0.8,
+    roughness: 0.2,
+    clearcoat: 0.5,
+    clearcoatRoughness: 0.2,
+    reflectivity: 1,
   }), []);
 
+  // Central Hub Elements
+  const renderHub = () => (
+    <group>
+      {/* Central Solid Circle */}
+      <mesh material={chakraMaterial}>
+        <circleGeometry args={[0.2, 64]} />
+      </mesh>
+      {/* Central Ring/Torus */}
+      <mesh material={chakraMaterial} position={[0, 0, 0.02]}>
+        <torusGeometry args={[0.2, 0.05, 32, 64]} />
+      </mesh>
+      {/* Inner Hub Glow */}
+      <mesh position={[0, 0, 0.05]}>
+        <circleGeometry args={[0.15, 32]} />
+        <meshBasicMaterial color="#ffffff" transparent opacity={0.3} />
+      </mesh>
+    </group>
+  );
+
   return (
-    <group position={[0, 0, 0]} scale={1.2}>
-      {/* Outer ring */}
-      <mesh ref={ringRef} material={chakraMaterial}>
-        <torusGeometry args={[1.4, 0.08, 64, 128]} />
+    <group scale={1.2}>
+      {/* Main Outer Rim */}
+      <mesh ref={rimRef} material={chakraMaterial}>
+        <torusGeometry args={[1.4, 0.1, 64, 128]} />
+      </mesh>
+      
+      {/* Inner Rim */}
+      <mesh material={chakraMaterial}>
+        <torusGeometry args={[1.3, 0.03, 32, 128]} />
       </mesh>
 
-      {/* Internal rim ring */}
-      <mesh>
-        <torusGeometry args={[1.30, 0.02, 32, 128]} />
-        <meshPhysicalMaterial color="#000040" metalness={0.9} roughness={0.3} transparent opacity={0.8} />
-      </mesh>
+      {renderHub()}
 
-      {/* Center hub */}
-      <group>
-        <mesh material={chakraMaterial}>
-          <torusGeometry args={[0.25, 0.04, 32, 64]} />
-        </mesh>
-        <mesh material={chakraMaterial}>
-          <circleGeometry args={[0.22, 64]} />
-        </mesh>
-        {/* Hub Glow */}
-        <mesh position={[0, 0, 0.02]}>
-          <circleGeometry args={[0.12, 32]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.6} />
-        </mesh>
-      </group>
-
-      {/* Spokes */}
       <group ref={groupRef}>
-        {spokes.map(({ angle, key }) => {
+        {Array.from({ length: 24 }).map((_, i) => {
+          const angle = (i / 24) * Math.PI * 2;
           const innerRadius = 0.25;
           const outerRadius = 1.30;
-          const x1 = Math.cos(angle) * innerRadius;
-          const y1 = Math.sin(angle) * innerRadius;
-          const x2 = Math.cos(angle) * outerRadius;
-          const y2 = Math.sin(angle) * outerRadius;
-          const midX = (x1 + x2) / 2;
-          const midY = (y1 + y2) / 2;
           const length = outerRadius - innerRadius;
-
+          const midRadius = innerRadius + length / 2;
+          
           return (
-            <group key={key} position={[midX, midY, 0]} rotation={[0, 0, angle - Math.PI / 2]}>
-              <mesh material={chakraMaterial}>
-                <cylinderGeometry args={[0.015, 0.035, length, 16]} />
+            <group key={i} rotation={[0, 0, angle]}>
+              {/* Spoke */}
+              <mesh position={[midRadius, 0, 0]} rotation={[0, 0, Math.PI / 2]} material={chakraMaterial}>
+                {/* Tapered cylinder: wider at center, narrower at rim */}
+                <cylinderGeometry args={[0.015, 0.045, length, 16]} />
+              </mesh>
+              
+              {/* Semi-circular bumps on the inside of the rim (often represented as tiny spheres) */}
+              <mesh position={[1.3, 0, 0]} material={chakraMaterial}>
+                <sphereGeometry args={[0.04, 16, 16]} />
               </mesh>
             </group>
           );
@@ -103,7 +105,7 @@ function AshokaChakra() {
       {/* Central Blue Aura */}
       <mesh position={[0, 0, -0.1]}>
         <circleGeometry args={[1.4, 64]} />
-        <meshBasicMaterial color="#000080" transparent opacity={0.05} />
+        <meshBasicMaterial color="#000080" transparent opacity={0.08} />
       </mesh>
     </group>
   );
