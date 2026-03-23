@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { complaintsApi, usersApi, departmentsApi, getErrorMessage } from '@/lib/api';
@@ -127,9 +127,12 @@ export default function ComplaintDetailPage() {
   const attachments: Attachment[] = attachData?.data ?? [];
 
   const { data: officersData } = useQuery({
-    queryKey: ['officers'],
-    queryFn: () => usersApi.list({ limit: 100 }),
-    enabled: isAdmin || isDeptHead,
+    queryKey: ['officers', complaint?.tenantId ?? 'self'],
+    queryFn: () => usersApi.list({
+      limit: 100,
+      ...(complaint?.tenantId ? { tenantId: complaint.tenantId } : {}),
+    }),
+    enabled: (isAdmin || isDeptHead) && !!complaint,
   });
   const officers: User[] = officersData?.data?.data ?? [];
 
@@ -139,16 +142,24 @@ export default function ComplaintDetailPage() {
   };
   const currentRank = ROLE_RANK_FE[role ?? ''] ?? 0;
 
-  // Exclude CALL_OPERATORs; never show users whose rank exceeds the logged-in user's rank
+  // Eligible assignees exclude CITIZEN/CALL_OPERATOR and must not outrank the actor.
   const displayedOfficers = officers
-    .filter((o) => o.role?.type !== 'CALL_OPERATOR')
+    .filter((o) => o.role?.type !== 'CITIZEN' && o.role?.type !== 'CALL_OPERATOR')
     .filter((o) => (ROLE_RANK_FE[o.role?.type ?? ''] ?? 0) <= currentRank)
-    .filter((o) => !assignDepartmentId || o.department?.id === assignDepartmentId);
+    .filter((o) => {
+      if (!assignDepartmentId) return true;
+      // Department filter is intended for operational staff; tenant admins should stay assignable.
+      if (o.role?.type === 'ADMIN' || o.role?.type === 'SUPER_ADMIN') return true;
+      return o.department?.id === assignDepartmentId;
+    });
 
   const { data: departmentsData } = useQuery({
-    queryKey: ['departments-list'],
-    queryFn: () => departmentsApi.list({ limit: 100 }),
-    enabled: isAdmin || isDeptHead,
+    queryKey: ['departments-list', complaint?.tenantId ?? 'self'],
+    queryFn: () => departmentsApi.list({
+      limit: 100,
+      ...(complaint?.tenantId ? { tenantId: complaint.tenantId } : {}),
+    }),
+    enabled: (isAdmin || isDeptHead) && !!complaint,
   });
   const departments: Department[] = departmentsData?.data?.data ?? [];
 
