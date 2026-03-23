@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { usersApi, departmentsApi, tenantsApi, getErrorMessage } from '@/lib/api';
 import { useRole } from '@/hooks/useRole';
@@ -50,7 +52,10 @@ function formatDate(d: string) {
 
 export default function UsersPage() {
   const { isAdmin, isSuperAdmin } = useRole();
+  const searchParams = useSearchParams();
   const qc = useQueryClient();
+  const tenantIdFilter = searchParams.get('tenantId') ?? '';
+  const departmentIdFilter = searchParams.get('departmentId') ?? '';
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [page, setPage] = useState(1);
@@ -69,12 +74,22 @@ export default function UsersPage() {
   const [createTenantId, setCreateTenantId] = useState<string>('');
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['users', 'list', page, roleFilter, search],
+    queryKey: [
+      'users',
+      'list',
+      page,
+      roleFilter,
+      search,
+      isSuperAdmin ? tenantIdFilter : 'self',
+      departmentIdFilter || '__all',
+    ],
     queryFn: () => usersApi.list({
       page,
       limit: 20,
       roleType: roleFilter !== 'all' ? roleFilter : undefined,
       search: search || undefined,
+      ...(isSuperAdmin && tenantIdFilter ? { tenantId: tenantIdFilter } : {}),
+      ...(departmentIdFilter ? { departmentId: departmentIdFilter } : {}),
     }),
     staleTime: 30_000,
   });
@@ -83,8 +98,11 @@ export default function UsersPage() {
   const pagination = data?.data?.pagination;
 
   const { data: departmentsData } = useQuery({
-    queryKey: ['departments-list'],
-    queryFn: () => departmentsApi.list({ limit: 100 }),
+    queryKey: ['departments-list', isSuperAdmin ? tenantIdFilter : 'self'],
+    queryFn: () => departmentsApi.list({
+      limit: 100,
+      ...(isSuperAdmin && tenantIdFilter ? { tenantId: tenantIdFilter } : {}),
+    }),
     staleTime: 60_000,
   });
   const departments: Department[] = departmentsData?.data?.data ?? [];
@@ -158,6 +176,16 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-6">
+      {(tenantIdFilter || departmentIdFilter) && (
+        <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-xs text-blue-200 flex items-center justify-between gap-2">
+          <span>
+            Showing users in selected scope.
+          </span>
+          <Link href="/users" className="text-blue-100 hover:text-white underline underline-offset-2">
+            Back to all users
+          </Link>
+        </div>
+      )}
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div>

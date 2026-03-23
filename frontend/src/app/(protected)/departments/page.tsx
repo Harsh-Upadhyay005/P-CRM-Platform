@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { departmentsApi, tenantsApi, usersApi, getErrorMessage } from '@/lib/api';
 import { useRole } from '@/hooks/useRole';
@@ -341,15 +343,20 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function DepartmentsPage() {
   const { isAdmin, isSuperAdmin } = useRole();
+  const searchParams = useSearchParams();
   const qc = useQueryClient();
+  const tenantIdFilter = searchParams.get('tenantId') ?? '';
   const [createOpen, setCreateOpen] = useState(false);
   const [editDept, setEditDept] = useState<Department | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Department | null>(null);
   const [manageMembersDept, setManageMembersDept] = useState<Department | null>(null);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['departments', 'list'],
-    queryFn: () => departmentsApi.list({ limit: 100 }),
+    queryKey: ['departments', 'list', isSuperAdmin ? tenantIdFilter : 'self'],
+    queryFn: () => departmentsApi.list({
+      limit: 100,
+      ...(isSuperAdmin && tenantIdFilter ? { tenantId: tenantIdFilter } : {}),
+    }),
     staleTime: 60_000,
   });
 
@@ -390,6 +397,14 @@ export default function DepartmentsPage() {
 
   return (
     <div className="space-y-6">
+      {isSuperAdmin && tenantIdFilter && (
+        <div className="rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-xs text-blue-200 flex items-center justify-between gap-2">
+          <span>Showing departments only for selected tenant.</span>
+          <Link href="/departments" className="text-blue-100 hover:text-white underline underline-offset-2">
+            Back to all departments
+          </Link>
+        </div>
+      )}
       {/* Header */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
         <div>
@@ -475,18 +490,30 @@ export default function DepartmentsPage() {
                 <CardContent className="pt-0">
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <div className="rounded-lg bg-slate-800/40 p-2.5">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <Users size={11} className="text-slate-500" />
-                        <span className="text-[10px] text-slate-500 uppercase tracking-wider">Staff</span>
-                      </div>
-                      <p className="text-lg font-bold text-white">{dept._count?.users ?? 0}</p>
+                      <Link
+                        href={`/users?tenantId=${dept.tenantId}&departmentId=${dept.id}`}
+                        className="block rounded-md px-1 py-0.5 transition-colors hover:bg-white/5"
+                        title={`View users of ${dept.name}`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Users size={11} className="text-slate-500" />
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider">Staff</span>
+                        </div>
+                        <p className="text-lg font-bold text-white">{dept._count?.users ?? 0}</p>
+                      </Link>
                     </div>
                     <div className="rounded-lg bg-slate-800/40 p-2.5">
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <AlertTriangle size={11} className="text-slate-500" />
-                        <span className="text-[10px] text-slate-500 uppercase tracking-wider">Cases</span>
-                      </div>
-                      <p className="text-lg font-bold text-white">{dept._count?.complaints ?? 0}</p>
+                      <Link
+                        href={`/complaints?tenantId=${dept.tenantId}&departmentId=${dept.id}`}
+                        className="block rounded-md px-1 py-0.5 transition-colors hover:bg-white/5"
+                        title={`View complaints of ${dept.name}`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <AlertTriangle size={11} className="text-slate-500" />
+                          <span className="text-[10px] text-slate-500 uppercase tracking-wider">Cases</span>
+                        </div>
+                        <p className="text-lg font-bold text-white">{dept._count?.complaints ?? 0}</p>
+                      </Link>
                     </div>
                   </div>
 
