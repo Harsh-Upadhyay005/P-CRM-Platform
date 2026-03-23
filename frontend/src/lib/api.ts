@@ -24,11 +24,7 @@ const api = axios.create({
   },
 });
 
-/**
- * Proxy API — calls Next.js Route Handlers at /api/auth/*.
- * These handlers forward to the backend AND mirror the accessToken + refreshToken
- * cookies onto the frontend domain so proxy.ts middleware can gate protected routes.
- */
+
 const proxyApi = axios.create({
   baseURL: '',          // relative — targets the Next.js server itself
   withCredentials: true,
@@ -63,12 +59,11 @@ api.interceptors.response.use(
       (originalRequest as { _retry?: boolean })._retry = true;
 
       try {
-        // Use the Next.js proxy route so the frontend-domain mirror cookie
-        // is also refreshed (the backend cookie is refreshed via cookie forwarding).
+        
         await proxyApi.post('/api/auth/refresh');
         return api(originalRequest);
       } catch (refreshError) {
-        // Refresh failed — clear frontend cookie then redirect to login.
+        
         try {
           await proxyApi.post('/api/auth/logout');
         } catch { /* best-effort */ }
@@ -164,7 +159,7 @@ export const authApi = {
   },
 };
 
-// ─── Download helper ─────────────────────────────────────────────────────────
+
 function triggerDownload(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -176,7 +171,6 @@ function triggerDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
-// ─── Complaints API ───────────────────────────────────────────────────────────
 export const complaintsApi = {
   list: async (params?: Record<string, string | number | undefined>) => {
     const response = await api.get<ApiResponse<PaginatedResponse<Complaint>>>('/complaints', { params });
@@ -309,7 +303,7 @@ export const usersApi = {
   },
 };
 
-// ─── Departments API ──────────────────────────────────────────────────────────
+
 export const departmentsApi = {
   list: async (params?: Record<string, string | number | undefined>) => {
     const response = await api.get<ApiResponse<PaginatedResponse<Department>>>('/departments', { params });
@@ -338,7 +332,7 @@ export const departmentsApi = {
   },
 };
 
-// ─── Workflow Automation API ────────────────────────────────────────────────
+
 export const workflowApi = {
   getSettings: async (tenantId?: string) => {
     const response = await api.get<ApiResponse<WorkflowSettings>>('/workflow/settings', {
@@ -431,7 +425,7 @@ export const workflowApi = {
   },
 };
 
-// ─── Analytics API ────────────────────────────────────────────────────────────
+
 export interface AnalyticsOverview {
   totalComplaints: number;
   openComplaints: number;
@@ -541,7 +535,7 @@ export const analyticsApi = {
   },
 };
 
-// ─── Notifications API ────────────────────────────────────────────────────────
+
 export const notificationsApi = {
   list: async (params?: { page?: number; limit?: number }) => {
     const response = await api.get<ApiResponse<PaginatedResponse<Notification>>>('/notifications', { params });
@@ -561,7 +555,7 @@ export const notificationsApi = {
   },
 };
 
-// ─── Audit Logs API ───────────────────────────────────────────────────────────
+
 export const auditLogsApi = {
   getLogs: async (params?: Record<string, string | number | undefined>) => {
     const response = await api.get<ApiResponse<PaginatedResponse<AuditLog>>>('/audit-logs', { params });
