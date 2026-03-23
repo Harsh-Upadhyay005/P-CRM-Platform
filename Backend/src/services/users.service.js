@@ -26,6 +26,21 @@ const resolveRoleId = async (roleType) => {
   return role.id;
 };
 
+const countExistingSuperAdmins = async () => {
+  const superAdminRole = await prisma.role.findUnique({
+    where: { type: "SUPER_ADMIN" },
+    select: { id: true },
+  });
+  if (!superAdminRole) return 0;
+
+  return prisma.user.count({
+    where: {
+      roleId: superAdminRole.id,
+      isDeleted: false,
+    },
+  });
+};
+
 export const getMe = async (user) => {
   const me = await prisma.user.findFirst({
     where: { id: user.userId, isDeleted: false, ...forTenant(user) },
@@ -141,7 +156,11 @@ export const updateMyProfile = async (userId, data, user) => {
 };
 
 export const assignRole = async (targetId, { roleType, departmentId }, user) => {
-  if (!canAssignRole(user.role, roleType)) {
+  const canAssignRequestedRole =
+    canAssignRole(user.role, roleType) ||
+    (user.role === "SUPER_ADMIN" && roleType === "SUPER_ADMIN");
+
+  if (!canAssignRequestedRole) {
     throw new ApiError(403, `You cannot assign the ${roleType} role`);
   }
 
@@ -156,8 +175,19 @@ export const assignRole = async (targetId, { roleType, departmentId }, user) => 
     throw new ApiError(403, "You cannot modify a user with an equal or higher role");
   }
 
+  if (roleType === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN") {
+    throw new ApiError(403, "Only SUPER_ADMIN can assign SUPER_ADMIN role");
+  }
+
+  if (roleType === "SUPER_ADMIN" && target.role.type !== "SUPER_ADMIN") {
+    const existingSuperAdmins = await countExistingSuperAdmins();
+    if (existingSuperAdmins >= 1) {
+      throw new ApiError(409, "Only one SUPER_ADMIN account is allowed");
+    }
+  }
+
   // Validate departmentId belongs to tenant if provided
-  if (departmentId !== undefined && departmentId !== null) {
+  if (roleType !== "SUPER_ADMIN" && departmentId !== undefined && departmentId !== null) {
     const dept = await prisma.department.findFirst({
       where: { id: departmentId, isDeleted: false, isActive: true, ...forTenant(user) },
     });
@@ -189,7 +219,9 @@ export const assignRole = async (targetId, { roleType, departmentId }, user) => 
     where: { id: targetId },
     data: {
       roleId,
-      ...(departmentId !== undefined && { departmentId }),
+      ...(roleType === "SUPER_ADMIN"
+        ? { departmentId: null }
+        : (departmentId !== undefined ? { departmentId } : {})),
     },
     select: userSelect,
   });
@@ -300,8 +332,23 @@ export const changePassword = async (userId, { currentPassword, newPassword }, u
 
 export const createUser = async ({ name, email, password, roleType = "CALL_OPERATOR", departmentId, tenantId: targetTenantId }, user) => {
   // Only ADMIN+ can create users; enforce role hierarchy so no privilege escalation
-  if (!canAssignRole(user.role, roleType)) {
+  const canAssignRequestedRole =
+    canAssignRole(user.role, roleType) ||
+    (user.role === "SUPER_ADMIN" && roleType === "SUPER_ADMIN");
+
+  if (!canAssignRequestedRole) {
     throw new ApiError(403, `You cannot create a user with role ${roleType}`);
+  }
+
+  if (roleType === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN") {
+    throw new ApiError(403, "Only SUPER_ADMIN can create SUPER_ADMIN users");
+  }
+
+  if (roleType === "SUPER_ADMIN") {
+    const existingSuperAdmins = await countExistingSuperAdmins();
+    if (existingSuperAdmins >= 1) {
+      throw new ApiError(409, "Only one SUPER_ADMIN account is allowed");
+    }
   }
 
   const passwordErr = validatePassword(password);
@@ -310,10 +357,12 @@ export const createUser = async ({ name, email, password, roleType = "CALL_OPERA
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) throw new ApiError(400, "Email already registered");
 
+  const normalizedDepartmentId = roleType === "SUPER_ADMIN" ? null : (departmentId ?? null);
+
   // If departmentId provided, verify it belongs to the tenant
-  if (departmentId) {
+  if (normalizedDepartmentId) {
     const dept = await prisma.department.findFirst({
-      where: { id: departmentId, isDeleted: false, isActive: true, ...forTenant(user) },
+      where: { id: normalizedDepartmentId, isDeleted: false, isActive: true, ...forTenant(user) },
     });
     if (!dept) throw new ApiError(404, "Department not found");
   }
@@ -336,9 +385,9 @@ export const createUser = async ({ name, email, password, roleType = "CALL_OPERA
   }
 
   // Re-validate departmentId against the finalTenantId (may differ from caller's tenant)
-  if (departmentId) {
+  if (normalizedDepartmentId) {
     const dept = await prisma.department.findFirst({
-      where: { id: departmentId, isDeleted: false, isActive: true, tenantId: finalTenantId },
+      where: { id: normalizedDepartmentId, isDeleted: false, isActive: true, tenantId: finalTenantId },
     });
     if (!dept) throw new ApiError(404, "Department not found in target tenant");
   }
@@ -352,7 +401,7 @@ export const createUser = async ({ name, email, password, roleType = "CALL_OPERA
       password: hashedPassword,
       tenantId: finalTenantId,
       roleId: role.id,
-      ...(departmentId ? { departmentId } : {}),
+      ...(normalizedDepartmentId ? { departmentId: normalizedDepartmentId } : {}),
       emailVerified: true, // admin-created accounts skip email verification
     },
     select: userSelect,

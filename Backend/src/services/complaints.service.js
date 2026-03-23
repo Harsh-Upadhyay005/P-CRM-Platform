@@ -58,8 +58,7 @@ const decorateWithSla = (complaint, policyLookup = new Map()) => {
     slaHours && !NON_SLA_STATUSES.includes(complaint.status)
       ? buildSlaSummary(complaint.createdAt, slaHours)
       : null;
-  const { tenantId, ...safeComplaint } = complaint;
-  return { ...safeComplaint, slaSummary, effectiveSlaHours: slaHours };
+  return { ...complaint, slaSummary, effectiveSlaHours: slaHours };
 };
 
 const decorateWithSlaBatch = async (complaints) => {
@@ -522,7 +521,7 @@ export const assignComplaint = async (id, data, user) => {
         isDeleted: false,
         isActive: true,
         ...forTenant(user),
-        role: { type: { notIn: ["CALL_OPERATOR"] } },
+        role: { type: { notIn: ["CALL_OPERATOR", "CITIZEN"] } },
       },
       select: {
         id: true,
