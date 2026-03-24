@@ -137,7 +137,7 @@ router.post(
 
 router.get(
   "/:id/attachments",
-  authorizeMinimum("CALL_OPERATOR"),
+  authorizeMinimum("CITIZEN"),
   attachmentController.listAttachments,
 );
 
