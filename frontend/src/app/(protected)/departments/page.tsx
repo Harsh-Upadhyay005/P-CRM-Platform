@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { departmentsApi, tenantsApi, usersApi, getErrorMessage } from '@/lib/api';
 import { useRole } from '@/hooks/useRole';
+import { COMPLAINT_CATEGORIES } from '@/lib/constants';
 import { Department, User, RoleType, Tenant } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +24,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   Building2, Plus, MoreVertical, Pencil, Trash2, Users, AlertTriangle,
-  Clock, Crown, X, MapPin, UserCog,
+  Clock, Crown, X, MapPin, UserCog, Tag,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -47,7 +48,7 @@ function DeptForm({
   isCreate = false,
 }: {
   initial?: Partial<Department>;
-  onSave: (data: { name: string; slaHours: number; serviceAreas: string[]; tenantId?: string }) => void;
+  onSave: (data: { name: string; slaHours: number; serviceAreas: string[]; categoryTags: string[]; tenantId?: string }) => void;
   onCancel: () => void;
   isPending: boolean;
   isSuperAdmin?: boolean;
@@ -56,6 +57,7 @@ function DeptForm({
   const [name, setName] = useState(initial?.name ?? '');
   const [slaHours, setSlaHours] = useState(initial?.slaHours ?? 48);
   const [serviceAreas, setServiceAreas] = useState<string[]>(initial?.serviceAreas ?? []);
+  const [categoryTags, setCategoryTags] = useState<string[]>(initial?.categoryTags ?? []);
   const [selectedTenantId, setSelectedTenantId] = useState('');
 
   const { data: tenantsData } = useQuery({
@@ -74,6 +76,14 @@ function DeptForm({
 
   const removeArea = (area: string) =>
     setServiceAreas(serviceAreas.filter((a) => a !== area));
+
+  const toggleCategory = (category: string) => {
+    if (categoryTags.includes(category)) {
+      setCategoryTags(categoryTags.filter((c) => c !== category));
+    } else {
+      setCategoryTags([...categoryTags, category]);
+    }
+  };
 
   return (
     <div className="space-y-4 py-2">
@@ -115,6 +125,38 @@ function DeptForm({
       )}
       <div className="space-y-1.5">
         <label className="text-xs text-slate-400 font-medium flex items-center gap-1">
+          <Tag size={11} className="text-slate-500" /> Complaint Categories
+          <span className="text-slate-600 font-normal">(optional)</span>
+        </label>
+        <p className="text-[10px] text-slate-500 mb-2">Select which complaint categories this department handles. Complaints will auto-route to this department based on category.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {COMPLAINT_CATEGORIES.map((category) => (
+            <label key={category} className="flex items-center gap-2 cursor-pointer px-2 py-1.5 rounded-lg hover:bg-slate-800/40 transition-colors">
+              <input
+                type="checkbox"
+                checked={categoryTags.includes(category)}
+                onChange={() => toggleCategory(category)}
+                className="w-3.5 h-3.5 rounded border-white/20 bg-slate-800 text-purple-600 focus:ring-purple-500/50"
+              />
+              <span className="text-xs text-slate-300">{category}</span>
+            </label>
+          ))}
+        </div>
+        {categoryTags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {categoryTags.map((cat) => (
+              <span key={cat} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30 text-[10px]">
+                {cat}
+                <button type="button" onClick={() => toggleCategory(cat)} className="hover:text-white">
+                  <X size={9} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="space-y-1.5">
+        <label className="text-xs text-slate-400 font-medium flex items-center gap-1">
           <MapPin size={11} className="text-slate-500" /> Service Areas
           <span className="text-slate-600 font-normal">(optional)</span>
         </label>
@@ -152,6 +194,7 @@ function DeptForm({
             name: name.trim(),
             slaHours,
             serviceAreas,
+            categoryTags,
             ...(isSuperAdmin && isCreate && selectedTenantId && { tenantId: selectedTenantId }),
           })}
         >
@@ -363,7 +406,7 @@ export default function DepartmentsPage() {
   const departments: Department[] = data?.data?.data ?? [];
 
   const createMutation = useMutation({
-    mutationFn: (d: { name: string; slaHours: number; serviceAreas: string[]; tenantId?: string }) => departmentsApi.create(d),
+    mutationFn: (d: { name: string; slaHours: number; serviceAreas: string[]; categoryTags: string[]; tenantId?: string }) => departmentsApi.create(d),
     onSuccess: () => {
       toast.success('Department created');
       qc.invalidateQueries({ queryKey: ['departments'] });
@@ -539,6 +582,28 @@ export default function DepartmentsPage() {
                     </div>
                   )}
 
+                  {/* Complaint Categories */}
+                  {dept.categoryTags && dept.categoryTags.length > 0 && (
+                    <div className="mt-2.5">
+                      <div className="flex items-center gap-1 mb-1.5">
+                        <Tag size={10} className="text-slate-500" />
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wider">Categories</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {dept.categoryTags.slice(0, 2).map((c) => (
+                          <span key={c} className="px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 text-[10px] border border-blue-500/30">
+                            {c}
+                          </span>
+                        ))}
+                        {dept.categoryTags.length > 2 && (
+                          <span className="px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px]">
+                            +{dept.categoryTags.length - 2}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="mt-3 flex items-center justify-between">
                     <div className="flex items-center gap-1.5 text-xs text-slate-400">
                       <Clock size={11} className="text-amber-400" />
@@ -574,7 +639,7 @@ export default function DepartmentsPage() {
 
       {/* Create Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="bg-slate-900 border-white/10 text-slate-200 max-w-sm">
+        <DialogContent className="bg-slate-900 border-white/10 text-slate-200 w-[95vw] max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-white">New Department</DialogTitle>
           </DialogHeader>
@@ -590,7 +655,7 @@ export default function DepartmentsPage() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editDept} onOpenChange={(o) => !o && setEditDept(null)}>
-        <DialogContent className="bg-slate-900 border-white/10 text-slate-200 max-w-sm">
+        <DialogContent className="bg-slate-900 border-white/10 text-slate-200 w-[95vw] max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-white">Edit Department</DialogTitle>
           </DialogHeader>

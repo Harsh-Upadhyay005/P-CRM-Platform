@@ -857,7 +857,7 @@ const LOCALITY_KEYWORD_MAP = [
   // Rajasthan
   { keywords: ["jaipur", "jodhpur", "udaipur", "kota", "ajmer", "bikaner", "alwar", "bharatpur", "pushkar", "sikar", "pali", "barmer", "jaisalmer", "chittorgarh", "bhilwara", "tonk", "nagaur", "rajasthan"], id: "RJ" },
   // Uttar Pradesh
-  { keywords: ["lucknow", "noida", "varanasi", "agra", "kanpur", "prayagraj", "allahabad", "ghaziabad", "sahibabad", "raj nagar", "meerut", "mathura", "vrindavan", "gorakhpur", "aligarh", "bareilly", "moradabad", "saharanpur", "jhansi", "firozabad", "muzaffarnagar", "hapur", "shahjahanpur", "rampur", "etawah", "faizabad", "ayodhya", "sitapur", "lakhimpur", "uttar pradesh"], id: "UP" },
+  { keywords: ["lucknow", "noida", "varanasi", "agra", "kanpur", "prayagraj", "allahabad", "ghaziabad", "sahibabad", "raj nagar", "meerut", "mathura", "vrindavan", "gorakhpur", "padrauna", "kushinagar", "aligarh", "bareilly", "moradabad", "saharanpur", "jhansi", "firozabad", "muzaffarnagar", "hapur", "shahjahanpur", "rampur", "etawah", "faizabad", "ayodhya", "sitapur", "lakhimpur", "uttar pradesh"], id: "UP" },
   // Bihar
   { keywords: ["patna", "gaya", "muzaffarpur", "bhagalpur", "darbhanga", "purnea", "araria", "begusarai", "motihari", "samastipur", "siwan", "buxar", "sasaram", "bihar sharif", "nalanda", "katihar", "bihar"], id: "BR" },
   // Sikkim
@@ -986,6 +986,8 @@ const CITY_KEYWORD_MAP = [
   { keywords: ["meerut"], city: "Meerut", stateId: "UP" },
   { keywords: ["mathura", "vrindavan"], city: "Mathura", stateId: "UP" },
   { keywords: ["gorakhpur"], city: "Gorakhpur", stateId: "UP" },
+  { keywords: ["padrauna", "kushinagar"], city: "Padrauna", stateId: "UP" },
+  { keywords: ["jais", "amethi"], city: "Jais", stateId: "UP" },
   { keywords: ["aligarh"], city: "Aligarh", stateId: "UP" },
   { keywords: ["bareilly"], city: "Bareilly", stateId: "UP" },
   { keywords: ["moradabad"], city: "Moradabad", stateId: "UP" },
@@ -1144,31 +1146,120 @@ const CITY_KEYWORD_MAP = [
 /**
  * Given a locality string, return the 2-letter state ID or null.
  * Tries each keyword group in order; first match wins.
+ * Uses word boundary matching to avoid substring collisions (e.g., "una" matching inside "Padrauna").
  */
 export const localityToStateId = (locality) => {
   if (!locality) return null;
   const lower = locality.toLowerCase();
+  
   for (const entry of LOCALITY_KEYWORD_MAP) {
-    if (entry.keywords.some((kw) => lower.includes(kw))) {
+    if (entry.keywords.some((kw) => {
+      // Match whole words only: keyword must be preceded/followed by non-alphanumeric or string boundary
+      const regex = new RegExp(`\\b${kw}\\b`, 'i');
+      return regex.test(locality);
+    })) {
       return entry.id;
     }
   }
+
+  const upper = ` ${locality.toUpperCase().replace(/[^A-Z]/g, " ")} `;
+  if (upper.includes(" UP ")) return "UP";
+
   return null;
 };
 
 /**
  * Given a locality string, return { city: string, stateId: string } or null.
  * Uses CITY_KEYWORD_MAP (longer/more specific keywords first).
+ * Uses word boundary matching to avoid substring collisions.
  */
 const localityToCity = (locality) => {
   if (!locality) return null;
   const lower = locality.toLowerCase();
   for (const entry of CITY_KEYWORD_MAP) {
-    if (entry.keywords.some((kw) => lower.includes(kw))) {
+    if (entry.keywords.some((kw) => {
+      const regex = new RegExp(`\\b${kw}\\b`, 'i');
+      return regex.test(locality);
+    })) {
       return { city: entry.city, stateId: entry.stateId };
     }
   }
-  return null;
+
+  
+  const inferredStateId = localityToStateId(locality);
+  if (!inferredStateId) return null;
+
+  const genericTokens = [
+    "ward",
+    "sector",
+    "block",
+    "street",
+    "road",
+    "village",
+    "tehsil",
+    "district",
+    "area",
+    "colony",
+    "nagar",
+  ];
+
+  const orgTokens = [
+    "institute",
+    "university",
+    "college",
+    "school",
+    "hospital",
+    "technology",
+    "petroleum",
+    "academy",
+    "campus",
+    "office",
+  ];
+
+  const stateTokens = [
+    "up",
+    "uttar pradesh",
+    "india",
+  ];
+
+  const segments = String(locality)
+    .split(",")
+    .map((s) =>
+      s
+        .replace(/\b\d{3,}\b/g, " ")
+        .replace(/[^a-zA-Z\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean);
+
+  const candidate = segments.find((segment) => {
+    if (segment.length < 3) return false;
+    const lowerSegment = segment.toLowerCase();
+
+    if (stateTokens.includes(lowerSegment)) return false;
+
+    const isGenericLocality = genericTokens.some(
+      (token) => lowerSegment.startsWith(`${token} `) || lowerSegment === token,
+    );
+    if (isGenericLocality) return false;
+
+    const looksLikeOrg = orgTokens.some((token) => lowerSegment.includes(token));
+    if (looksLikeOrg) return false;
+
+    return true;
+  });
+
+  if (!candidate) {
+    return null;
+  }
+
+  const city = candidate
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+
+  return { city, stateId: inferredStateId };
 };
 
 /**

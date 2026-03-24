@@ -174,10 +174,21 @@ export const createComplaint = async (data, user) => {
 
   let resolvedDepartmentId = departmentId ?? null;
 
-  // Auto-route: if no department specified, match locality to service areas
+  
   if (!resolvedDepartmentId && locality) {
     const matchedDept = await matchLocalityToDepartment(
       locality,
+      user.tenantId,
+    );
+    if (matchedDept) {
+      resolvedDepartmentId = matchedDept.id;
+    }
+  }
+
+  // Fallback: Try category-based routing if locality didn't match
+  if (!resolvedDepartmentId && category) {
+    const matchedDept = await matchCategoryToDepartment(
+      category,
       user.tenantId,
     );
     if (matchedDept) {
@@ -845,6 +856,43 @@ const matchLocalityToDepartment = async (locality, tenantId) => {
       ) {
         return { id: dept.id, name: dept.name };
       }
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Match complaint category to department in the SAME tenant.
+ * Returns the first department in that tenant with matching category tag.
+ * CRITICAL: Always scoped by tenantId to prevent cross-tenant routing.
+ */
+const matchCategoryToDepartment = async (category, tenantId) => {
+  if (!category) return null;
+
+  const categoryLower = category.toLowerCase();
+
+  const departments = await prisma.department.findMany({
+    where: {
+      tenantId,  // ← CRITICAL: Restrict to same tenant
+      isActive: true,
+      isDeleted: false,
+      categoryTags: { isEmpty: false },
+    },
+    select: {
+      id: true,
+      name: true,
+      categoryTags: true,
+    },
+  });
+
+  // Find first department in this tenant that handles this category
+  for (const dept of departments) {
+    const hasCategory = dept.categoryTags.some(
+      (tag) => tag.toLowerCase() === categoryLower
+    );
+    if (hasCategory) {
+      return { id: dept.id, name: dept.name };
     }
   }
 
