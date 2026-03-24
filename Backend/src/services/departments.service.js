@@ -13,6 +13,7 @@ const deptSelect = {
   routingKeywords: true,
   isActive: true,
   tenantId: true,
+  tenant: { select: { id: true, name: true, slug: true } },
   createdAt: true,
   updatedAt: true,
   _count: { select: { users: { where: { isDeleted: false, isActive: true } }, complaints: { where: { isDeleted: false } } } },

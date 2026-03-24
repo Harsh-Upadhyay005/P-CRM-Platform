@@ -130,6 +130,29 @@ export default function UsersPage() {
   const hasSuperAdmin = (superAdminData?.data?.pagination?.total ?? 0) > 0;
   const allowSelectingSuperAdmin = isSuperAdmin && !hasSuperAdmin;
 
+  const deptHeadTargetDeptId =
+    newRole === 'DEPARTMENT_HEAD'
+      ? (newDepartmentId || assignRoleUser?.department?.id || '')
+      : '';
+
+  const { data: deptHeadData } = useQuery({
+    queryKey: ['users', 'dept-head-for-transfer', deptHeadTargetDeptId, assignRoleUser?.id ?? 'none'],
+    queryFn: () => usersApi.list({
+      limit: 10,
+      departmentId: deptHeadTargetDeptId,
+      roleType: 'DEPARTMENT_HEAD',
+      ...(isSuperAdmin && (assignRoleUser?.tenant?.id ?? tenantIdFilter)
+        ? { tenantId: assignRoleUser?.tenant?.id ?? tenantIdFilter }
+        : {}),
+    }),
+    enabled: !!assignRoleUser && !!deptHeadTargetDeptId,
+    staleTime: 30_000,
+  });
+
+  const currentDeptHead = (deptHeadData?.data?.data ?? []).find((u) => u.id !== assignRoleUser?.id);
+  const willTransferDeptHead = newRole === 'DEPARTMENT_HEAD' && !!currentDeptHead;
+  const missingDeptForHead = newRole === 'DEPARTMENT_HEAD' && !deptHeadTargetDeptId;
+
   const assignRoleMutation = useMutation({
     mutationFn: ({ id, role, departmentId }: { id: string; role: RoleType; departmentId?: string | null }) =>
       usersApi.assignRole(id, role, departmentId),
@@ -273,7 +296,18 @@ export default function UsersPage() {
           ) : isError ? (
             <p className="text-red-400 text-sm text-center py-8">Failed to load users.</p>
           ) : users.length === 0 ? (
-            <p className="text-slate-500 text-sm text-center py-8">No users found.</p>
+            <div className="text-center py-8 space-y-2">
+              <p className="text-slate-400 text-sm">No users found for the current filters.</p>
+              <p className="text-slate-500 text-xs">Try clearing filters or searching with a different name/email.</p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-purple-300 hover:text-purple-200"
+                onClick={() => { setSearch(''); setRoleFilter('all'); setPage(1); }}
+              >
+                Clear Filters
+              </Button>
+            </div>
           ) : (
             <Table>
               <TableHeader>
@@ -402,7 +436,7 @@ export default function UsersPage() {
 
       {/* Assign Role Dialog */}
       <Dialog open={!!assignRoleUser} onOpenChange={(o) => !o && setAssignRoleUser(null)}>
-        <DialogContent className="bg-slate-900 border-white/10 text-slate-200 max-w-sm">
+        <DialogContent className="bg-slate-900 border-white/10 text-slate-200 max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-white">Change Role</DialogTitle>
           </DialogHeader>
@@ -417,13 +451,14 @@ export default function UsersPage() {
               </div>
             )}
             <Select value={newRole} onValueChange={(v) => setNewRole(v as RoleType)}>
-              <SelectTrigger className="bg-slate-800/50 border-white/10">
-                <SelectValue />
+              <SelectTrigger className="w-full bg-slate-800/50 border-white/10">
+                <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
                 {isSuperAdmin && (allowSelectingSuperAdmin || assignRoleUser?.role.type === 'SUPER_ADMIN' || newRole === 'SUPER_ADMIN') && (
                   <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                 )}
+                <SelectItem value="CITIZEN">Citizen</SelectItem>
                 <SelectItem value="CALL_OPERATOR">Call Operator</SelectItem>
                 <SelectItem value="OFFICER">Officer</SelectItem>
                 <SelectItem value="DEPARTMENT_HEAD">Department Head</SelectItem>
@@ -442,15 +477,27 @@ export default function UsersPage() {
                 </SelectContent>
               </Select>
             )}
+            {willTransferDeptHead && (
+              <div className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                <p className="font-medium">Department head transfer</p>
+                <p className="mt-1 text-amber-100/90">
+                  <span className="font-medium text-white">{currentDeptHead?.name}</span> is currently the head of this department.
+                  Saving will transfer the department head role to <span className="font-medium text-white">{assignRoleUser?.name}</span>.
+                </p>
+              </div>
+            )}
+            {missingDeptForHead && (
+              <p className="text-xs text-amber-300">Select a department before assigning Department Head.</p>
+            )}
             <div className="flex gap-2 justify-end">
               <Button variant="ghost" size="sm" onClick={() => setAssignRoleUser(null)}>Cancel</Button>
               <Button
                 size="sm"
                 className="bg-purple-600 hover:bg-purple-500"
-                disabled={assignRoleMutation.isPending}
+                disabled={assignRoleMutation.isPending || missingDeptForHead}
                 onClick={() => assignRoleUser && assignRoleMutation.mutate({ id: assignRoleUser.id, role: newRole, departmentId: newDepartmentId || undefined })}
               >
-                {assignRoleMutation.isPending ? 'Saving…' : 'Save'}
+                {assignRoleMutation.isPending ? 'Saving…' : (willTransferDeptHead ? 'Transfer Head Role' : 'Save')}
               </Button>
             </div>
           </div>
@@ -459,7 +506,7 @@ export default function UsersPage() {
 
       {/* Delete Confirm Dialog */}
       <Dialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
-        <DialogContent className="bg-slate-900 border-white/10 text-slate-200 max-w-sm">
+        <DialogContent className="bg-slate-900 border-white/10 text-slate-200 max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-white">Delete User</DialogTitle>
           </DialogHeader>
@@ -467,6 +514,9 @@ export default function UsersPage() {
             <p className="text-sm text-slate-400">
               Are you sure you want to delete <span className="text-white font-medium">{confirmDelete?.name}</span>? This action cannot be undone.
             </p>
+            <div className="rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+              This will remove the user from active operations and revoke access to the portal.
+            </div>
             <div className="flex gap-2 justify-end">
               <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(null)}>Cancel</Button>
               <Button
@@ -484,7 +534,7 @@ export default function UsersPage() {
 
       {/* Create User Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={(o) => { if (!o) { setShowCreateDialog(false); setCreateName(''); setCreateEmail(''); setCreatePassword(''); setCreateRole('CALL_OPERATOR'); setCreateDeptId(''); setCreateTenantId(''); } }}>
-        <DialogContent className="bg-slate-900 border-white/10 text-slate-200 max-w-sm">
+        <DialogContent className="bg-slate-900 border-white/10 text-slate-200 max-w-sm max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-white">Add New User</DialogTitle>
           </DialogHeader>
