@@ -119,7 +119,7 @@ export default function ComplaintDetailPage() {
   });
   const notes: Note[] = notesData?.data ?? [];
 
-  const { data: attachData } = useQuery({
+  const { data: attachData, isError: attachmentsError } = useQuery({
     queryKey: ['complaint-attachments', id],
     queryFn: () => complaintsApi.getAttachments(id),
     enabled: !!id,
@@ -443,7 +443,9 @@ export default function ComplaintDetailPage() {
               </div>
             </CardHeader>
             <CardContent>
-              {attachments.length === 0 ? (
+              {attachmentsError ? (
+                <p className="text-rose-400 text-sm text-center py-4">Unable to load attachments</p>
+              ) : attachments.length === 0 ? (
                 <p className="text-slate-600 text-sm text-center py-4">No attachments</p>
               ) : (
                 <div className="space-y-2">
@@ -452,7 +454,10 @@ export default function ComplaintDetailPage() {
                       <Paperclip size={13} className="text-slate-500 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <a href={a.url} target="_blank" rel="noreferrer" className="text-sm text-blue-400 hover:text-blue-300 truncate block">{a.fileName}</a>
-                        <p className="text-[11px] text-slate-600">{fmtBytes(a.fileSize)} · {a.uploadedBy?.name}</p>
+                        <p className="text-[11px] text-slate-600">
+                          {fmtBytes(a.fileSize)} · Attached by {a.uploadedByType === 'CITIZEN' ? 'Citizen' : 'Officer'}
+                          {a.uploadedBy?.name ? ` (${a.uploadedBy.name})` : ''}
+                        </p>
                       </div>
                       <button
                         className="opacity-0 group-hover:opacity-100 p-1.5 rounded text-slate-600 hover:text-red-400 transition-all"

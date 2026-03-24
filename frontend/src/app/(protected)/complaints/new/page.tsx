@@ -6,7 +6,7 @@ import { complaintsApi, departmentsApi, getErrorMessage } from '@/lib/api';
 import { COMPLAINT_CATEGORIES } from '@/lib/constants';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Loader2, Save, Paperclip, X, FileText, Image } from 'lucide-react';
 import Link from 'next/link';
@@ -33,10 +33,16 @@ export default function NewComplaintPage() {
   const [categorySelect, setCategorySelect] = useState('');
   const [categoryOther, setCategoryOther] = useState('');
   const [selectedDeptId, setSelectedDeptId] = useState('');
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<ComplaintForm>({
+  const { register, handleSubmit, watch, setValue, getValues, formState: { errors } } = useForm<ComplaintForm>({
     resolver: zodResolver(createComplaintSchema),
     defaultValues: { citizenEmail: user?.email ?? '' },
   });
+
+  useEffect(() => {
+    if (!user?.email) return;
+    if (getValues('citizenEmail')) return;
+    setValue('citizenEmail', user.email, { shouldValidate: true });
+  }, [getValues, setValue, user?.email]);
 
   const { data: deptsData } = useQuery({
     queryKey: ['departments', 'for-complaint-form'],

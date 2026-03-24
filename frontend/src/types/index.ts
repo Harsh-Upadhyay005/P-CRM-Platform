@@ -182,6 +182,7 @@ export interface Attachment {
   url: string; // 1-hour signed URL
   createdAt: string;
   uploadedBy: { id: string; name: string } | null;
+  uploadedByType: 'CITIZEN' | 'OFFICER';
 }
 
 export interface AuditLog {
