@@ -203,10 +203,17 @@ export default function PublicSubmitPage() {
     register,
     handleSubmit,
     watch,
+    getValues,
     setValue,
     formState: { errors },
     reset,
   } = useForm<SubmitForm>({ resolver: zodResolver(submitSchema) });
+
+  useEffect(() => {
+    if (!isAuthChecked || !user?.email) return;
+    if (getValues('citizenEmail')) return;
+    setValue('citizenEmail', user.email, { shouldValidate: true });
+  }, [getValues, isAuthChecked, setValue, user?.email]);
 
   async function onSubmit(data: SubmitForm) {
     if (awaitingTenantResolution) {
@@ -236,9 +243,18 @@ export default function PublicSubmitPage() {
       if (attachments.length > 0) {
         setIsUploading(true);
         try {
-          await Promise.allSettled(
+          const uploadResults = await Promise.allSettled(
             attachments.map((file) => complaintsApi.uploadPublicAttachment(trackingIdFromResponse, file))
           );
+          const failedUploads = uploadResults.filter((r) => r.status === 'rejected').length;
+          if (failedUploads > 0) {
+            const okUploads = uploadResults.length - failedUploads;
+            const message =
+              okUploads > 0
+                ? `${okUploads} file(s) uploaded, ${failedUploads} failed. You can add remaining files later from the complaint detail page.`
+                : `Attachment upload failed for ${failedUploads} file(s). Please retry from the complaint detail page.`;
+            toast.error(message);
+          }
         } catch (uploadError) {
           console.error('Failed to upload some files:', uploadError);
         } finally {
