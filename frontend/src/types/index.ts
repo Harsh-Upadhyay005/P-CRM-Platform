@@ -84,6 +84,7 @@ export interface Department {
   routingKeywords: string[];
   isActive: boolean;
   tenantId: string;
+  tenant?: { id: string; name: string; slug: string };
   createdAt: string;
   updatedAt: string;
   _count: { users: number; complaints: number };

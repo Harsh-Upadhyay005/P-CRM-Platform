@@ -506,6 +506,9 @@ export default function DepartmentsPage() {
                     <div>
                       <CardTitle className="text-sm font-semibold text-white">{dept.name}</CardTitle>
                       <p className="text-[10px] text-slate-500 font-mono">{dept.slug}</p>
+                      <p className="text-[10px] text-slate-500">
+                        Tenant: <span className="text-slate-300">{dept.tenant?.name ?? dept.tenantId}</span>
+                      </p>
                     </div>
                   </div>
                   {isAdmin && (

@@ -417,13 +417,14 @@ export default function UsersPage() {
               </div>
             )}
             <Select value={newRole} onValueChange={(v) => setNewRole(v as RoleType)}>
-              <SelectTrigger className="bg-slate-800/50 border-white/10">
-                <SelectValue />
+              <SelectTrigger className="w-full bg-slate-800/50 border-white/10">
+                <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
                 {isSuperAdmin && (allowSelectingSuperAdmin || assignRoleUser?.role.type === 'SUPER_ADMIN' || newRole === 'SUPER_ADMIN') && (
                   <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                 )}
+                <SelectItem value="CITIZEN">Citizen</SelectItem>
                 <SelectItem value="CALL_OPERATOR">Call Operator</SelectItem>
                 <SelectItem value="OFFICER">Officer</SelectItem>
                 <SelectItem value="DEPARTMENT_HEAD">Department Head</SelectItem>
