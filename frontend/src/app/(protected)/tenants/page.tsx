@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tenantsApi, getErrorMessage } from '@/lib/api';
 import { Tenant } from '@/types';
+import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -181,25 +182,43 @@ export default function TenantsPage() {
                   {/* Stats */}
                   <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/5">
                     <div className="text-center">
-                      <div className="flex items-center justify-center gap-1 text-slate-400">
-                        <Users size={11} />
-                        <span className="text-xs font-semibold text-slate-300">{(t as any)._count?.users ?? '—'}</span>
-                      </div>
-                      <p className="text-[10px] text-slate-600 mt-0.5">Users</p>
+                      <Link
+                        href={`/users?tenantId=${t.id}`}
+                        className="inline-flex flex-col items-center rounded-md px-2 py-1 transition-colors hover:bg-white/5"
+                        title={`View users of ${t.name}`}
+                      >
+                        <div className="flex items-center justify-center gap-1 text-slate-400">
+                          <Users size={11} />
+                          <span className="text-xs font-semibold text-slate-300">{(t as any)._count?.users ?? '—'}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-600 mt-0.5">Users</p>
+                      </Link>
                     </div>
                     <div className="text-center">
-                      <div className="flex items-center justify-center gap-1 text-slate-400">
-                        <Briefcase size={11} />
-                        <span className="text-xs font-semibold text-slate-300">{(t as any)._count?.departments ?? '—'}</span>
-                      </div>
-                      <p className="text-[10px] text-slate-600 mt-0.5">Depts</p>
+                      <Link
+                        href={`/departments?tenantId=${t.id}`}
+                        className="inline-flex flex-col items-center rounded-md px-2 py-1 transition-colors hover:bg-white/5"
+                        title={`View departments of ${t.name}`}
+                      >
+                        <div className="flex items-center justify-center gap-1 text-slate-400">
+                          <Briefcase size={11} />
+                          <span className="text-xs font-semibold text-slate-300">{(t as any)._count?.departments ?? '—'}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-600 mt-0.5">Depts</p>
+                      </Link>
                     </div>
                     <div className="text-center">
-                      <div className="flex items-center justify-center gap-1 text-slate-400">
-                        <FileText size={11} />
-                        <span className="text-xs font-semibold text-slate-300">{(t as any)._count?.complaints ?? '—'}</span>
-                      </div>
-                      <p className="text-[10px] text-slate-600 mt-0.5">Cases</p>
+                      <Link
+                        href={`/complaints?tenantId=${t.id}`}
+                        className="inline-flex flex-col items-center rounded-md px-2 py-1 transition-colors hover:bg-white/5"
+                        title={`View complaints of ${t.name}`}
+                      >
+                        <div className="flex items-center justify-center gap-1 text-slate-400">
+                          <FileText size={11} />
+                          <span className="text-xs font-semibold text-slate-300">{(t as any)._count?.complaints ?? '—'}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-600 mt-0.5">Cases</p>
+                      </Link>
                     </div>
                   </div>
                 </CardContent>

@@ -41,6 +41,7 @@ export interface User {
 
 export interface Complaint {
   id: string;
+  tenantId?: string;
   trackingId: string;
   citizenName: string;
   citizenPhone: string;
@@ -83,6 +84,7 @@ export interface Department {
   routingKeywords: string[];
   isActive: boolean;
   tenantId: string;
+  tenant?: { id: string; name: string; slug: string };
   createdAt: string;
   updatedAt: string;
   _count: { users: number; complaints: number };
@@ -181,6 +183,7 @@ export interface Attachment {
   url: string; // 1-hour signed URL
   createdAt: string;
   uploadedBy: { id: string; name: string } | null;
+  uploadedByType: 'CITIZEN' | 'OFFICER';
 }
 
 export interface AuditLog {

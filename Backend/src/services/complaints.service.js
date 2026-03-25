@@ -58,8 +58,7 @@ const decorateWithSla = (complaint, policyLookup = new Map()) => {
     slaHours && !NON_SLA_STATUSES.includes(complaint.status)
       ? buildSlaSummary(complaint.createdAt, slaHours)
       : null;
-  const { tenantId, ...safeComplaint } = complaint;
-  return { ...safeComplaint, slaSummary, effectiveSlaHours: slaHours };
+  return { ...complaint, slaSummary, effectiveSlaHours: slaHours };
 };
 
 const decorateWithSlaBatch = async (complaints) => {
@@ -175,10 +174,21 @@ export const createComplaint = async (data, user) => {
 
   let resolvedDepartmentId = departmentId ?? null;
 
-  // Auto-route: if no department specified, match locality to service areas
+  
   if (!resolvedDepartmentId && locality) {
     const matchedDept = await matchLocalityToDepartment(
       locality,
+      user.tenantId,
+    );
+    if (matchedDept) {
+      resolvedDepartmentId = matchedDept.id;
+    }
+  }
+
+  // Fallback: Try category-based routing if locality didn't match
+  if (!resolvedDepartmentId && category) {
+    const matchedDept = await matchCategoryToDepartment(
+      category,
       user.tenantId,
     );
     if (matchedDept) {
@@ -263,13 +273,27 @@ const TERMINAL_STATUSES = ["RESOLVED", "CLOSED"];
 
 export const listComplaints = async (query, user) => {
   const { page, limit, skip } = getPagination(query);
-  const { status, priority, category, search, slaBreached, assignedToId, stateId } = query;
+  const {
+    status,
+    priority,
+    category,
+    search,
+    slaBreached,
+    assignedToId,
+    stateId,
+    tenantId: tenantIdParam,
+  } = query;
+
+  const tenantFilter =
+    user.role === "SUPER_ADMIN" && tenantIdParam
+      ? { tenantId: tenantIdParam }
+      : forTenant(user);
 
   const abacFilter = await getABACFilter(user);
 
   const where = {
     isDeleted: false,
-    ...forTenant(user),
+    ...tenantFilter,
     ...abacFilter,
     ...(slaBreached === "true"
       ? { status: { notIn: TERMINAL_STATUSES } }
@@ -508,7 +532,7 @@ export const assignComplaint = async (id, data, user) => {
         isDeleted: false,
         isActive: true,
         ...forTenant(user),
-        role: { type: { notIn: ["CALL_OPERATOR"] } },
+        role: { type: { notIn: ["CALL_OPERATOR", "CITIZEN"] } },
       },
       select: {
         id: true,
@@ -838,6 +862,43 @@ const matchLocalityToDepartment = async (locality, tenantId) => {
   return null;
 };
 
+/**
+ * Match complaint category to department in the SAME tenant.
+ * Returns the first department in that tenant with matching category tag.
+ * CRITICAL: Always scoped by tenantId to prevent cross-tenant routing.
+ */
+const matchCategoryToDepartment = async (category, tenantId) => {
+  if (!category) return null;
+
+  const categoryLower = category.toLowerCase();
+
+  const departments = await prisma.department.findMany({
+    where: {
+      tenantId,  // ← CRITICAL: Restrict to same tenant
+      isActive: true,
+      isDeleted: false,
+      categoryTags: { isEmpty: false },
+    },
+    select: {
+      id: true,
+      name: true,
+      categoryTags: true,
+    },
+  });
+
+  // Find first department in this tenant that handles this category
+  for (const dept of departments) {
+    const hasCategory = dept.categoryTags.some(
+      (tag) => tag.toLowerCase() === categoryLower
+    );
+    if (hasCategory) {
+      return { id: dept.id, name: dept.name };
+    }
+  }
+
+  return null;
+};
+
 export const createPublicComplaint = async (data) => {
   const {
     citizenName,
@@ -1077,13 +1138,19 @@ export const exportComplaints = async (query, user) => {
     startDate,
     endDate,
     departmentId,
+    tenantId: tenantIdParam,
   } = query;
+
+  const tenantFilter =
+    user.role === "SUPER_ADMIN" && tenantIdParam
+      ? { tenantId: tenantIdParam }
+      : forTenant(user);
 
   const abacFilter = await getABACFilter(user);
 
   const where = {
     isDeleted: false,
-    ...forTenant(user),
+    ...tenantFilter,
     ...abacFilter,
     ...(status && { status }),
     ...(priority && { priority }),

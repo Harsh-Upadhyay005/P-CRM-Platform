@@ -11,6 +11,7 @@ import { ArrowLeft, CheckCircle2, Loader2, Send, Paperclip, Search, Building2, C
 import AbstractBackground from '@/components/3d/AbstractBackground';
 import toast from 'react-hot-toast';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
+import { useAuth } from '@/hooks/useAuth';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -144,6 +145,7 @@ function TenantSearch({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PublicSubmitPage() {
+  const { user, isAuthChecked }             = useAuth();
   const [isSubmitting, setIsSubmitting]     = useState(false);
   const [trackingId, setTrackingId]         = useState<string | null>(null);
   const [submitError, setSubmitError]       = useState('');
@@ -157,8 +159,11 @@ export default function PublicSubmitPage() {
   const fileInputRef                       = useRef<HTMLInputElement>(null);
 
   const envTenantSlug = process.env.NEXT_PUBLIC_TENANT_SLUG ?? '';
-  const resolvedSlug  = envTenantSlug || tenantSlug;
-  const needsSlug     = !envTenantSlug;
+  const isCitizenUser = user?.role?.type === 'CITIZEN';
+  const lockedTenantSlug = isCitizenUser ? (user?.tenant?.slug ?? '') : '';
+  const awaitingTenantResolution = !envTenantSlug && !isAuthChecked;
+  const resolvedSlug  = lockedTenantSlug || envTenantSlug || tenantSlug;
+  const needsSlug     = !awaitingTenantResolution && !lockedTenantSlug && !envTenantSlug;
 
   // Load departments whenever a tenant slug is confirmed
   useEffect(() => {
@@ -198,12 +203,27 @@ export default function PublicSubmitPage() {
     register,
     handleSubmit,
     watch,
+    getValues,
     setValue,
     formState: { errors },
     reset,
   } = useForm<SubmitForm>({ resolver: zodResolver(submitSchema) });
 
+  useEffect(() => {
+    if (!isAuthChecked || !user?.email) return;
+    if (getValues('citizenEmail')) return;
+    setValue('citizenEmail', user.email, { shouldValidate: true });
+  }, [getValues, isAuthChecked, setValue, user?.email]);
+
   async function onSubmit(data: SubmitForm) {
+    if (awaitingTenantResolution) {
+      setSubmitError('Please wait while we resolve your organisation.');
+      return;
+    }
+    if (!resolvedSlug) {
+      setSubmitError('Organisation is required to file a complaint.');
+      return;
+    }
     if (needsSlug && !tenantSlug) {
       setSubmitError('Please select an organisation first.');
       return;
@@ -223,9 +243,18 @@ export default function PublicSubmitPage() {
       if (attachments.length > 0) {
         setIsUploading(true);
         try {
-          await Promise.allSettled(
+          const uploadResults = await Promise.allSettled(
             attachments.map((file) => complaintsApi.uploadPublicAttachment(trackingIdFromResponse, file))
           );
+          const failedUploads = uploadResults.filter((r) => r.status === 'rejected').length;
+          if (failedUploads > 0) {
+            const okUploads = uploadResults.length - failedUploads;
+            const message =
+              okUploads > 0
+                ? `${okUploads} file(s) uploaded, ${failedUploads} failed. You can add remaining files later from the complaint detail page.`
+                : `Attachment upload failed for ${failedUploads} file(s). Please retry from the complaint detail page.`;
+            toast.error(message);
+          }
         } catch (uploadError) {
           console.error('Failed to upload some files:', uploadError);
         } finally {
@@ -306,7 +335,16 @@ export default function PublicSubmitPage() {
           onSubmit={handleSubmit(onSubmit)}
           className="z-10 w-full max-w-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl space-y-5"
         >
-          {/* Organisation search */}
+          {/* Organisation (search for public users, locked for logged-in citizens) */}
+          {lockedTenantSlug && (
+            <div>
+              <label className={labelCls}>Organisation</label>
+              <div className="w-full bg-slate-800/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 flex items-center justify-between">
+                <span>{user?.tenant?.name ?? 'Your organisation'}</span>
+                <span className="text-xs text-slate-500 font-mono">{lockedTenantSlug}</span>
+              </div>
+            </div>
+          )}
           {needsSlug && (
             <div>
               <label className={labelCls}>
@@ -469,7 +507,7 @@ export default function PublicSubmitPage() {
                     <div className="flex items-center gap-2 overflow-hidden">
                       {getFileIcon(file.type)}
                       <div className="overflow-hidden">
-                        <p className="text-sm text-white truncate max-w-[200px]">{file.name}</p>
+                        <p className="text-sm text-white truncate max-w-50">{file.name}</p>
                         <p className="text-xs text-slate-500">{formatFileSize(file.size)}</p>
                       </div>
                     </div>
@@ -494,7 +532,7 @@ export default function PublicSubmitPage() {
 
           <button
             type="submit"
-            disabled={isSubmitting || (needsSlug && !tenantSlug)}
+            disabled={isSubmitting || awaitingTenantResolution || (needsSlug && !tenantSlug)}
             className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors"
           >
             {isSubmitting || isUploading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
