@@ -21,9 +21,25 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useRole } from '@/hooks/useRole';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
+import { STATE_CODES, getStateLabelFromCode, inferLocationFromServiceArea, inferLocationFromServiceAreas } from '@/lib/state-codes';
+import { useAuth } from '@/hooks/useAuth';
 
-interface TenantFormData { name: string; slug: string; domain?: string; areas?: string[] }
-const empty: TenantFormData = { name: '', slug: '', domain: '', areas: [] };
+interface TenantFormData {
+  name: string;
+  slug: string;
+  stateCode: string;
+  stateLabel: string;
+  districtLabel: string;
+  areas: string[];
+}
+const empty: TenantFormData = {
+  name: '',
+  slug: '',
+  stateCode: '',
+  stateLabel: '',
+  districtLabel: '',
+  areas: [],
+};
 
 function slugify(s: string) {
   return s.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -31,6 +47,7 @@ function slugify(s: string) {
 
 export default function TenantsPage() {
   const { isSuperAdmin } = useRole();
+  const { user } = useAuth();
   const qc = useQueryClient();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -71,15 +88,48 @@ export default function TenantsPage() {
   }
 
   function openEdit(t: Tenant) {
+    const inferred = inferLocationFromServiceAreas(t.areas);
     setEditing(t);
-    setForm({ name: t.name, slug: t.slug, domain: (t as any).domain ?? '', areas: (t as any).areas ?? [] });
+    setForm({
+      name: t.name,
+      slug: t.slug,
+      stateCode: t.stateCode ?? inferred?.stateCode ?? '',
+      stateLabel: t.stateLabel ?? inferred?.stateLabel ?? '',
+      districtLabel: t.districtLabel ?? inferred?.districtLabel ?? '',
+      areas: t.areas ?? [],
+    });
     setDialogOpen(true);
   }
 
   function handleSubmit() {
-    if (!form.name.trim() || !form.slug.trim()) { toast.error('Name and slug are required'); return; }
-    if (editing) updateMutation.mutate({ id: editing.id, d: form });
-    else createMutation.mutate(form);
+    let payload: TenantFormData = { ...form };
+    if (!payload.stateCode || !payload.stateLabel.trim() || !payload.districtLabel.trim()) {
+      const inferred = inferLocationFromServiceAreas(payload.areas);
+      if (inferred) {
+        payload = {
+          ...payload,
+          stateCode: payload.stateCode || inferred.stateCode,
+          stateLabel: payload.stateLabel || inferred.stateLabel,
+          districtLabel: payload.districtLabel || inferred.districtLabel,
+        };
+        setForm(payload);
+      }
+    }
+
+    if (!form.name.trim() || !form.slug.trim()) {
+      toast.error('Name and slug are required');
+      return;
+    }
+    if (!payload.stateCode || !payload.stateLabel.trim() || !payload.districtLabel.trim()) {
+      toast.error('Unable to infer state/district from service area. Please add a full area like "BHU, Varanasi, Uttar Pradesh, India" or fill fields manually.');
+      return;
+    }
+    if ((payload.areas ?? []).length < 1) {
+      toast.error('At least one service area is required');
+      return;
+    }
+    if (editing) updateMutation.mutate({ id: editing.id, d: payload });
+    else createMutation.mutate(payload);
   }
 
   const pending = createMutation.isPending || updateMutation.isPending;
@@ -132,6 +182,13 @@ export default function TenantsPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {tenants.map((t, i) => (
+            (() => {
+              const inferred = inferLocationFromServiceAreas(t.areas);
+              const stateLabel = t.stateLabel ?? inferred?.stateLabel ?? '—';
+              const stateCode = t.stateCode ?? inferred?.stateCode ?? '';
+              const districtLabel = t.districtLabel ?? inferred?.districtLabel ?? '—';
+
+              return (
             <motion.div key={t.id} initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.04 }}>
               <Card className="bg-slate-900/40 backdrop-blur-md border-white/5 hover:border-purple-500/20 transition-colors relative group">
                 <CardContent className="p-5">
@@ -165,9 +222,10 @@ export default function TenantsPage() {
                     </DropdownMenu>
                   </div>
 
-                  {(t as any).domain && (
-                    <p className="text-xs text-slate-500 mb-3 truncate">{(t as any).domain}</p>
-                  )}
+                  <div className="text-xs text-slate-400 mb-3 space-y-1">
+                    <p className="truncate">State: <span className="text-slate-300">{stateLabel}{stateCode ? ` (${stateCode})` : ''}</span></p>
+                    <p className="truncate">District: <span className="text-slate-300">{districtLabel}</span></p>
+                  </div>
 
                   <Badge
                     className={`text-[10px] px-2 py-0.5 border font-medium mb-3 ${
@@ -224,6 +282,8 @@ export default function TenantsPage() {
                 </CardContent>
               </Card>
             </motion.div>
+              );
+            })()
           ))}
         </div>
       )}
@@ -255,28 +315,63 @@ export default function TenantsPage() {
               <p className="text-[11px] text-slate-600">Used in URLs. Only lowercase letters, numbers, hyphens.</p>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-slate-300 text-sm">Domain (optional)</Label>
+              <Label className="text-slate-300 text-sm">State Code (auto from service area)</Label>
+              <select
+                value={form.stateCode}
+                onChange={(e) => setForm((f) => ({ ...f, stateCode: e.target.value }))}
+                disabled={!!editing && !user?.isPlatformOwner}
+                className="w-full bg-slate-800/60 border border-white/10 rounded-md px-3 py-2 text-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
+              >
+                <option value="" className="bg-slate-900">Select state code</option>
+                {STATE_CODES.map((code) => (
+                  <option key={code} value={code} className="bg-slate-900">
+                    {code} - {getStateLabelFromCode(code)}
+                  </option>
+                ))}
+              </select>
+              {!!editing && !user?.isPlatformOwner && (
+                <p className="text-[11px] text-amber-300">Only platform owner can change tenant state code.</p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-slate-300 text-sm">State Label (auto from service area)</Label>
               <Input
-                value={form.domain}
-                onChange={(e) => setForm((f) => ({ ...f, domain: e.target.value }))}
-                placeholder="acme.gov"
+                value={form.stateLabel}
+                onChange={(e) => setForm((f) => ({ ...f, stateLabel: e.target.value }))}
+                placeholder="Uttar Pradesh"
+                className="bg-slate-800/60 border-white/10 text-slate-200 placeholder:text-slate-600"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-slate-300 text-sm">District Label (auto from service area)</Label>
+              <Input
+                value={form.districtLabel}
+                onChange={(e) => setForm((f) => ({ ...f, districtLabel: e.target.value }))}
+                placeholder="Varanasi"
                 className="bg-slate-800/60 border-white/10 text-slate-200 placeholder:text-slate-600"
               />
             </div>
             <div className="space-y-1.5">
               <Label className="text-slate-300 text-sm flex items-center gap-1">
-                <MapPin size={11} /> Service Areas (optional)
+                <MapPin size={11} /> Service Areas *
               </Label>
               <LocationAutocomplete
                 onChange={(value) => {
                   if (value && !(form.areas ?? []).includes(value)) {
-                    setForm((f) => ({ ...f, areas: [...(f.areas ?? []), value] }));
+                    const inferred = inferLocationFromServiceArea(value);
+                    setForm((f) => ({
+                      ...f,
+                      areas: [...(f.areas ?? []), value],
+                      stateCode: f.stateCode || inferred?.stateCode || '',
+                      stateLabel: f.stateLabel || inferred?.stateLabel || '',
+                      districtLabel: f.districtLabel || inferred?.districtLabel || '',
+                    }));
                   }
                 }}
                 placeholder="Search for a service area..."
                 className="[&_.geoapify-autocomplete-input]:w-full [&_.geoapify-autocomplete-input]:bg-slate-800/60 [&_.geoapify-autocomplete-input]:border [&_.geoapify-autocomplete-input]:border-white/10 [&_.geoapify-autocomplete-input]:rounded-lg [&_.geoapify-autocomplete-input]:px-4 [&_.geoapify-autocomplete-input]:py-2 [&_.geoapify-autocomplete-input]:text-slate-200 [&_.geoapify-autocomplete-input]:text-sm [&_.geoapify-autocomplete-input]:placeholder:text-slate-600 [&_.geoapify-autocomplete-input]:focus:outline-none"
               />
-              <p className="text-[11px] text-slate-600">Search and add service areas covered by this tenant.</p>
+              <p className="text-[11px] text-slate-600">Add areas in full format so state/district can be inferred, e.g. "BHU, Varanasi, Uttar Pradesh, India".</p>
               {(form.areas ?? []).length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   {(form.areas ?? []).map((area) => (
