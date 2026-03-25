@@ -23,8 +23,10 @@ import {
 import clsx from "clsx";
 import { useAuth } from "@/hooks/useAuth";
 import { useSidebar } from "@/lib/sidebar-context";
+import { useTranslation } from 'react-i18next';
 
 export function Sidebar() {
+  const { t } = useTranslation();
   const pathname = usePathname();
   const { role, isSuperAdmin, isAdmin, isDeptHead, isCallOperator, isCitizen } =
     useRole();
@@ -89,64 +91,64 @@ export function Sidebar() {
 
   const links = [
     {
-      label: "Dashboard",
+      label: t('sidebar.dashboard', "Dashboard"),
       href: "/dashboard",
       icon: LayoutDashboard,
       show: isAnyUser,
     },
     {
-      label: "Map",
+      label: t('sidebar.map', "Map"),
       href: "/map",
       icon: Map,
       show: !isCitizen,
     },
     {
-      label: "Complaints",
+      label: t('sidebar.complaints', "Complaints"),
       href: "/complaints",
       icon: FileText,
       show: isAnyUser,
     },
     // File Complaint: Call Operators (primary use) + Admins/SuperAdmin who may need to log manually
     {
-      label: "File Complaint",
+      label: t('sidebar.fileComplaint', "File Complaint"),
       href: "/complaints/new",
       icon: PlusSquare,
       show: isCallOperator || isAdmin,
     },
-    { label: "Users", href: "/users", icon: Users, show: isAdmin },
+    { label: t('sidebar.users', "Users"), href: "/users", icon: Users, show: isAdmin },
     {
-      label: "Departments",
+      label: t('sidebar.departments', "Departments"),
       href: "/departments",
       icon: Building2,
       show: !isCitizen,
     },
     {
-      label: "Workflow",
+      label: t('sidebar.workflow', "Workflow"),
       href: "/workflow",
       icon: Settings2,
       show: isAdmin,
     },
 
     {
-      label: "Analytics",
+      label: t('sidebar.analytics', "Analytics"),
       href: "/analytics",
       icon: BarChart2,
       show: isDeptHead,
     },
     {
-      label: "Notifications",
+      label: t('sidebar.notifications', "Notifications"),
       href: "/notifications",
       icon: Bell,
       show: isAnyUser,
     },
-    { label: "Audit Logs", href: "/audit-logs", icon: History, show: isAdmin },
+    { label: t('sidebar.auditLogs', "Audit Logs"), href: "/audit-logs", icon: History, show: isAdmin },
     {
-      label: "Tenants",
+      label: t('sidebar.tenants', "Tenants"),
       href: "/tenants",
       icon: ShieldCheck,
       show: isSuperAdmin,
     },
-    { label: "Profile", href: "/profile", icon: UserCircle, show: isAnyUser },
+    { label: t('sidebar.profile', "Profile"), href: "/profile", icon: UserCircle, show: isAnyUser },
   ];
 
   return (
@@ -169,20 +171,9 @@ export function Sidebar() {
           <X size={16} />
         </button>
         <div className="flex items-center gap-3">
-          {/* Static Ashoka Chakra Icon instead of full component, for cleaner side logo */}
-          <div className="relative w-8 h-8 flex items-center justify-center rounded-full border-[1.5px] border-indigo-400/70">
-            <div className="absolute inset-0 rounded-full border border-dashed border-indigo-400/40 animate-[spin_10s_linear_infinite]"></div>
-            <div className="w-1 h-1 bg-indigo-300 rounded-full"></div>
-            {Array.from({ length: 24 }).map((_, i) => (
-              <div
-                key={i}
-                className="absolute w-[0.5px] h-3 bg-indigo-300/70 origin-bottom"
-                style={{
-                  bottom: "50%",
-                  transform: `rotate(${i * 15}deg)`,
-                }}
-              />
-            ))}
+          {/* Main Logo Image */}
+          <div className="relative w-10 h-10 flex items-center justify-center rounded-lg bg-white p-1">
+            <img src="/logo.png" alt="Bharat-Setu" className="w-full h-full object-contain" />
           </div>
           <div>
             <h1

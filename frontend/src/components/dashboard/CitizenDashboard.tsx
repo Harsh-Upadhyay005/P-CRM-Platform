@@ -45,7 +45,7 @@ function StatusBadge({ status }: { status: ComplaintStatus }) {
   );
 }
 
-// ── Stat Card ───────────────────────────────────────────────────────────────
+
 
 interface StatCardProps {
   label: string;
@@ -90,7 +90,7 @@ function StatCard({
   );
 }
 
-// ── Main Component ──────────────────────────────────────────────────────────
+
 
 export function CitizenDashboard() {
   const { user } = useAuth();
@@ -125,7 +125,7 @@ export function CitizenDashboard() {
 
   return (
     <div className="w-full flex flex-col gap-6 pb-24">
-      {/* ── Welcome Banner ──────────────────────────────────────────── */}
+      
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
