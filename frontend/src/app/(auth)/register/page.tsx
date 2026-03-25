@@ -6,8 +6,10 @@ import { User, Mail, Lock, Building, ArrowRight, ArrowLeft, Loader2, LayoutGrid,
 import Link from 'next/link';
 import AbstractBackground from '@/components/3d/AbstractBackground';
 import { authApi } from '@/lib/api';
+import { useTranslation } from 'react-i18next';
 
 export default function SignupPage() {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -115,9 +117,7 @@ export default function SignupPage() {
 
           {/* Back to Home */}
           <Link href="/" className="absolute top-4 left-4 z-20 flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors">
-            <ArrowLeft className="w-3.5 h-3.5" />
-            Home
-          </Link>
+            <ArrowLeft className="w-3.5 h-3.5" />{t('auth.home', 'Home')}</Link>
 
           <div className="mb-8 relative z-10 flex items-center justify-between">
             <div>
@@ -139,14 +139,14 @@ export default function SignupPage() {
           <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                    <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">Full Name</label>
+                    <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">{t('auth.fullName', 'Full Name')}</label>
                     <div className="relative group">
                         <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" />
                         <input
                             type="text"
                             required
                             className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-4 text-zinc-200 text-sm placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30"
-                            placeholder="John Doe"
+                            placeholder={t('auth.fullNamePlaceholder', 'John Doe')}
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                         />
@@ -170,7 +170,7 @@ export default function SignupPage() {
             </div>
 
             <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">Password</label>
+                <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">{t('auth.password', 'Password')}</label>
                 <div className="relative group">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" />
                     <input

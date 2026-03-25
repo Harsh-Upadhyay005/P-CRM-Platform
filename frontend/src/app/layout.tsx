@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
+import LanguageToggle from "@/components/LanguageToggle";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -25,8 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="scroll-smooth">
-      {/* Fires the moment the browser parses this HTML — warms up the Render backend
-          before any JS bundle has even downloaded, minimising cold-start delays. */}
+      
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -37,7 +37,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <LanguageToggle />
+        </Providers>
       </body>
     </html>
   );

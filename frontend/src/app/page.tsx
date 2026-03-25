@@ -36,6 +36,8 @@ import { useRouter } from "next/navigation";
 import AbstractBackground from "@/components/3d/AbstractBackground";
 import { useAuth } from "@/hooks/useAuth";
 
+import { useTranslation } from "react-i18next";
+
 function Reveal({
   children,
   className = "",
@@ -87,6 +89,12 @@ function SectionH2({
 export default function Home() {
   const { user, isLoading, isAuthChecked } = useAuth();
   const router = useRouter();
+  const { t, i18n } = useTranslation();
+
+  const toggleLanguage = () => {
+    const newLang = i18n.language === 'hi' ? 'en' : 'hi';
+    i18n.changeLanguage(newLang);
+  };
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollY } = useScroll();
   const heroOpacity = useTransform(scrollY, [0, 420], [1, 0]);
@@ -123,15 +131,15 @@ export default function Home() {
           <div className="max-w-7xl mx-auto flex items-center justify-between px-5 sm:px-8 h-16">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2.5 group shrink-0">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-emerald-500 to-teal-400 shadow-md shadow-emerald-500/30 group-hover:shadow-emerald-500/50 group-hover:scale-105 transition-all duration-300 ease-out">
-                <ShieldCheck className="h-4.5 w-4.5 text-white transform group-hover:rotate-12 transition-transform duration-500 ease-out" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-md shadow-emerald-500/30 group-hover:shadow-emerald-500/50 group-hover:scale-105 transition-all duration-300 ease-out p-1">
+                <img src="/logo.png" alt="Bharat-Setu Logo" className="w-full h-full object-contain" />
               </div>
               <div className="leading-none">
                 <p className="text-[14px] font-bold tracking-tight text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-linear-to-r group-hover:from-emerald-300 group-hover:to-teal-200 transition-all duration-300">
                   Bharat&#8209;Setu
                 </p>
                 <p className="text-[9px] uppercase tracking-[0.2em] text-emerald-400/70 mt-0.5 group-hover:text-emerald-300 transition-colors duration-300">
-                  Grievance Platform
+                  {t('nav.brandSubtitle', 'Grievance Platform')}
                 </p>
               </div>
             </Link>
@@ -139,11 +147,11 @@ export default function Home() {
             {/* Desktop nav links */}
             <nav className="hidden lg:flex items-center gap-1 text-[13px]">
               {[
-                ["Problem", "#problem"],
-                ["Features", "#features"],
-                ["How it works", "#workflow"],
-                ["For citizens", "#citizen"],
-                ["Roles", "#roles"],
+                [t('nav.problem', 'Problem'), "#problem"],
+                [t('nav.features', 'Features'), "#features"],
+                [t('nav.howItWorks', 'How it works'), "#workflow"],
+                [t('nav.forCitizens', 'For citizens'), "#citizen"],
+                [t('nav.roles', 'Roles'), "#roles"],
               ].map(([label, href]) => (
                 <a
                   key={href}
@@ -158,13 +166,20 @@ export default function Home() {
 
             {/* Desktop actions */}
             <div className="hidden lg:flex items-center gap-2">
+              <button
+                onClick={toggleLanguage}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[13px] font-medium text-zinc-300 hover:text-white hover:bg-white/[0.06] transition-all duration-300 mr-2"
+                title="Toggle Language"
+              >
+                {i18n.language === 'hi' ? 'EN' : 'HI'}
+              </button>
               <Link
                 href="/track"
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-[12.5px] font-medium text-zinc-300 hover:text-white transition-all duration-300 group relative overflow-hidden"
               >
                 <span className="relative z-10 group-hover:translate-x-0.5 transition-transform duration-300 flex items-center gap-1.5">
                   <Search className="h-3.5 w-3.5" />
-                  Track
+                  {t('nav.track', 'Track')}
                 </span>
                 <div className="absolute inset-0 bg-white/[0.06] rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 ease-out" />
               </Link>
@@ -174,25 +189,32 @@ export default function Home() {
                 className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.14] bg-white/[0.04] px-4 py-2 text-[12.5px] font-medium text-zinc-200 hover:bg-white/[0.09] hover:border-white/[0.25] text-white transition-all duration-300 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:-translate-y-0.5 ease-out"
               >
                 <Lock className="h-3.5 w-3.5 text-emerald-400" />
-                Sign in
+                {t('nav.signIn', 'Sign in')}
               </Link>
               <Link
                 href="/register"
                 className="inline-flex items-center gap-1.5 rounded-lg bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-4 py-2 text-[12.5px] font-semibold text-white shadow-lg shadow-emerald-900/40 hover:shadow-emerald-500/50 hover:-translate-y-0.5 transition-all duration-300 ease-out"
               >
-                Get started
+                {t('nav.getStarted', 'Get started')}
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
 
             {/* Mobile right: track + hamburger */}
             <div className="flex lg:hidden items-center gap-2">
+              <button
+                onClick={toggleLanguage}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[12px] font-medium text-zinc-300 hover:text-white hover:bg-white/[0.06] transition-all duration-300"
+                title="Toggle Language"
+              >
+                {i18n.language === 'hi' ? 'EN' : 'HI'}
+              </button>
               <Link
                 href="/track"
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] text-zinc-300 hover:text-white hover:bg-white/[0.06] transition-all"
               >
                 <Search className="h-3.5 w-3.5" />
-                Track
+                {t('nav.track', 'Track')}
               </Link>
               <button
                 onClick={() => setMobileOpen((v) => !v)}
@@ -235,14 +257,14 @@ export default function Home() {
                     className="flex items-center gap-2 justify-center rounded-lg border border-white/[0.14] bg-white/[0.04] px-4 py-2.5 text-[13px] font-medium text-zinc-200 hover:bg-white/[0.08] transition-all"
                   >
                     <Lock className="h-3.5 w-3.5" />
-                    Sign in
+                    {t('nav.signIn', 'Sign in')}
                   </Link>
                   <Link
                     href="/register"
                     onClick={() => setMobileOpen(false)}
                     className="flex items-center gap-2 justify-center rounded-lg bg-linear-to-r from-emerald-600 to-teal-600 px-4 py-2.5 text-[13px] font-semibold text-white transition-all"
                   >
-                    Get started
+                    {t('nav.getStarted', 'Get started')}
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
@@ -264,7 +286,7 @@ export default function Home() {
               className="inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/[0.08] px-4 py-1.5 text-[11.5px] font-medium text-emerald-300 mb-6"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Built for modern government offices
+              {t('hero.badge', 'Built for modern government offices')}
             </motion.div>
 
             <motion.h1
@@ -277,9 +299,9 @@ export default function Home() {
               }}
               className="text-4xl sm:text-6xl lg:text-[68px] font-semibold tracking-tight text-white leading-[1.06] mx-auto"
             >
-              Every citizen complaint.{" "}
+              {t('hero.title1', 'Every citizen complaint.')}{" "}
               <span className="bg-linear-to-r from-emerald-300 via-teal-200 to-emerald-400 bg-clip-text text-transparent">
-                Resolved.
+                {t('hero.title2', 'Resolved.')}
               </span>
             </motion.h1>
 
@@ -289,9 +311,7 @@ export default function Home() {
               transition={{ delay: 0.32, duration: 0.65 }}
               className="mt-5 text-[16px] sm:text-[17px] text-zinc-300 leading-relaxed max-w-2xl mx-auto"
             >
-              Replace WhatsApp chains and paper registers with one accountable
-              system — where every grievance is captured, AI-prioritised, and
-              closed on time.
+              {t('landing.replaceWhatsapp')}
             </motion.p>
 
             {/* CTAs */}
@@ -313,7 +333,7 @@ export default function Home() {
                 className="inline-flex items-center justify-center rounded-xl border border-white/[0.15] bg-white/[0.05] px-6 py-3 text-[14px] font-medium text-zinc-100 hover:bg-white/[0.1] hover:text-white hover:border-white/25 transition-all"
               >
                 <FileText className="mr-2 h-4 w-4 text-emerald-400" />
-                File a complaint
+                {t('landing.fileComplaint')}
               </Link>
             </motion.div>
 
@@ -354,8 +374,8 @@ export default function Home() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-5">
                   <div>
-                    <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-400">Live dashboard</p>
-                    <p className="text-sm font-medium text-white mt-1">Real-time complaint overview</p>
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-400">{t('landing.liveDashboard', 'Live dashboard')}</p>
+                    <p className="text-sm font-medium text-white mt-1">{t('landing.realTimeOverview')}</p>
                   </div>
                   <span className="inline-flex items-center rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-[10px] text-emerald-300">
                     <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -393,7 +413,7 @@ export default function Home() {
 
                 {/* Lifecycle Pipeline */}
                 <div className="mt-4 rounded-2xl bg-white/5 border border-white/10 p-4">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400 mb-3">Lifecycle pipeline</p>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400 mb-3">{t('landing.lifecyclePipeline')}</p>
                   <div className="flex items-center gap-2 overflow-x-auto pb-1">
                     {[
                       { stage: 'Open',        count: 243,  w: 60,  color: 'bg-blue-500' },
@@ -426,7 +446,7 @@ export default function Home() {
         >
           <div className="max-w-6xl mx-auto">
             <Reveal>
-              <Eyebrow>The problem</Eyebrow>
+              <Eyebrow>{t('landing.theProblem', 'The problem')}</Eyebrow>
               <SectionH2 className="max-w-3xl">
                 Complaints live in WhatsApp.
                 <br className="hidden sm:block" /> Not in systems.
@@ -444,7 +464,7 @@ export default function Home() {
               <Reveal delay={0.1}>
                 <div className="rounded-2xl border border-zinc-700/50 bg-zinc-900/60 p-7 h-full transition-all duration-300 hover:border-zinc-500/50 hover:bg-zinc-800/60 hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] hover:-translate-y-1 ease-out">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-400 mb-5">
-                    Without Bharat&#8209;Setu
+                    {t('landing.withoutPlatform')}
                   </p>
                   <ul className="space-y-4">
                     {[
@@ -488,7 +508,7 @@ export default function Home() {
               <Reveal delay={0.18}>
                 <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.08] p-7 h-full transition-all duration-300 hover:border-emerald-500/50 hover:bg-emerald-500/[0.1] hover:shadow-[0_8px_30px_rgba(16,185,129,0.15)] hover:-translate-y-1 ease-out">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-emerald-400 mb-5">
-                    With Bharat&#8209;Setu
+                    {t('landing.withPlatform')}
                   </p>
                   <ul className="space-y-4">
                     {[
@@ -538,9 +558,9 @@ export default function Home() {
         >
           <div className="max-w-6xl mx-auto">
             <Reveal>
-              <Eyebrow>Core capabilities</Eyebrow>
+              <Eyebrow>{t('landing.coreCapabilities', 'Core capabilities')}</Eyebrow>
               <SectionH2 className="max-w-2xl">
-                Everything a government office needs. Nothing it doesn&apos;t.
+                {t('landing.needsNothingElse')}
               </SectionH2>
             </Reveal>
 
@@ -591,8 +611,8 @@ export default function Home() {
                   bg: "bg-slate-500/[0.08]",
                   border: "border-white/[0.13]",
                   iconColor: "text-slate-300",
-                  title: "Multi-office isolation",
-                  desc: "Each constituency or department operates in a completely isolated data environment. One platform serves dozens of offices with zero data crossover and independent configuration.",
+                  title: t('landing.multiOffice'),
+                  desc: "{t('landing.multiOfficeDesc')}",
                 },
               ].map((item, i) => (
                 <Reveal key={item.title} delay={i * 0.07}>
@@ -620,9 +640,9 @@ export default function Home() {
         <section className="px-5 sm:px-8 pb-16 sm:pb-24">
           <div className="max-w-6xl mx-auto">
             <Reveal>
-              <Eyebrow>AI intelligence layer</Eyebrow>
+              <Eyebrow>{t('landing.aiLayer', 'AI intelligence layer')}</Eyebrow>
               <SectionH2 className="max-w-2xl">
-                Three engines. Zero manual triage.
+                {t('landing.threeEngines')}
               </SectionH2>
               <p className="mt-5 text-zinc-300 text-[15px] leading-relaxed max-w-2xl font-light">
                 Every new complaint is scored automatically before staff see it
@@ -679,7 +699,7 @@ export default function Home() {
                   {/* Status + assignment row */}
                   <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-3.5 grid grid-cols-3 gap-3">
                     <div>
-                      <p className="text-[10px] text-zinc-500 mb-1">Status</p>
+                      <p className="text-[10px] text-zinc-500 mb-1">{t('landing.statusLabel')}</p>
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/[0.12] border border-amber-500/25 px-2 py-0.5 text-[10.5px] text-amber-300 font-medium">
                         <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
                         Escalated
@@ -705,7 +725,7 @@ export default function Home() {
 
                   {/* SLA row */}
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-zinc-500">SLA deadline</span>
+                    <span className="text-zinc-500">{t('landing.slaDeadlineLabel')}</span>
                     <span className="text-red-400 font-medium">
                       Breached — 6 h ago
                     </span>
@@ -757,9 +777,9 @@ export default function Home() {
                     icon: <CheckCircle2 className="h-4 w-4 text-emerald-400" />,
                     name: "Duplicate Detection",
                     detail:
-                      "TF-IDF cosine similarity against recent complaints in the same tenant. Flags near-duplicates for staff review — saves officer time, gives leaders accurate counts.",
+                      t('landing.duplicateDetail'),
                     example:
-                      "Same pothole filed 8 times → flagged as duplicate cluster",
+                      t('landing.duplicateExample'),
                     bg: "border-emerald-500/10",
                   },
                 ].map((engine, i) => (
@@ -795,9 +815,9 @@ export default function Home() {
         >
           <div className="max-w-6xl mx-auto">
             <Reveal>
-              <Eyebrow>How it works</Eyebrow>
+              <Eyebrow>{t('landing.howItWorks', 'How it works')}</Eyebrow>
               <SectionH2 className="max-w-xl">
-                Four steps. Full accountability.
+                {t('landing.fourSteps')}
               </SectionH2>
             </Reveal>
 
@@ -828,8 +848,8 @@ export default function Home() {
                   {
                     step: "04",
                     icon: <Star className="h-4 w-4 text-emerald-400" />,
-                    title: "Citizen rates & closes",
-                    desc: "Citizen submits a 1–5 satisfaction rating using only their tracking ID. Aggregated into the analytics dashboard. Immutable audit trail preserved permanently.",
+                    title: t('landing.citizenRates', 'Citizen rates & closes'),
+                    desc: t('landing.citizenRatesDesc'),
                   },
                 ].map((s, i) => (
                   <Reveal key={s.step} delay={i * 0.1}>
@@ -865,13 +885,12 @@ export default function Home() {
         >
           <div className="max-w-6xl mx-auto">
             <Reveal>
-              <Eyebrow>For citizens</Eyebrow>
+              <Eyebrow>{t('landing.forCitizens', 'For citizens')}</Eyebrow>
               <SectionH2 className="max-w-2xl">
-                No login. No app. Just results.
+                {t('landing.noLogin')}
               </SectionH2>
               <p className="mt-5 text-zinc-300 text-[15px] font-light leading-relaxed max-w-2xl">
-                Citizens don&apos;t need an account to file, track, or rate.
-                Three actions — available from any browser, on any device.
+                {t('landing.citizenAccess')}
               </p>
             </Reveal>
 
@@ -902,7 +921,7 @@ export default function Home() {
                   bg: "bg-amber-500/[0.07]",
                   border: "border-amber-500/12",
                   title: "Rate the service",
-                  desc: "Once resolved, submit a 1–5 satisfaction rating and comment. This data flows directly into the leadership analytics dashboard.",
+                  desc: t('landing.rateServiceDesc'),
                   action: "Track to rate",
                   href: "/track",
                   badge: "Anonymous",
@@ -945,9 +964,9 @@ export default function Home() {
         <section className="px-5 sm:px-8 pb-16 sm:pb-24">
           <div className="max-w-6xl mx-auto">
             <Reveal>
-              <Eyebrow>Every detail. Every time.</Eyebrow>
+              <Eyebrow>{t('landing.everyDetail')}</Eyebrow>
               <SectionH2 className="max-w-2xl">
-                Built for accountability, not just tracking.
+                {t('landing.accountabilityFirst')}
               </SectionH2>
             </Reveal>
 
@@ -968,9 +987,9 @@ export default function Home() {
                 {
                   icon: <Shield className="h-5 w-5 text-indigo-400" />,
                   title: "Immutable audit trail",
-                  desc: "Every status transition — who changed what, from what, to what, at what time — is written atomically to the database. Court-admissible, irreversible, always on.",
+                  desc: t('landing.immutableAudit'),
                   detail:
-                    "Full chronological record survives any personnel change.",
+                    t('landing.chronologicalRecord'),
                 },
               ].map((item, i) => (
                 <Reveal key={item.title} delay={i * 0.1}>
@@ -1002,7 +1021,7 @@ export default function Home() {
             <Reveal>
               <Eyebrow>Designed for every role</Eyebrow>
               <SectionH2 className="max-w-2xl">
-                Five roles. One clear hierarchy.
+                {t('landing.fiveRoles')}
               </SectionH2>
               <p className="mt-5 text-[15px] text-zinc-300 font-light max-w-2xl leading-relaxed">
                 Every user sees exactly what they need — nothing more. Role
@@ -1085,9 +1104,9 @@ export default function Home() {
         <section className="px-5 sm:px-8 pb-16 sm:pb-24">
           <div className="max-w-6xl mx-auto">
             <Reveal>
-              <Eyebrow>Why not a generic helpdesk</Eyebrow>
+              <Eyebrow>{t('landing.whyNotHelpdesk')}</Eyebrow>
               <SectionH2 className="max-w-2xl">
-                Government work requires government-grade tools.
+                {t('landing.govGradeTools')}
               </SectionH2>
             </Reveal>
 
@@ -1172,20 +1191,18 @@ export default function Home() {
                 <ShieldCheck className="h-7 w-7 text-emerald-400 group-hover:text-emerald-300 transition-colors duration-300" />
               </div>
               <h2 className="text-2xl sm:text-[32px] font-light tracking-tight text-white leading-[1.2]">
-                Ready to bring accountability
+                {t('landing.readyToBring')}
                 <br className="hidden sm:block" /> to your office?
               </h2>
               <p className="mt-5 text-zinc-400 text-[14.5px] leading-relaxed max-w-lg mx-auto font-light">
-                No complaint is lost. No deadline is invisible. No step is
-                undocumented. Start managing citizen grievances the way a modern
-                office should.
+                {t('hero.subtitle', 'No complaint is lost. No deadline is invisible. No step is undocumented. Start managing citizen grievances the way a modern office should.')}
               </p>
               <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
                 <Link
                   href="/register"
                   className="inline-flex items-center justify-center rounded-full bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-8 py-3 text-sm font-semibold text-white shadow-xl shadow-emerald-900/30 hover:shadow-[0_8px_30px_rgba(16,185,129,0.25)] transition-all duration-300 hover:-translate-y-1 active:scale-[0.98] ease-out"
                 >
-                  Get started
+                  {t('hero.getStartedBtn', 'Get started')}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
                 <Link
@@ -1193,14 +1210,14 @@ export default function Home() {
                   className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.03] px-6 py-3 text-sm font-medium text-zinc-200 hover:bg-white/[0.08] hover:border-white/[0.25] transition-all duration-300 hover:shadow-[0_8px_30px_rgba(0,0,0,0.15)] hover:-translate-y-1 ease-out"
                 >
                   <Lock className="mr-2 h-3.5 w-3.5 text-emerald-400" />
-                  Staff sign in
+                  {t('hero.staffSignInBtn', 'Staff sign in')}
                 </Link>
               </div>
 
               {/* Citizen links */}
               <div className="mt-8 pt-6 border-t border-white/[0.09]">
                 <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-400 mb-3">
-                  Citizens — no account needed
+                  {t('landing.citizensNoAccount')}
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-2.5">
                   <Link

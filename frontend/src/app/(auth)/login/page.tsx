@@ -6,9 +6,11 @@ import { Mail, Lock, ArrowRight, ArrowLeft, Loader2, UserCircle, ShieldCheck, Ey
 import Link from 'next/link';
 import AbstractBackground from '@/components/3d/AbstractBackground';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -58,16 +60,14 @@ export default function LoginPage() {
 
             {/* Back to Home */}
             <Link href="/" className="absolute top-4 left-4 z-20 flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors">
-              <ArrowLeft className="w-3.5 h-3.5" />
-              Home
-            </Link>
+              <ArrowLeft className="w-3.5 h-3.5" />{t('auth.home', 'Home')}</Link>
 
             <div className="text-center mb-8 relative z-10">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-white/5 mb-4 ring-1 ring-white/10 shadow-lg backdrop-blur-sm">
-                    <ShieldCheck className="w-8 h-8 text-emerald-300/80" />
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-xl bg-white mb-4 shadow-lg backdrop-blur-sm p-2">
+                    <img src="/logo.png" alt="Bharat-Setu Logo" className="w-full h-full object-contain" />
                 </div>
-                <h2 className="text-2xl font-light text-white tracking-wide">Secure Access</h2>
-                <p className="text-xs text-zinc-400 mt-2 uppercase tracking-widest">BharatSetu Portal</p>
+                <h2 className="text-2xl font-light text-white tracking-wide">{t('auth.secureAccess', 'Secure Access')}</h2>
+                <p className="text-xs text-zinc-400 mt-2 uppercase tracking-widest">{t('auth.portal', 'BharatSetu Portal')}</p>
             </div>
 
             {error && (
@@ -82,7 +82,7 @@ export default function LoginPage() {
 
             <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
                 <div className="space-y-2">
-                    <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider ml-1">Email</label>
+                    <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider ml-1">{t('auth.email', 'Email')}</label>
                     <div className="relative group">
                         <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" />
                         <input
@@ -97,7 +97,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider ml-1">Password</label>
+                    <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider ml-1">{t('auth.password', 'Password')}</label>
                     <div className="relative group">
                         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" />
                         <input
