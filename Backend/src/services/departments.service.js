@@ -19,6 +19,32 @@ const deptSelect = {
   _count: { select: { users: { where: { isDeleted: false, isActive: true } }, complaints: { where: { isDeleted: false } } } },
 };
 
+const resolveSuperAdminDepartmentStateScope = async (user) => {
+  if (user.role !== "SUPER_ADMIN") return {};
+
+  const actor = await prisma.user.findUnique({
+    where: { id: user.userId },
+    select: {
+      isPlatformOwner: true,
+      managedStateCode: true,
+    },
+  });
+
+  if (actor?.isPlatformOwner) return {};
+
+  if (!actor?.managedStateCode) {
+    throw new ApiError(403, "State super admin does not have an assigned state");
+  }
+
+  return {
+    tenant: {
+      is: {
+        stateCode: actor.managedStateCode,
+      },
+    },
+  };
+};
+
 const assertDeptAccess = async (deptId, user, action = "modify") => {
   if (user.role === "DEPARTMENT_HEAD") {
     const dbUser = await prisma.user.findUnique({
@@ -34,12 +60,27 @@ const assertDeptAccess = async (deptId, user, action = "modify") => {
 export const createDepartment = async (data, user) => {
   const { name, slaHours, serviceAreas, categoryTags, routingKeywords, tenantId: bodyTenantId } = data;
 
+  const stateScopeWhere = await resolveSuperAdminDepartmentStateScope(user);
+
   // SUPER_ADMIN may target any tenant; all other roles use their own tenant
   const tenantId =
     user.role === "SUPER_ADMIN" && bodyTenantId
       ? bodyTenantId
       : user.tenantId;
   if (!tenantId) throw new ApiError(400, "tenantId is required to create a department");
+
+  if (user.role === "SUPER_ADMIN" && bodyTenantId && Object.keys(stateScopeWhere).length > 0) {
+    const targetTenant = await prisma.tenant.findFirst({
+      where: {
+        id: tenantId,
+        ...stateScopeWhere,
+      },
+      select: { id: true },
+    });
+    if (!targetTenant) {
+      throw new ApiError(403, "State super admin can only create departments in their own state");
+    }
+  }
 
   const slug = slugify(name);
 
@@ -67,6 +108,7 @@ export const createDepartment = async (data, user) => {
 export const listDepartments = async (query, user) => {
   const { page, limit, skip } = getPagination(query);
   const { search, isActive, tenantId: tenantIdParam } = query;
+  const stateScopeWhere = await resolveSuperAdminDepartmentStateScope(user);
 
   const tenantFilter =
     user.role === "SUPER_ADMIN" && tenantIdParam
@@ -76,6 +118,7 @@ export const listDepartments = async (query, user) => {
   const where = {
     isDeleted: false,
     ...tenantFilter,
+    ...stateScopeWhere,
     ...(isActive !== undefined && { isActive: isActive === "true" }),
     ...(search && {
       name: { contains: search, mode: "insensitive" },
@@ -97,8 +140,9 @@ export const listDepartments = async (query, user) => {
 };
 
 export const getDepartment = async (id, user) => {
+  const stateScopeWhere = await resolveSuperAdminDepartmentStateScope(user);
   const dept = await prisma.department.findFirst({
-    where: { id, isDeleted: false, ...forTenant(user) },
+    where: { id, isDeleted: false, ...forTenant(user), ...stateScopeWhere },
     select: deptSelect,
   });
   if (!dept) throw new ApiError(404, "Department not found");
@@ -106,8 +150,9 @@ export const getDepartment = async (id, user) => {
 };
 
 export const updateDepartment = async (id, data, user) => {
+  const stateScopeWhere = await resolveSuperAdminDepartmentStateScope(user);
   const dept = await prisma.department.findFirst({
-    where: { id, isDeleted: false, ...forTenant(user) },
+    where: { id, isDeleted: false, ...forTenant(user), ...stateScopeWhere },
     select: { id: true },
   });
   if (!dept) throw new ApiError(404, "Department not found");
@@ -143,8 +188,9 @@ export const updateDepartment = async (id, data, user) => {
 };
 
 export const softDeleteDepartment = async (id, user) => {
+  const stateScopeWhere = await resolveSuperAdminDepartmentStateScope(user);
   const dept = await prisma.department.findFirst({
-    where: { id, isDeleted: false, ...forTenant(user) },
+    where: { id, isDeleted: false, ...forTenant(user), ...stateScopeWhere },
     select: { id: true },
   });
   if (!dept) throw new ApiError(404, "Department not found");

@@ -63,8 +63,8 @@ export default function LoginPage() {
               <ArrowLeft className="w-3.5 h-3.5" />{t('auth.home', 'Home')}</Link>
 
             <div className="text-center mb-8 relative z-10">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-xl bg-white mb-4 shadow-lg backdrop-blur-sm p-2">
-                    <img src="/logo.png" alt="Bharat-Setu Logo" className="w-full h-full object-contain" />
+                <div className="inline-flex items-center justify-center w-28 h-28 mb-4">
+                    <img src="/logo.png" alt="Bharat-Setu Logo" className="w-full h-full object-contain drop-shadow-lg" />
                 </div>
                 <h2 className="text-2xl font-light text-white tracking-wide">{t('auth.secureAccess', 'Secure Access')}</h2>
                 <p className="text-xs text-zinc-400 mt-2 uppercase tracking-widest">{t('auth.portal', 'BharatSetu Portal')}</p>

@@ -172,7 +172,7 @@ export function Sidebar() {
         </button>
         <div className="flex items-center gap-3">
           {/* Main Logo Image */}
-          <div className="relative w-10 h-10 flex items-center justify-center rounded-lg bg-white p-1">
+          <div className="relative w-12 h-12 flex items-center justify-center drop-shadow-md flex-shrink-0">
             <img src="/logo.png" alt="Bharat-Setu" className="w-full h-full object-contain" />
           </div>
           <div>
