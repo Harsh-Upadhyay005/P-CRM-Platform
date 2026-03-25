@@ -36,13 +36,14 @@
 
 ## Roles Overview
 
-| Role                | Level | Scope                        | Who Is This For                  |
-| ------------------- | ----- | ---------------------------- | -------------------------------- |
-| **Super Admin**     | 5     | Full platform (all tenants)  | Platform owner / top-level admin |
-| **Admin**           | 4     | Full tenant access           | Organisation administrator       |
-| **Department Head** | 3     | Own department only          | Head of a government department  |
-| **Officer**         | 2     | Own assigned complaints only | Field/desk officer               |
-| **Call Operator**   | 1     | Own created complaints only  | Helpdesk / call-centre staff     |
+| Role                  | Level | Scope                          | Who Is This For                         |
+| --------------------- | ----- | ------------------------------ | --------------------------------------- |
+| **Platform Owner**    | 6     | Complete Global Platform       | Absolute top-level admin / system owner |
+| **State Super Admin** | 5     | Full state (all local tenants) | State nodal officer                     |
+| **Admin**             | 4     | Full tenant access             | Organisation administrator              |
+| **Department Head**   | 3     | Own department only            | Head of a government department         |
+| **Officer**           | 2     | Own assigned complaints only   | Field/desk officer                      |
+| **Call Operator**     | 1     | Own created complaints only    | Helpdesk / call-centre staff            |
 
 ### Permission Matrix
 
@@ -301,9 +302,12 @@ Track every system event:
 
 ---
 
-## Super Admin
+## Super Admins & Platform Owners
 
-Super Admins have **full platform control** across all tenants.
+The top-level roles are split into **Platform Owners** and **State Super Admins**.
+
+- **Platform Owners** have **full platform control** across all global tenants and states.
+- **State Super Admins** have **cross-office control** only within their specific state jurisdiction.
 
 ### Tenant Management (`/tenants`)
 
@@ -315,12 +319,13 @@ Super Admins have **full platform control** across all tenants.
 | Toggle active    | Click **⋮** → **Deactivate / Activate**      |
 | Delete tenant    | Click **⋮** → **Delete**                     |
 
-> Each tenant is fully isolated — users, departments, complaints, and analytics are scoped per tenant.
+> Each tenant is fully isolated — users, departments, complaints, and analytics are scoped per tenant. State Super Admins only see tenants belonging to their state code.
 
 ### Cross-Tenant Access
 
-- Super Admins can see users, complaints, analytics, and audit logs across **all tenants**
-- All analytics charts and KPI cards aggregate data across the entire platform
+- **Platform Owners** see users, complaints, analytics, and audit logs across **all tenants and states**.
+- **State Super Admins** aggregate data across **tenants within their state** only.
+- State Admins can generate access codes specifically for their state, enabling easy onboarding for new lower-level admins.
 
 ---
 

@@ -249,13 +249,14 @@ Admins and Department Heads can export complaint data and analytics reports as C
 
 ## Who Uses P-CRM
 
-| Role                | Who They Are                         | What They Do                                                                                    |
-| ------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------------- |
-| **Call Operator**   | Front-desk staff, call centre agents | Log complaints, track them by ID, submit satisfaction feedback after resolution                 |
-| **Officer**         | Field officers, resolution staff     | Action complaints assigned to them, update status, add notes                                    |
-| **Department Head** | HOD, section chief                   | Assign complaints within department, view department analytics, manage SLA                      |
-| **Admin**           | Office administrator, IT manager     | Full office management — users, departments, all complaints; can be assigned as a handler       |
-| **Super Admin**     | Central IT / platform operator       | Cross-office management, tenant provisioning, platform-wide audit; can be assigned as a handler |
+| Role                  | Who They Are                         | What They Do                                                                              |
+| --------------------- | ------------------------------------ | ----------------------------------------------------------------------------------------- |
+| **Call Operator**     | Front-desk staff, call centre agents | Log complaints, track them by ID, submit satisfaction feedback after resolution           |
+| **Officer**           | Field officers, resolution staff     | Action complaints assigned to them, update status, add notes                              |
+| **Department Head**   | HOD, section chief                   | Assign complaints within department, view department analytics, manage SLA                |
+| **Admin**             | Office administrator, IT manager     | Full office management — users, departments, all complaints; can be assigned as a handler |
+| **Platform Owner**    | Global platform maintainer           | Manage all states, platform-wide analytics, super admin provisioning                      |
+| **State Super Admin** | State nodal officer                  | Cross-office management within their state, tenant provisioning, state-wide audit         |
 
 ---
 
@@ -393,17 +394,17 @@ The dashboard is a full-featured **Next.js 16** single-page application with:
 
 ## Why P-CRM vs a Generic Helpdesk Tool
 
-| Feature                        | Generic Helpdesk                | P-CRM                                                                          |
-| ------------------------------ | ------------------------------- | ------------------------------------------------------------------------------ |
-| Multi-office isolation         | Rarely, or paid enterprise tier | Built in from the ground up                                                    |
-| Government role hierarchy      | Generic agent/admin only        | 5-level political office hierarchy (Officer → Dept Head → Admin → Super Admin) |
-| SLA auto-escalation            | Manual rules only               | Automated background escalation engine                                         |
-| AI priority detection          | Add-on, external API cost       | Included, runs locally, no API cost                                            |
-| Citizen tracking without login | Not standard                    | Core feature, no account needed                                                |
-| Political office workflows     | Not understood                  | Designed specifically for this context                                         |
-| Audit trail quality            | Basic logs                      | Immutable, structured, queryable by any field                                  |
-| Department-scoped assignment   | Not standard                    | Enforced in code — cannot be bypassed                                          |
-| Duplicate detection            | Not standard                    | Built-in TF cosine similarity engine                                           |
+| Feature                        | Generic Helpdesk                | P-CRM                                                                                                 |
+| ------------------------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Multi-office isolation         | Rarely, or paid enterprise tier | Built in from the ground up                                                                           |
+| Government role hierarchy      | Generic agent/admin only        | 6-level political office hierarchy (Officer → Dept Head → Admin → State Super Admin → Platform Owner) |
+| SLA auto-escalation            | Manual rules only               | Automated background escalation engine                                                                |
+| AI priority detection          | Add-on, external API cost       | Included, runs locally, no API cost                                                                   |
+| Citizen tracking without login | Not standard                    | Core feature, no account needed                                                                       |
+| Political office workflows     | Not understood                  | Designed specifically for this context                                                                |
+| Audit trail quality            | Basic logs                      | Immutable, structured, queryable by any field                                                         |
+| Department-scoped assignment   | Not standard                    | Enforced in code — cannot be bypassed                                                                 |
+| Duplicate detection            | Not standard                    | Built-in TF cosine similarity engine                                                                  |
 
 ---
 

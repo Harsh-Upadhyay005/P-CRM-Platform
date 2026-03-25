@@ -91,7 +91,7 @@ No complaint is lost. No deadline is invisible. No step goes undocumented.
 ### For Government Staff
 
 - **AI-powered triage** — every complaint is automatically scored for priority (CRITICAL/HIGH/MEDIUM/LOW), sentiment, and duplicate detection — no external API, zero subscription cost
-- **Role-gated workflow** — 5-level RBAC ensures officers only see their cases, department heads only see their department, and admins see everything
+- **Role-gated workflow** — 6-level RBAC ensures officers only see their cases, department heads only see their department, and admins see everything
 - **SLA auto-enforcement** — complaints that breach their department deadline are automatically escalated by a background job every 30 minutes; breach emails are dispatched to the assigned officer and department head
 - **Workflow automation engine** — admins can configure rule-based auto-assignment by category, area, and keywords, plus smart routing using AI + department service metadata
 - **Category SLA policy** — set SLA per category (for example: Water = 24h, Road = 72h) with automatic fallback to department SLA
@@ -205,15 +205,16 @@ Background Jobs (server.js)
 
 ## Role & Permission Model
 
-Five fixed roles, ranked by privilege:
+Six fixed roles, ranked by privilege:
 
-| Role              | Level | Scope                        |
-| ----------------- | ----- | ---------------------------- |
-| `SUPER_ADMIN`     | 5     | Full platform — all tenants  |
-| `ADMIN`           | 4     | Full tenant                  |
-| `DEPARTMENT_HEAD` | 3     | Own department only          |
-| `OFFICER`         | 2     | Own assigned complaints only |
-| `CALL_OPERATOR`   | 1     | Own created complaints only  |
+| Role              | Level | Scope                                   |
+| ----------------- | ----- | --------------------------------------- |
+| `PLATFORM_OWNER`  | 6     | Full platform — global                  |
+| `SUPER_ADMIN`     | 5     | Full state scope — all tenants in state |
+| `ADMIN`           | 4     | Full tenant                             |
+| `DEPARTMENT_HEAD` | 3     | Own department only                     |
+| `OFFICER`         | 2     | Own assigned complaints only            |
+| `CALL_OPERATOR`   | 1     | Own created complaints only             |
 
 ### Permission Matrix
 
