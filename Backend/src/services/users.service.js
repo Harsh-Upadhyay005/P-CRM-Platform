@@ -145,6 +145,32 @@ const resolveTenantStateCode = async (tenantId) => {
   return inferredStateCode;
 };
 
+const resolveSuperAdminStateVisibilityWhere = async (user) => {
+  if (user.role !== "SUPER_ADMIN") return {};
+
+  const actor = await prisma.user.findUnique({
+    where: { id: user.userId },
+    select: {
+      isPlatformOwner: true,
+      managedStateCode: true,
+    },
+  });
+
+  if (actor?.isPlatformOwner) return {};
+
+  if (!actor?.managedStateCode) {
+    throw new ApiError(403, "State super admin does not have an assigned state");
+  }
+
+  return {
+    tenant: {
+      is: {
+        stateCode: actor.managedStateCode,
+      },
+    },
+  };
+};
+
 export const getMe = async (user) => {
   const me = await prisma.user.findFirst({
     where: { id: user.userId, isDeleted: false, ...forTenant(user) },
@@ -186,9 +212,12 @@ export const listUsers = async (query, user) => {
       ? { tenantId: tenantIdParam }
       : forTenant(user);
 
+  const stateVisibilityWhere = await resolveSuperAdminStateVisibilityWhere(user);
+
   const where = {
     isDeleted: false,
     ...tenantFilter,
+    ...stateVisibilityWhere,
     ...deptFilter,
     ...(isActive !== undefined && { isActive: isActive === "true" }),
     ...(roleType && { role: { type: roleType } }),
@@ -216,9 +245,15 @@ export const listUsers = async (query, user) => {
 
 export const getUserById = async (targetId, user) => {
   const { role } = user;
+  const stateVisibilityWhere = await resolveSuperAdminStateVisibilityWhere(user);
 
   const target = await prisma.user.findFirst({
-    where: { id: targetId, isDeleted: false, ...forTenant(user) },
+    where: {
+      id: targetId,
+      isDeleted: false,
+      ...forTenant(user),
+      ...stateVisibilityWhere,
+    },
     select: { ...userSelect, departmentId: true },
   });
 
