@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Increase timeout for static page generation (default is 60s)
+  staticPageGenerationTimeout: 120,
   // Fix: Turbopack infers the wrong workspace root when there are multiple
   // lock files (backend + frontend). Point it explicitly to this directory.
   turbopack: {
