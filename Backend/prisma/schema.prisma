@@ -42,6 +42,9 @@ model Tenant {
   slug        String   @unique
   isActive    Boolean  @default(true)
   areas       String[] @default([])
+  stateCode   String?
+  stateLabel  String?
+  districtLabel String?
 
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -55,6 +58,7 @@ model Tenant {
   workflowSetting WorkflowSetting?
 
   @@index([slug])
+  @@index([stateCode])
 }
 
 // ROLE
@@ -73,9 +77,11 @@ model Role {
 
 model User {
   id            String   @id @default(uuid())
-  tenantId      String
+  tenantId      String?
   roleId        String
   departmentId  String?
+  managedStateCode String?
+  isPlatformOwner Boolean @default(false)
 
   name          String
   email         String   @unique
@@ -96,7 +102,7 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  tenant        Tenant      @relation(fields: [tenantId], references: [id])
+  tenant        Tenant?     @relation(fields: [tenantId], references: [id])
   role          Role        @relation(fields: [roleId], references: [id])
   department    Department? @relation(fields: [departmentId], references: [id])
 
@@ -108,12 +114,37 @@ model User {
   refreshTokens RefreshToken[]
   assignedAutomationRules AutomationAssignmentRule[] @relation("AutomationRuleAssignee")
   createdAutomationRules  AutomationAssignmentRule[] @relation("AutomationRuleCreator")
+  generatedSuperAdminSignupCodes SuperAdminSignupCode[] @relation("CodeGenerator")
+  redeemedSuperAdminSignupCodes  SuperAdminSignupCode[] @relation("CodeRedeemer")
 
   @@index([tenantId])
   @@index([roleId])
   @@index([departmentId])
+  @@index([managedStateCode])
+  @@index([isPlatformOwner])
   @@index([verificationToken])
   @@index([resetToken])
+}
+
+model SuperAdminSignupCode {
+  id           String   @id @default(uuid())
+  code         String   @unique
+  stateCode    String
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  isActive     Boolean  @default(true)
+  createdById  String
+  consumedById String?
+  createdAt    DateTime @default(now())
+
+  createdBy    User     @relation("CodeGenerator", fields: [createdById], references: [id])
+  consumedBy   User?    @relation("CodeRedeemer", fields: [consumedById], references: [id])
+
+  @@index([stateCode])
+  @@index([expiresAt])
+  @@index([isActive])
+  @@index([createdById])
+  @@index([consumedById])
 }
 
 model RefreshToken {
