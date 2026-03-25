@@ -6,6 +6,8 @@ import { AuthProvider } from '@/lib/auth';
 import { queryClient } from '@/lib/query-client';
 import { Toaster } from 'react-hot-toast';
 
+import '@/lib/i18n';
+
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>

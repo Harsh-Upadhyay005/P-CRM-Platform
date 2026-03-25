@@ -18,6 +18,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Activity, Shield } from "lucide-react";
 import { useRole } from "@/hooks/useRole";
+import { useTranslation } from 'react-i18next';
 
 // Lazy-load the 3D component to avoid SSR issues and reduce initial bundle
 const CommandCenter3D = dynamic(
@@ -34,6 +35,7 @@ const CommandCenter3D = dynamic(
 );
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const dashboardRef = useRef<HTMLDivElement>(null);
   const { isCitizen } = useRole();
 
@@ -97,20 +99,15 @@ export default function Dashboard() {
                 backgroundImage:
                   "linear-gradient(135deg, #FF9933, #FFFFFF, #138808)",
               }}
-            >
-              National Command Center
-            </h1>
+            > {t('dashboard.commandCenter', 'National Command Center')} </h1>
             <p className="text-xs text-slate-400 mt-1">
-              Real-time overview of citizen complaints, team activity, and
-              analytics.
+              {t('dashboard.subtitle', 'Real-time overview of citizen complaints, team activity, and analytics.')}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <span className="px-3 py-1.5 rounded-full bg-[#138808]/10 text-[#34D399] border border-[#138808]/20 text-xs font-mono flex items-center gap-1.5 shadow-[0_0_10px_rgba(19,136,8,0.15)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse" />
-            LIVE
-          </span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#34D399] animate-pulse" />{t('dashboard.live', 'LIVE')}</span>
           <span className="px-3 py-1.5 rounded-full bg-[#FF9933]/10 text-[#FF9933] border border-[#FF9933]/20 text-xs font-mono flex items-center gap-1.5 shadow-[0_0_10px_rgba(255,153,51,0.15)]">
             <Activity size={12} />
             {new Date().toLocaleDateString("en-IN", {
