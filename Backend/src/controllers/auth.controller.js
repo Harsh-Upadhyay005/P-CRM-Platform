@@ -108,3 +108,13 @@ export const resetPassword = asyncHandler(async (req, res) => {
   clearAuthCookies(res);
   res.json(new ApiResponse(200, null, "Password reset successful"));
 });
+
+export const generateSuperAdminCode = asyncHandler(async (req, res) => {
+  const data = await authService.generateSuperAdminSignupCode(req.body, req.user);
+  res.status(201).json(new ApiResponse(201, data, "Super admin signup code generated"));
+});
+
+export const superAdminSignup = asyncHandler(async (req, res) => {
+  const user = await authService.signupSuperAdminWithCode(req.body);
+  res.status(201).json(new ApiResponse(201, user, "Super admin account created"));
+});

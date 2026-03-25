@@ -98,6 +98,18 @@ export interface RegisterPayload {
   tenantSlug: string;
 }
 
+export interface SuperAdminSignupPayload {
+  name: string;
+  email: string;
+  password: string;
+  signupCode: string;
+}
+
+export interface GenerateSuperAdminCodePayload {
+  stateCode: string;
+  expiresInDays?: number;
+}
+
 export interface LoginPayload {
   email: string;
   password: string;
@@ -112,6 +124,16 @@ export interface LoginResponse {
 export const authApi = {
   register: async (data: RegisterPayload): Promise<ApiResponse<User>> => {
     const response = await api.post<ApiResponse<User>>('/auth/register', data);
+    return response.data;
+  },
+
+  superAdminSignup: async (data: SuperAdminSignupPayload): Promise<ApiResponse<User>> => {
+    const response = await api.post<ApiResponse<User>>('/auth/super-admin/signup', data);
+    return response.data;
+  },
+
+  generateSuperAdminCode: async (data: GenerateSuperAdminCodePayload): Promise<ApiResponse<{ id: string; code: string; stateCode: string; expiresAt: string; createdAt: string }>> => {
+    const response = await api.post<ApiResponse<{ id: string; code: string; stateCode: string; expiresAt: string; createdAt: string }>>('/auth/super-admin/generate-code', data);
     return response.data;
   },
 
@@ -577,7 +599,7 @@ export const tenantsApi = {
     const response = await api.get<ApiResponse<Tenant>>(`/tenants/${id}`);
     return response.data;
   },
-  create: async (data: { name: string; slug: string }) => {
+  create: async (data: { name: string; slug: string; stateCode: string; stateLabel: string; districtLabel: string; areas: string[] }) => {
     const response = await api.post<ApiResponse<Tenant>>('/tenants', data);
     return response.data;
   },

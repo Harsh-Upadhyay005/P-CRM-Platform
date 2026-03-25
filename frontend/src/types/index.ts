@@ -32,6 +32,8 @@ export interface User {
   email: string;
   emailVerified: boolean;
   isActive: boolean;
+  managedStateCode?: string | null;
+  isPlatformOwner?: boolean;
   createdAt: string;
   updatedAt: string;
   role: { id: string; type: RoleType };
@@ -150,6 +152,10 @@ export interface Tenant {
   name: string;
   slug: string;
   isActive: boolean;
+  stateCode?: string | null;
+  stateLabel?: string | null;
+  districtLabel?: string | null;
+  areas?: string[];
   createdAt: string;
   updatedAt: string;
   _count: { users: number; departments: number; complaints: number };

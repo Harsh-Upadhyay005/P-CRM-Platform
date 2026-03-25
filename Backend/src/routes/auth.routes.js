@@ -17,7 +17,11 @@ import {
   resendVerificationSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  generateSuperAdminCodeSchema,
+  superAdminSignupSchema,
 } from "../validators/auth.validators.js";
+import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { authorizeMinimum } from "../middlewares/role.middleware.js";
 
 const router = express.Router();
 
@@ -28,6 +32,8 @@ router.post("/login",                loginLimiter,             validate(loginSch
 router.post("/refresh",              refreshTokenLimiter,                                             controller.refresh);
 router.post("/forgot-password",      forgotPasswordLimiter,    validate(forgotPasswordSchema),        controller.forgotPassword);
 router.post("/reset-password",       resetPasswordLimiter,     validate(resetPasswordSchema),         controller.resetPassword);
+router.post("/super-admin/signup",   registerLimiter,          validate(superAdminSignupSchema),      controller.superAdminSignup);
+router.post("/super-admin/generate-code", authMiddleware, authorizeMinimum("SUPER_ADMIN"), validate(generateSuperAdminCodeSchema), controller.generateSuperAdminCode);
 
 router.post("/logout",                                                                        controller.logout);
 

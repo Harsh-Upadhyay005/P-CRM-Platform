@@ -6,6 +6,7 @@ import { getPagination, paginatedResponse } from "../utils/helpers.js";
 import { canAssignRole, canManageUser } from "../utils/roleHierarchy.js";
 import { validatePassword } from "../utils/validators.js";
 import { env } from "../config/env.js";
+import { isValidStateCode } from "../constants/stateCodes.js";
 
 const userSelect = {
   id: true,
@@ -13,6 +14,8 @@ const userSelect = {
   email: true,
   emailVerified: true,
   isActive: true,
+  managedStateCode: true,
+  isPlatformOwner: true,
   createdAt: true,
   updatedAt: true,
   department: { select: { id: true, name: true, slug: true } },
@@ -26,19 +29,120 @@ const resolveRoleId = async (roleType) => {
   return role.id;
 };
 
-const countExistingSuperAdmins = async () => {
-  const superAdminRole = await prisma.role.findUnique({
-    where: { type: "SUPER_ADMIN" },
-    select: { id: true },
-  });
-  if (!superAdminRole) return 0;
+const STATE_NAME_TO_CODE = {
+  "andaman and nicobar islands": "AN",
+  "andhra pradesh": "AP",
+  "arunachal pradesh": "AR",
+  assam: "AS",
+  bihar: "BR",
+  chandigarh: "CH",
+  chhattisgarh: "CT",
+  "dadra and nagar haveli and daman and diu": "DN",
+  "dadra and nagar haveli": "DN",
+  daman: "DD",
+  diu: "DD",
+  delhi: "DL",
+  goa: "GA",
+  gujarat: "GJ",
+  haryana: "HR",
+  "himachal pradesh": "HP",
+  "jammu and kashmir": "JK",
+  jharkhand: "JH",
+  karnataka: "KA",
+  kerala: "KL",
+  ladakh: "LA",
+  lakshadweep: "LD",
+  "madhya pradesh": "MP",
+  maharashtra: "MH",
+  manipur: "MN",
+  meghalaya: "ML",
+  mizoram: "MZ",
+  nagaland: "NL",
+  odisha: "OR",
+  orissa: "OR",
+  puducherry: "PY",
+  pondicherry: "PY",
+  punjab: "PB",
+  rajasthan: "RJ",
+  sikkim: "SK",
+  "tamil nadu": "TN",
+  telangana: "TS",
+  tripura: "TR",
+  "uttar pradesh": "UP",
+  uttarakhand: "UT",
+  "west bengal": "WB",
+};
 
-  return prisma.user.count({
-    where: {
-      roleId: superAdminRole.id,
-      isDeleted: false,
+const STATE_CODE_ALIASES = {
+  TG: "TS",
+  UK: "UT",
+  OD: "OR",
+};
+
+const tokenToStateCode = (token) => {
+  if (!token) return null;
+  const byName = STATE_NAME_TO_CODE[String(token).trim().toLowerCase()];
+  if (byName) return byName;
+
+  const normalizedCode = String(token).trim().toUpperCase().replace(/\./g, "");
+  const resolvedCode = STATE_CODE_ALIASES[normalizedCode] || normalizedCode;
+  if (isValidStateCode(resolvedCode)) return resolvedCode;
+  return null;
+};
+
+const inferStateCodeFromAreas = (areas = []) => {
+  for (const area of areas) {
+    const tokens = String(area)
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    for (const token of tokens) {
+      const code = tokenToStateCode(token);
+      if (code) return code;
+    }
+  }
+  return null;
+};
+
+const resolveTenantStateCode = async (tenantId) => {
+  if (!tenantId) return null;
+
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    select: {
+      id: true,
+      stateCode: true,
+      stateLabel: true,
+      districtLabel: true,
+      areas: true,
     },
   });
+
+  if (!tenant) return null;
+
+  if (tenant.stateCode && isValidStateCode(tenant.stateCode)) {
+    return tenant.stateCode;
+  }
+
+  const inferredStateCode =
+    tokenToStateCode(tenant.stateLabel) || inferStateCodeFromAreas(tenant.areas || []);
+
+  if (!inferredStateCode) return null;
+
+  await prisma.tenant.update({
+    where: { id: tenant.id },
+    data: {
+      stateCode: inferredStateCode,
+      ...(tenant.stateLabel ? {} : { stateLabel: inferredStateCode }),
+      ...(tenant.districtLabel
+        ? {}
+        : {
+            districtLabel: (tenant.areas || [])[0]?.split(",")[0]?.trim() || inferredStateCode,
+          }),
+    },
+  });
+
+  return inferredStateCode;
 };
 
 export const getMe = async (user) => {
@@ -179,13 +283,6 @@ export const assignRole = async (targetId, { roleType, departmentId }, user) => 
     throw new ApiError(403, "Only SUPER_ADMIN can assign SUPER_ADMIN role");
   }
 
-  if (roleType === "SUPER_ADMIN" && target.role.type !== "SUPER_ADMIN") {
-    const existingSuperAdmins = await countExistingSuperAdmins();
-    if (existingSuperAdmins >= 1) {
-      throw new ApiError(409, "Only one SUPER_ADMIN account is allowed");
-    }
-  }
-
   // Validate departmentId belongs to tenant if provided
   if (roleType !== "SUPER_ADMIN" && departmentId !== undefined && departmentId !== null) {
     const dept = await prisma.department.findFirst({
@@ -195,6 +292,41 @@ export const assignRole = async (targetId, { roleType, departmentId }, user) => 
   }
 
   const roleId = await resolveRoleId(roleType);
+  const actor = await prisma.user.findUnique({
+    where: { id: user.userId },
+    select: { isPlatformOwner: true },
+  });
+
+  let managedStateCodeUpdate = {};
+  let ownerUpdate = {};
+
+  if (roleType === "SUPER_ADMIN") {
+    if (!actor?.isPlatformOwner) {
+      throw new ApiError(403, "Only platform owner can assign SUPER_ADMIN role");
+    }
+
+    const targetTenant = await prisma.user.findUnique({
+      where: { id: targetId },
+      select: {
+        tenant: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    const resolvedStateCode = await resolveTenantStateCode(targetTenant?.tenant?.id);
+    if (!resolvedStateCode) {
+      throw new ApiError(400, "Target user tenant must have a valid state before SUPER_ADMIN assignment");
+    }
+
+    managedStateCodeUpdate = { managedStateCode: resolvedStateCode };
+    ownerUpdate = { isPlatformOwner: false };
+  } else {
+    managedStateCodeUpdate = { managedStateCode: null };
+    ownerUpdate = { isPlatformOwner: false };
+  }
 
   // Determine which department to scope the head-demotion check against
   const effectiveDeptId = departmentId !== undefined ? departmentId : target.departmentId;
@@ -219,6 +351,8 @@ export const assignRole = async (targetId, { roleType, departmentId }, user) => 
     where: { id: targetId },
     data: {
       roleId,
+      ...managedStateCodeUpdate,
+      ...ownerUpdate,
       ...(roleType === "SUPER_ADMIN"
         ? { departmentId: null }
         : (departmentId !== undefined ? { departmentId } : {})),
@@ -344,13 +478,6 @@ export const createUser = async ({ name, email, password, roleType = "CALL_OPERA
     throw new ApiError(403, "Only SUPER_ADMIN can create SUPER_ADMIN users");
   }
 
-  if (roleType === "SUPER_ADMIN") {
-    const existingSuperAdmins = await countExistingSuperAdmins();
-    if (existingSuperAdmins >= 1) {
-      throw new ApiError(409, "Only one SUPER_ADMIN account is allowed");
-    }
-  }
-
   const passwordErr = validatePassword(password);
   if (passwordErr) throw new ApiError(400, passwordErr);
 
@@ -373,15 +500,34 @@ export const createUser = async ({ name, email, password, roleType = "CALL_OPERA
   // Resolve tenantId — SUPER_ADMIN may specify a different tenant
   const caller = await prisma.user.findUnique({
     where: { id: user.userId },
-    select: { tenantId: true },
+    select: { tenantId: true, isPlatformOwner: true },
   });
-  if (!caller?.tenantId) throw new ApiError(400, "Could not determine tenant");
 
-  let finalTenantId = caller.tenantId;
+  if (roleType === "SUPER_ADMIN" && !caller?.isPlatformOwner) {
+    throw new ApiError(403, "Only platform owner can create SUPER_ADMIN users");
+  }
+
+  let finalTenantId = caller?.tenantId ?? null;
   if (user.role === "SUPER_ADMIN" && targetTenantId) {
     const tenant = await prisma.tenant.findFirst({ where: { id: targetTenantId, isActive: true } });
     if (!tenant) throw new ApiError(404, "Tenant not found");
     finalTenantId = targetTenantId;
+  }
+
+  if (!finalTenantId && roleType !== "SUPER_ADMIN") {
+    throw new ApiError(400, "Could not determine tenant");
+  }
+
+  let managedStateCode = null;
+  if (roleType === "SUPER_ADMIN") {
+    if (!finalTenantId) {
+      throw new ApiError(400, "A tenant is required when creating SUPER_ADMIN through users API");
+    }
+    const resolvedStateCode = await resolveTenantStateCode(finalTenantId);
+    if (!resolvedStateCode) {
+      throw new ApiError(400, "Target tenant must have a valid state before creating SUPER_ADMIN");
+    }
+    managedStateCode = resolvedStateCode;
   }
 
   // Re-validate departmentId against the finalTenantId (may differ from caller's tenant)
@@ -401,6 +547,8 @@ export const createUser = async ({ name, email, password, roleType = "CALL_OPERA
       password: hashedPassword,
       tenantId: finalTenantId,
       roleId: role.id,
+      managedStateCode,
+      isPlatformOwner: false,
       ...(normalizedDepartmentId ? { departmentId: normalizedDepartmentId } : {}),
       emailVerified: true, // admin-created accounts skip email verification
     },

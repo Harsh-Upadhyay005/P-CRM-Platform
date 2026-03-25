@@ -17,9 +17,33 @@ import {
 } from "./email.service.js";
 import { env } from "../config/env.js";
 import { validatePassword, validateEmailDomain } from "../utils/validators.js";
+import { isValidStateCode } from "../constants/stateCodes.js";
 
 const hashRefreshToken = (token) =>
   crypto.createHash("sha256").update(token).digest("hex");
+
+const getSuperAdminScope = async (userId) => {
+  const actor = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      isActive: true,
+      isDeleted: true,
+      isPlatformOwner: true,
+      managedStateCode: true,
+      role: { select: { type: true } },
+    },
+  });
+
+  if (!actor || actor.isDeleted || !actor.isActive) {
+    throw new ApiError(403, "Actor account is inactive");
+  }
+  if (actor.role?.type !== "SUPER_ADMIN") {
+    throw new ApiError(403, "Only SUPER_ADMIN can perform this action");
+  }
+
+  return actor;
+};
 
 export const registerUser = async ({ name, email, password, tenantSlug }) => {
   const emailErr = validateEmailDomain(email);
@@ -167,7 +191,7 @@ export const loginUser = async ({ email, password }) => {
     throw new ApiError(403, "Account inactive");
   }
 
-  if (!user.tenant?.isActive) {
+  if (user.tenantId && !user.tenant?.isActive) {
     throw new ApiError(403, "This office is currently inactive");
   }
 
@@ -255,7 +279,7 @@ export const refreshTokens = async (token) => {
     throw new ApiError(401, "Account is inactive");
   }
 
-  if (!refreshUser.tenant?.isActive) {
+  if (refreshUser.tenantId && !refreshUser.tenant?.isActive) {
     await prisma.refreshToken
       .delete({ where: { id: storedToken.id } })
       .catch(() => {});
@@ -367,4 +391,125 @@ export const resetPassword = async (token, newPassword) => {
   });
 
   return true;
+};
+
+export const generateSuperAdminSignupCode = async ({ stateCode, expiresInDays = 30 }, user) => {
+  const actor = await getSuperAdminScope(user.userId);
+  if (!actor.isPlatformOwner) {
+    throw new ApiError(403, "Only platform owner can generate super admin signup codes");
+  }
+
+  const normalizedStateCode = String(stateCode).trim().toUpperCase();
+  if (!isValidStateCode(normalizedStateCode)) {
+    throw new ApiError(400, "Invalid state code");
+  }
+
+  const randomPart = crypto.randomBytes(6).toString("hex").toUpperCase();
+  const code = `${normalizedStateCode}_SIGNUP_${randomPart}`;
+  const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
+
+  const created = await prisma.superAdminSignupCode.create({
+    data: {
+      code,
+      stateCode: normalizedStateCode,
+      createdById: actor.id,
+      expiresAt,
+    },
+    select: {
+      id: true,
+      code: true,
+      stateCode: true,
+      expiresAt: true,
+      createdAt: true,
+    },
+  });
+
+  return created;
+};
+
+export const signupSuperAdminWithCode = async ({ name, email, password, signupCode }) => {
+  const emailErr = validateEmailDomain(email);
+  if (emailErr) throw new ApiError(400, emailErr);
+
+  const passwordErr = validatePassword(password);
+  if (passwordErr) throw new ApiError(400, passwordErr);
+
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) throw new ApiError(400, "Email already registered");
+
+  const codeRecord = await prisma.superAdminSignupCode.findUnique({
+    where: { code: String(signupCode).trim().toUpperCase() },
+    select: {
+      id: true,
+      stateCode: true,
+      expiresAt: true,
+      consumedAt: true,
+      isActive: true,
+    },
+  });
+
+  if (!codeRecord || !codeRecord.isActive || codeRecord.consumedAt) {
+    throw new ApiError(400, "Invalid or already used signup code");
+  }
+  if (codeRecord.expiresAt <= new Date()) {
+    throw new ApiError(400, "Signup code has expired");
+  }
+
+  const superAdminRole = await prisma.role.findUnique({
+    where: { type: "SUPER_ADMIN" },
+    select: { id: true },
+  });
+  if (!superAdminRole) {
+    throw new ApiError(500, "SUPER_ADMIN role is not configured");
+  }
+
+  const hashedPassword = await bcrypt.hash(password, env.BCRYPT_SALT_ROUNDS);
+
+  const result = await prisma.$transaction(async (tx) => {
+    const freshCode = await tx.superAdminSignupCode.findUnique({
+      where: { id: codeRecord.id },
+      select: { id: true, consumedAt: true, isActive: true, expiresAt: true, stateCode: true },
+    });
+
+    if (!freshCode || !freshCode.isActive || freshCode.consumedAt || freshCode.expiresAt <= new Date()) {
+      throw new ApiError(400, "Invalid or expired signup code");
+    }
+
+    const newUser = await tx.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        roleId: superAdminRole.id,
+        managedStateCode: freshCode.stateCode,
+        isPlatformOwner: false,
+        emailVerified: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        emailVerified: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+        managedStateCode: true,
+        isPlatformOwner: true,
+        role: { select: { id: true, type: true } },
+      },
+    });
+
+    await tx.superAdminSignupCode.update({
+      where: { id: freshCode.id },
+      data: {
+        consumedAt: new Date(),
+        isActive: false,
+        consumedById: newUser.id,
+      },
+    });
+
+    return newUser;
+  });
+
+  return result;
 };

@@ -10,11 +10,13 @@ import { useTranslation } from 'react-i18next';
 
 export default function SignupPage() {
   const { t } = useTranslation();
+  const [signupMode, setSignupMode] = useState<'citizen' | 'superAdmin'>('citizen');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     tenantSlug: '',
+    signupCode: '',
   });
   const [tenants, setTenants] = useState<{ name: string; slug: string }[]>([]);
   const [tenantsLoading, setTenantsLoading] = useState(true);
@@ -43,7 +45,21 @@ export default function SignupPage() {
     setError('');
 
     try {
-      await authApi.register(formData);
+      if (signupMode === 'superAdmin') {
+        await authApi.superAdminSignup({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          signupCode: formData.signupCode,
+        });
+      } else {
+        await authApi.register({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          tenantSlug: formData.tenantSlug,
+        });
+      }
       setSuccess(true);
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -78,15 +94,28 @@ export default function SignupPage() {
             </div>
           </div>
 
-          <h2 className="text-xl font-semibold text-white mb-2">Check Your Email</h2>
-          <p className="text-zinc-400 text-sm mb-1">
-            A verification link has been sent to
-          </p>
-          <p className="text-emerald-400 font-medium text-sm mb-5 break-all">{formData.email}</p>
-          <p className="text-zinc-500 text-xs mb-8 leading-relaxed">
-            Click the link in the email to activate your account before logging in.
-            If you don&apos;t see it, check your spam folder.
-          </p>
+          {signupMode === 'superAdmin' ? (
+            <>
+              <h2 className="text-xl font-semibold text-white mb-2">Account Created</h2>
+              <p className="text-zinc-400 text-sm mb-1">Your state super-admin account is ready for</p>
+              <p className="text-emerald-400 font-medium text-sm mb-5 break-all">{formData.email}</p>
+              <p className="text-zinc-500 text-xs mb-8 leading-relaxed">
+                You can now sign in directly with your email and password.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-xl font-semibold text-white mb-2">Check Your Email</h2>
+              <p className="text-zinc-400 text-sm mb-1">
+                A verification link has been sent to
+              </p>
+              <p className="text-emerald-400 font-medium text-sm mb-5 break-all">{formData.email}</p>
+              <p className="text-zinc-500 text-xs mb-8 leading-relaxed">
+                Click the link in the email to activate your account before logging in.
+                If you don&apos;t see it, check your spam folder.
+              </p>
+            </>
+          )}
 
           <Link
             href="/login"
@@ -137,6 +166,30 @@ export default function SignupPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
+            <div className="grid grid-cols-2 gap-2 rounded-lg border border-white/5 bg-black/20 p-1">
+              <button
+                type="button"
+                onClick={() => setSignupMode('citizen')}
+                className={`rounded-md px-3 py-2 text-xs font-medium transition ${
+                  signupMode === 'citizen'
+                    ? 'bg-emerald-600/30 text-emerald-100 border border-emerald-400/30'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                Citizen Signup
+              </button>
+              <button
+                type="button"
+                onClick={() => setSignupMode('superAdmin')}
+                className={`rounded-md px-3 py-2 text-xs font-medium transition ${
+                  signupMode === 'superAdmin'
+                    ? 'bg-emerald-600/30 text-emerald-100 border border-emerald-400/30'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                State Super Admin
+              </button>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">{t('auth.fullName', 'Full Name')}</label>
@@ -193,43 +246,60 @@ export default function SignupPage() {
                 <p className="text-[10px] text-zinc-500 mt-1">Must be 8-64 chars with uppercase, lowercase, number &amp; special character.</p>
             </div>
 
-            <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">Organization</label>
+            {signupMode === 'citizen' ? (
+              <div className="space-y-1">
+                  <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">Organization</label>
+                  <div className="relative group">
+                      <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors z-10 pointer-events-none" />
+                      {tenantsLoading ? (
+                        <div className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-4 text-zinc-500 text-sm animate-pulse">
+                          Loading organizations…
+                        </div>
+                      ) : tenants.length > 0 ? (
+                        <>
+                          <select
+                            required
+                            value={formData.tenantSlug}
+                            onChange={(e) => setFormData({ ...formData, tenantSlug: e.target.value })}
+                            className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-8 text-zinc-200 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30 appearance-none"
+                          >
+                            {tenants.map((t) => (
+                              <option key={t.slug} value={t.slug} className="bg-slate-900">
+                                {t.name}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
+                        </>
+                      ) : (
+                        <input
+                            type="text"
+                            required
+                            className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-4 text-zinc-200 text-sm placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30"
+                            placeholder="workspace-slug"
+                            value={formData.tenantSlug}
+                            onChange={(e) => setFormData({ ...formData, tenantSlug: e.target.value })}
+                        />
+                      )}
+                  </div>
+                  <p className="text-[10px] text-zinc-500 mt-1">Select your organisation / municipality.</p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">Signup Code</label>
                 <div className="relative group">
-                    <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors z-10 pointer-events-none" />
-                    {tenantsLoading ? (
-                      <div className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-4 text-zinc-500 text-sm animate-pulse">
-                        Loading organizations…
-                      </div>
-                    ) : tenants.length > 0 ? (
-                      <>
-                        <select
-                          required
-                          value={formData.tenantSlug}
-                          onChange={(e) => setFormData({ ...formData, tenantSlug: e.target.value })}
-                          className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-8 text-zinc-200 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30 appearance-none"
-                        >
-                          {tenants.map((t) => (
-                            <option key={t.slug} value={t.slug} className="bg-slate-900">
-                              {t.name}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
-                      </>
-                    ) : (
-                      <input
-                          type="text"
-                          required
-                          className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-4 text-zinc-200 text-sm placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30"
-                          placeholder="workspace-slug"
-                          value={formData.tenantSlug}
-                          onChange={(e) => setFormData({ ...formData, tenantSlug: e.target.value })}
-                      />
-                    )}
+                  <input
+                    type="text"
+                    required
+                    value={formData.signupCode}
+                    onChange={(e) => setFormData({ ...formData, signupCode: e.target.value })}
+                    placeholder="UP_SIGNUP_ABC123..."
+                    className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 px-4 text-zinc-200 text-sm placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30"
+                  />
                 </div>
-                <p className="text-[10px] text-zinc-500 mt-1">Select your organisation / municipality.</p>
-            </div>
+                <p className="text-[10px] text-zinc-500 mt-1">Use the one-time code generated by the platform owner.</p>
+              </div>
+            )}
 
             <button
               type="submit"

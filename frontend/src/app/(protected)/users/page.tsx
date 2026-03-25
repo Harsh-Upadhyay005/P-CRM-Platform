@@ -4,8 +4,9 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { usersApi, departmentsApi, tenantsApi, getErrorMessage } from '@/lib/api';
+import { usersApi, departmentsApi, tenantsApi, authApi, getErrorMessage } from '@/lib/api';
 import { useRole } from '@/hooks/useRole';
+import { useAuth } from '@/hooks/useAuth';
 import { User, RoleType, Department, Tenant } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +28,7 @@ import {
 import { Search, MoreVertical, Users, ShieldCheck, UserX, Trash2, RefreshCw, UserPlus, CheckCircle2, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { STATE_CODES, getStateLabelFromCode } from '@/lib/state-codes';
 
 const ROLE_COLORS: Record<RoleType, string> = {
   SUPER_ADMIN: 'bg-red-500/15 text-red-400 border-red-500/30',
@@ -52,6 +54,7 @@ function formatDate(d: string) {
 
 export default function UsersPage() {
   const { isAdmin, isSuperAdmin } = useRole();
+  const { user } = useAuth();
   const searchParams = useSearchParams();
   const qc = useQueryClient();
   const tenantIdFilter = searchParams.get('tenantId') ?? '';
@@ -72,6 +75,10 @@ export default function UsersPage() {
   const [createRole, setCreateRole] = useState<RoleType>('CALL_OPERATOR');
   const [createDeptId, setCreateDeptId] = useState<string>('');
   const [createTenantId, setCreateTenantId] = useState<string>('');
+  const [showGenerateCodeDialog, setShowGenerateCodeDialog] = useState(false);
+  const [codeStateCode, setCodeStateCode] = useState<string>('UP');
+  const [codeExpiresDays, setCodeExpiresDays] = useState<string>('30');
+  const [generatedCode, setGeneratedCode] = useState<{ code: string; stateCode: string; expiresAt: string } | null>(null);
 
   // For SUPER_ADMIN, department lists must be explicitly tenant-scoped.
   const scopedDeptTenantId = isSuperAdmin
@@ -121,14 +128,7 @@ export default function UsersPage() {
   });
   const tenants: Tenant[] = tenantsData?.data?.data ?? [];
 
-  const { data: superAdminData } = useQuery({
-    queryKey: ['users', 'super-admin-count'],
-    queryFn: () => usersApi.list({ page: 1, limit: 1, roleType: 'SUPER_ADMIN' }),
-    enabled: isSuperAdmin,
-    staleTime: 60_000,
-  });
-  const hasSuperAdmin = (superAdminData?.data?.pagination?.total ?? 0) > 0;
-  const allowSelectingSuperAdmin = isSuperAdmin && !hasSuperAdmin;
+  const canManagePlatformSuperAdmins = isSuperAdmin && !!user?.isPlatformOwner;
 
   const deptHeadTargetDeptId =
     newRole === 'DEPARTMENT_HEAD'
@@ -204,6 +204,25 @@ export default function UsersPage() {
     onError: (e) => toast.error(getErrorMessage(e)),
   });
 
+  const generateCodeMutation = useMutation({
+    mutationFn: () => authApi.generateSuperAdminCode({
+      stateCode: codeStateCode,
+      expiresInDays: Number(codeExpiresDays || 30),
+    }),
+    onSuccess: (res) => {
+      const created = res?.data;
+      if (created) {
+        setGeneratedCode({
+          code: created.code,
+          stateCode: created.stateCode,
+          expiresAt: created.expiresAt,
+        });
+      }
+      toast.success('State admin signup code generated');
+    },
+    onError: (e) => toast.error(getErrorMessage(e)),
+  });
+
   if (!isAdmin) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -225,19 +244,30 @@ export default function UsersPage() {
         </div>
       )}
       {/* Header */}
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center gap-2">
             <Users size={24} className="text-purple-400" /> Staff Management
           </h1>
           <p className="text-slate-400 text-sm mt-1">Manage team members, roles and access</p>
         </div>
-        <Button
-          className="bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-2"
-          onClick={() => setShowCreateDialog(true)}
-        >
-          <UserPlus size={15} /> Add User
-        </Button>
+        <div className="flex items-center gap-2">
+          {canManagePlatformSuperAdmins && (
+            <Button
+              variant="outline"
+              className="border-emerald-400/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-200 flex items-center gap-2"
+              onClick={() => setShowGenerateCodeDialog(true)}
+            >
+              Generate State Admin Code
+            </Button>
+          )}
+          <Button
+            className="bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-2"
+            onClick={() => setShowCreateDialog(true)}
+          >
+            <UserPlus size={15} /> Add User
+          </Button>
+        </div>
       </motion.div>
 
       {/* Filters */}
@@ -314,7 +344,7 @@ export default function UsersPage() {
                 <TableRow className="border-white/5 hover:bg-transparent">
                   <TableHead className="text-slate-400 text-xs font-semibold">User</TableHead>
                   <TableHead className="text-slate-400 text-xs font-semibold">Role</TableHead>
-                  {isSuperAdmin && <TableHead className="text-slate-400 text-xs font-semibold">Tenant</TableHead>}
+                  {isSuperAdmin && <TableHead className="text-slate-400 text-xs font-semibold">Scope</TableHead>}
                   <TableHead className="text-slate-400 text-xs font-semibold">Department</TableHead>
                   <TableHead className="text-slate-400 text-xs font-semibold">Status</TableHead>
                   <TableHead className="text-slate-400 text-xs font-semibold">Joined</TableHead>
@@ -350,7 +380,9 @@ export default function UsersPage() {
                     </TableCell>
                     {isSuperAdmin && (
                       <TableCell className="text-xs text-slate-400">
-                        {u.role.type === 'SUPER_ADMIN' ? 'Platform Scope' : (u.tenant?.name ?? '—')}
+                        {u.role.type === 'SUPER_ADMIN'
+                          ? (u.isPlatformOwner ? 'Platform Owner (All States)' : (u.managedStateCode ? `State ${u.managedStateCode}` : 'State Not Assigned'))
+                          : (u.tenant?.name ?? '—')}
                       </TableCell>
                     )}
                     <TableCell className="text-xs text-slate-400">
@@ -455,7 +487,7 @@ export default function UsersPage() {
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
-                {isSuperAdmin && (allowSelectingSuperAdmin || assignRoleUser?.role.type === 'SUPER_ADMIN' || newRole === 'SUPER_ADMIN') && (
+                {canManagePlatformSuperAdmins && (
                   <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                 )}
                 <SelectItem value="CITIZEN">Citizen</SelectItem>
@@ -590,7 +622,7 @@ export default function UsersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
-                  {isSuperAdmin && (allowSelectingSuperAdmin || createRole === 'SUPER_ADMIN') && (
+                  {canManagePlatformSuperAdmins && (
                     <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
                   )}
                   <SelectItem value="CALL_OPERATOR">Call Operator</SelectItem>
@@ -620,10 +652,100 @@ export default function UsersPage() {
               <Button
                 size="sm"
                 className="bg-purple-600 hover:bg-purple-500"
-                disabled={createUserMutation.isPending || !createName.trim() || !createEmail.trim() || !createPassword}
+                disabled={
+                  createUserMutation.isPending ||
+                  !createName.trim() ||
+                  !createEmail.trim() ||
+                  !createPassword ||
+                  (isSuperAdmin && createRole === 'SUPER_ADMIN' && !createTenantId)
+                }
                 onClick={() => createUserMutation.mutate()}
               >
                 {createUserMutation.isPending ? 'Creating…' : 'Create User'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showGenerateCodeDialog}
+        onOpenChange={(o) => {
+          setShowGenerateCodeDialog(o);
+          if (!o) {
+            setGeneratedCode(null);
+            setCodeStateCode('UP');
+            setCodeExpiresDays('30');
+          }
+        }}
+      >
+        <DialogContent className="bg-slate-900 border-white/10 text-slate-200 max-w-sm max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-white">Generate State Admin Signup Code</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-1">
+              <p className="text-xs text-slate-400 font-medium">State</p>
+              <Select value={codeStateCode} onValueChange={setCodeStateCode}>
+                <SelectTrigger className="bg-slate-800/50 border-white/10 text-slate-200">
+                  <SelectValue placeholder="Select state" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/10 text-slate-200 max-h-64">
+                  {STATE_CODES.map((code) => (
+                    <SelectItem key={code} value={code}>{code} - {getStateLabelFromCode(code)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-slate-400 font-medium">Expires In (days)</p>
+              <Input
+                type="number"
+                min={1}
+                max={90}
+                value={codeExpiresDays}
+                onChange={(e) => setCodeExpiresDays(e.target.value)}
+                className="bg-slate-800/50 border-white/10 text-slate-200"
+              />
+            </div>
+
+            {generatedCode && (
+              <div className="rounded-lg border border-emerald-400/40 bg-slate-900 px-3 py-3 text-xs text-emerald-50 space-y-2 shadow-[0_0_0_1px_rgba(16,185,129,0.12)]">
+                <p className="font-semibold text-emerald-300">Code generated successfully</p>
+                <p className="break-all rounded-md bg-slate-950/90 px-2 py-1.5 font-mono text-[12px] text-emerald-100 border border-emerald-400/25">
+                  {generatedCode.code}
+                </p>
+                <p className="text-emerald-200">
+                  Scope: {generatedCode.stateCode} - {getStateLabelFromCode(generatedCode.stateCode)}
+                </p>
+                <p className="text-emerald-200">Expires: {new Date(generatedCode.expiresAt).toLocaleString()}</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-1 h-8 text-xs border-emerald-300 bg-emerald-500/20 text-emerald-50 hover:bg-emerald-500/35 hover:text-white"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(generatedCode.code);
+                      toast.success('Code copied');
+                    } catch {
+                      toast.error('Could not copy code');
+                    }
+                  }}
+                >
+                  Copy Code
+                </Button>
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end pt-1">
+              <Button variant="ghost" size="sm" onClick={() => setShowGenerateCodeDialog(false)}>Cancel</Button>
+              <Button
+                size="sm"
+                className="bg-emerald-600 hover:bg-emerald-500"
+                disabled={generateCodeMutation.isPending || !codeStateCode}
+                onClick={() => generateCodeMutation.mutate()}
+              >
+                {generateCodeMutation.isPending ? 'Generating…' : 'Generate'}
               </Button>
             </div>
           </div>

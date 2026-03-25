@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "../generated/prisma/index.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcrypt";
 import { env } from "../src/config/env.js";
@@ -17,8 +17,12 @@ if (!env.SEED_SUPER_ADMIN_EMAIL || !env.SEED_SUPER_ADMIN_PASSWORD) {
 
 const DEFAULT_TENANTS = [
   {
-    name: "P-CRM Main Office",
+    name: "BharatSetu Main Office",
     slug: "main-office",
+    stateCode: "UP",
+    stateLabel: "Uttar Pradesh",
+    districtLabel: "Varanasi",
+    areas: ["BHU"],
     superAdmin: {
       name: "Super Admin",
       email: superAdminEmail,
@@ -34,7 +38,7 @@ async function createRoles() {
     "DEPARTMENT_HEAD",
     "OFFICER",
     "CALL_OPERATOR",
-    
+    "CITIZEN",
   ];
 
   for (const role of roles) {
@@ -63,12 +67,24 @@ async function createTenantWithAdmin(tenantConfig) {
   });
 
   if (tenant) {
+    tenant = await prisma.tenant.update({
+      where: { id: tenant.id },
+      data: {
+        name: tenantConfig.name,
+        stateCode: tenantConfig.stateCode,
+        stateLabel: tenantConfig.stateLabel,
+        districtLabel: tenantConfig.districtLabel,
+        areas: tenantConfig.areas,
+      },
+    });
+
     // Tenant exists — upsert the super admin so credentials stay in sync with .env
     await prisma.user.upsert({
       where: { email: tenantConfig.superAdmin.email },
       update: {
         password: hashedPassword,
         emailVerified: true,
+        isPlatformOwner: true,
       },
       create: {
         name: tenantConfig.superAdmin.name,
@@ -77,6 +93,8 @@ async function createTenantWithAdmin(tenantConfig) {
         emailVerified: true,
         tenantId: tenant.id,
         roleId: superAdminRole.id,
+        managedStateCode: tenant.stateCode,
+        isPlatformOwner: true,
       },
     });
     console.log(
@@ -89,6 +107,10 @@ async function createTenantWithAdmin(tenantConfig) {
     data: {
       name: tenantConfig.name,
       slug: tenantConfig.slug,
+      stateCode: tenantConfig.stateCode,
+      stateLabel: tenantConfig.stateLabel,
+      districtLabel: tenantConfig.districtLabel,
+      areas: tenantConfig.areas,
     },
   });
 
@@ -100,6 +122,8 @@ async function createTenantWithAdmin(tenantConfig) {
       emailVerified: true,
       tenantId: tenant.id,
       roleId: superAdminRole.id,
+      managedStateCode: tenant.stateCode,
+      isPlatformOwner: true,
     },
   });
 
