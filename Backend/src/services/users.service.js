@@ -270,13 +270,34 @@ export const assignRole = async (targetId, { roleType, departmentId }, user) => 
 
   const target = await prisma.user.findFirst({
     where: { id: targetId, isDeleted: false, ...forTenant(user) },
-    select: { id: true, role: { select: { type: true } }, departmentId: true },
+    select: {
+      id: true,
+      role: { select: { type: true } },
+      departmentId: true,
+      isPlatformOwner: true,
+    },
   });
 
   if (!target) throw new ApiError(404, "User not found");
 
-  if (!canManageUser(user.role, target.role.type)) {
+  const actor = await prisma.user.findUnique({
+    where: { id: user.userId },
+    select: { id: true, isPlatformOwner: true },
+  });
+
+  const canPlatformOwnerManagePeerSuperAdmin =
+    user.role === "SUPER_ADMIN" &&
+    !!actor?.isPlatformOwner &&
+    target.role.type === "SUPER_ADMIN" &&
+    !target.isPlatformOwner &&
+    target.id !== user.userId;
+
+  if (!canManageUser(user.role, target.role.type) && !canPlatformOwnerManagePeerSuperAdmin) {
     throw new ApiError(403, "You cannot modify a user with an equal or higher role");
+  }
+
+  if (target.isPlatformOwner && target.id !== user.userId) {
+    throw new ApiError(403, "Platform owner account role cannot be changed by another user");
   }
 
   if (roleType === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN") {
@@ -292,10 +313,6 @@ export const assignRole = async (targetId, { roleType, departmentId }, user) => 
   }
 
   const roleId = await resolveRoleId(roleType);
-  const actor = await prisma.user.findUnique({
-    where: { id: user.userId },
-    select: { isPlatformOwner: true },
-  });
 
   let managedStateCodeUpdate = {};
   let ownerUpdate = {};
@@ -319,6 +336,28 @@ export const assignRole = async (targetId, { roleType, departmentId }, user) => 
     const resolvedStateCode = await resolveTenantStateCode(targetTenant?.tenant?.id);
     if (!resolvedStateCode) {
       throw new ApiError(400, "Target user tenant must have a valid state before SUPER_ADMIN assignment");
+    }
+
+    const existingStateSuperAdmin = await prisma.user.findFirst({
+      where: {
+        id: { not: targetId },
+        isDeleted: false,
+        isPlatformOwner: false,
+        managedStateCode: resolvedStateCode,
+        role: { type: "SUPER_ADMIN" },
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
+    if (existingStateSuperAdmin) {
+      throw new ApiError(
+        409,
+        `State ${resolvedStateCode} already has a SUPER_ADMIN (${existingStateSuperAdmin.name}). Demote/remove the existing one first.`
+      );
     }
 
     managedStateCodeUpdate = { managedStateCode: resolvedStateCode };
@@ -527,6 +566,26 @@ export const createUser = async ({ name, email, password, roleType = "CALL_OPERA
     if (!resolvedStateCode) {
       throw new ApiError(400, "Target tenant must have a valid state before creating SUPER_ADMIN");
     }
+
+    const existingStateSuperAdmin = await prisma.user.findFirst({
+      where: {
+        isDeleted: false,
+        isPlatformOwner: false,
+        managedStateCode: resolvedStateCode,
+        role: { type: "SUPER_ADMIN" },
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+    if (existingStateSuperAdmin) {
+      throw new ApiError(
+        409,
+        `State ${resolvedStateCode} already has a SUPER_ADMIN (${existingStateSuperAdmin.name}).`
+      );
+    }
+
     managedStateCode = resolvedStateCode;
   }
 
