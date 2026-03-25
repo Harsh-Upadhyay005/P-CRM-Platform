@@ -126,13 +126,14 @@ export default function Home() {
         <div className="absolute top-[55%] left-[40%]  w-[400px] h-[400px] rounded-full bg-emerald-600/[0.07]  blur-[120px]" />
       </div>
 
-      <div className="relative z-10">
-        <header className="sticky top-0 z-50 backdrop-blur-2xl bg-[#020617]/85 border-b border-white/[0.08] transition-all duration-300 hover:border-white/20 hover:bg-[#020617]/95 shadow-sm hover:shadow-[0_8px_30px_rgb(0,0,0,0.4)]">
-          <div className="max-w-7xl mx-auto flex items-center justify-between px-5 sm:px-8 h-16">
+      <div className="relative z-10 w-full">
+        <div className="sticky top-0 sm:top-4 z-50 w-full px-0 sm:px-6 lg:px-8 flex justify-center">
+          <header className="w-full max-w-7xl backdrop-blur-2xl bg-[#020617]/25 sm:bg-white/[0.015] border-b sm:border border-white/[0.05] sm:rounded-2xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),_0_8px_32px_0_rgba(0,0,0,0.2)] transition-all duration-500 sm:hover:bg-white/[0.03] hover:border-white/[0.1] hover:shadow-[0_8px_40px_0_rgba(0,0,0,0.4)] overflow-hidden">
+            <div className="flex items-center justify-between px-5 sm:px-8 h-16 relative z-20">
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2.5 group shrink-0">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white shadow-md shadow-emerald-500/30 group-hover:shadow-emerald-500/50 group-hover:scale-105 transition-all duration-300 ease-out p-1">
-                <img src="/logo.png" alt="Bharat-Setu Logo" className="w-full h-full object-contain" />
+              <div className="flex h-12 w-12 items-center justify-center group-hover:scale-105 transition-all duration-300 ease-out flex-shrink-0">
+                <img src="/logo.png" alt="Bharat-Setu Logo" className="w-full h-full object-contain drop-shadow-md" />
               </div>
               <div className="leading-none">
                 <p className="text-[14px] font-bold tracking-tight text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-linear-to-r group-hover:from-emerald-300 group-hover:to-teal-200 transition-all duration-300">
@@ -231,9 +232,12 @@ export default function Home() {
           </div>
 
           {/* Mobile nav drawer */}
-          {mobileOpen && (
-            <div className="lg:hidden border-t border-white/[0.07] bg-[#020617]/97 backdrop-blur-2xl">
-              <nav className="flex flex-col px-5 py-3 gap-0.5">
+          <div
+            className={`lg:hidden transition-all duration-300 ease-in-out bg-[#020617]/40 sm:bg-transparent relative z-10 ${
+              mobileOpen ? "max-h-[400px] border-t border-white/[0.07] opacity-100" : "max-h-0 opacity-0 pointer-events-none"
+            }`}
+          >
+            <nav className="flex flex-col px-5 py-3 gap-0.5">
                 {[
                   ["Problem", "#problem"],
                   ["Features", "#features"],
@@ -270,8 +274,8 @@ export default function Home() {
                 </div>
               </nav>
             </div>
-          )}
-        </header>
+          </header>
+        </div>
 
         <motion.section
           ref={heroRef}
@@ -345,7 +349,7 @@ export default function Home() {
               className="mt-14 flex flex-wrap items-center justify-center gap-x-6 gap-y-6 sm:gap-x-14 sm:gap-y-0"
             >
               {[
-                ["5", "User roles"],
+                ["6", "User roles"],
                 ["6", "Status stages"],
                 ["7", "Analytics views"],
                 ["3", "AI engines"],
@@ -1021,7 +1025,7 @@ export default function Home() {
             <Reveal>
               <Eyebrow>Designed for every role</Eyebrow>
               <SectionH2 className="max-w-2xl">
-                {t('landing.fiveRoles')}
+                {t('landing.rolesTitle', 'Six distinctive roles')}
               </SectionH2>
               <p className="mt-5 text-[15px] text-zinc-300 font-light max-w-2xl leading-relaxed">
                 Every user sees exactly what they need — nothing more. Role
@@ -1032,10 +1036,18 @@ export default function Home() {
             <div className="mt-12 space-y-3">
               {[
                 {
-                  role: "Super Admin",
-                  who: "Central IT / platform operator",
-                  does: "Cross-office management, tenant provisioning, platform-wide audit and analytics",
-                  badge: "Highest authority",
+                  role: "Platform Owner",
+                  who: "Central IT / Platform maintainer",
+                  does: "Global platform management, cross-state audit and analytics, top-level tenant provisioning",
+                  badge: "Global authority",
+                  badgeColor:
+                    "bg-purple-500/[0.08] border-purple-500/15 text-purple-300",
+                },
+                {
+                  role: "State Super Admin",
+                  who: "State Nodal Officer",
+                  does: "Cross-office management within their state, tenant provisioning, state-wide audit and analytics",
+                  badge: "Highest authority (State)",
                   badgeColor:
                     "bg-emerald-500/[0.08] border-emerald-500/15 text-emerald-300",
                 },
