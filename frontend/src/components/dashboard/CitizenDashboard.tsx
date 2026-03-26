@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useTranslation } from 'react-i18next';
 
 const CommandCenter3D = dynamic(
   () =>
@@ -106,6 +107,7 @@ function StatCard({
 
 
 export function CitizenDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuth();
 
   
@@ -161,8 +163,7 @@ export function CitizenDashboard() {
               }}>
             Citizen Service Center
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Welcome back, <span className="text-white font-semibold">{firstName}</span>. Here&apos;s a summary of your filed complaints and their current status.
+          <p className="text-sm text-slate-400 mt-1"> {t('citizenDashboard.welcomeBack')} <span className="text-white font-semibold">{firstName}</span>{t('citizenDashboard.summaryText')}
           </p>
         </div>
 
@@ -265,8 +266,7 @@ export function CitizenDashboard() {
                 No complaints filed yet
               </p>
               <p className="text-slate-600 text-xs max-w-xs">
-                You haven&apos;t submitted any complaints. Use the button above
-                to file your first one.
+                {t('citizenDashboard.noComplaintsDesc')}
               </p>
               <Link
                 href="/submit"
@@ -367,8 +367,7 @@ export function CitizenDashboard() {
               Track Your Complaint
             </h3>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              Use your Tracking ID (sent to your email) to check the live status
-              without logging in.
+              {t('citizenDashboard.trackYourComplaintDesc')}
             </p>
             <Link
               href="/track"
@@ -390,8 +389,7 @@ export function CitizenDashboard() {
               File a New Complaint
             </h3>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              Submit a new grievance to your local authority. You&apos;ll
-              receive a Tracking ID via email.
+              {t('citizenDashboard.fileNewComplaintDesc')}
             </p>
             <Link
               href="/submit"
