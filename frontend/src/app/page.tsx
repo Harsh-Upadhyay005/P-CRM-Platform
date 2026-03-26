@@ -721,28 +721,23 @@ export default function Home() {
                 {[
                   {
                     icon: <Sparkles className="h-4 w-4 text-teal-300" />,
-                    name: "Priority Prediction",
-                    detail:
-                      "Rates CRITICAL / HIGH / MEDIUM / LOW based on the description. A burst water main ranks higher than a noise complaint — automatically, every time.",
-                    example:
-                      "Health + infrastructure language → CRITICAL override",
+                    name: t('landing.engine1Name', "Priority Prediction"),
+                    detail: t('landing.engine1Detail', "Rates CRITICAL / HIGH / MEDIUM / LOW based on the description. A burst water main ranks higher than a noise complaint — automatically, every time."),
+                    example: t('landing.engine1Example', "Health + infrastructure language → CRITICAL override"),
                     bg: "border-teal-500/10",
                   },
                   {
                     icon: <TrendingUp className="h-4 w-4 text-amber-400" />,
-                    name: "Sentiment Analysis",
-                    detail:
-                      "Detects distress, urgency and frustration in the citizen's language. Distressed reports surface in leadership views before calm ones at the same priority.",
-                    example: '"children are sick" → DISTRESSED escalation flag',
+                    name: t('landing.engine2Name', "Sentiment Analysis"),
+                    detail: t('landing.engine2Detail', "Detects distress, urgency and frustration in the citizen's language. Distressed reports surface in leadership views before calm ones at the same priority."),
+                    example: t('landing.engine2Example', '"children are sick" → DISTRESSED escalation flag'),
                     bg: "border-amber-500/10",
                   },
                   {
                     icon: <CheckCircle2 className="h-4 w-4 text-emerald-400" />,
-                    name: "Duplicate Detection",
-                    detail:
-                      t('landing.duplicateDetail'),
-                    example:
-                      t('landing.duplicateExample'),
+                    name: t('landing.engine3Name', "Duplicate Detection"),
+                    detail: t('landing.duplicateDetail', "AI compares incoming reports with recent active issues. Flags potential duplicates to prevent redundant dispatch."),
+                    example: t('landing.duplicateExample', "90% similarity w/ #4092 → DUPLICATE WARNING"),
                     bg: "border-emerald-500/10",
                   },
                 ].map((engine, i) => (
@@ -987,58 +982,57 @@ export default function Home() {
                 {t('landing.rolesTitle', 'Six distinctive roles')}
               </SectionH2>
               <p className="mt-5 text-[15px] text-zinc-300 font-light max-w-2xl leading-relaxed">
-                Every user sees exactly what they need — nothing more. Role
-                scopes are enforced in code, not policy.
+                {t('landing.rolesDesc', 'Every user sees exactly what they need — nothing more. Role scopes are enforced in code, not policy.')}
               </p>
             </Reveal>
 
             <div className="mt-12 space-y-3">
               {[
                 {
-                  role: "Platform Owner",
-                  who: "Central IT / Platform maintainer",
-                  does: "Global platform management, cross-state audit and analytics, top-level tenant provisioning",
-                  badge: "Global authority",
+                  role: t('landing.rolePlatformOwner', "Platform Owner"),
+                  who: t('landing.rolePlatformOwnerWho', "Central IT / Platform maintainer"),
+                  does: t('landing.rolePlatformOwnerDoes', "Global platform management, cross-state audit and analytics, top-level tenant provisioning"),
+                  badge: t('landing.roleGlobalAuthority', "Global authority"),
                   badgeColor:
                     "bg-purple-500/[0.08] border-purple-500/15 text-purple-300",
                 },
                 {
-                  role: "State Super Admin",
-                  who: "State Nodal Officer",
-                  does: "Cross-office management within their state, tenant provisioning, state-wide audit and analytics",
-                  badge: "Highest authority (State)",
+                  role: t('landing.roleSuperAdmin', "State Super Admin"),
+                  who: t('landing.roleSuperAdminWho', "State Nodal Officer"),
+                  does: t('landing.roleSuperAdminDoes', "Cross-office management within their state, tenant provisioning, state-wide audit and analytics"),
+                  badge: t('landing.roleHighestAuthority', "Highest authority (State)"),
                   badgeColor:
                     "bg-emerald-500/[0.08] border-emerald-500/15 text-emerald-300",
                 },
                 {
-                  role: "Admin",
-                  who: "Office administrator, IT manager",
-                  does: "Full office management — user creation, department setup, all complaints within their tenant",
-                  badge: "Office-wide",
+                  role: t('landing.roleAdmin', "Admin"),
+                  who: t('landing.roleAdminWho', "Office administrator, IT manager"),
+                  does: t('landing.roleAdminDoes', "Full office management — user creation, department setup, all complaints within their tenant"),
+                  badge: t('landing.roleOfficeWide', "Office-wide"),
                   badgeColor:
                     "bg-teal-500/[0.08] border-teal-500/15 text-teal-300",
                 },
                 {
-                  role: "Department Head",
-                  who: "HOD, section chief",
-                  does: "Assign complaints within their department, department analytics, SLA monitoring for their team",
-                  badge: "Dept-scoped",
+                  role: t('landing.roleDeptHead', "Department Head"),
+                  who: t('landing.roleDeptHeadWho', "HOD, section chief"),
+                  does: t('landing.roleDeptHeadDoes', "Assign complaints within their department, department analytics, SLA monitoring for their team"),
+                  badge: t('landing.roleDeptScoped', "Dept-scoped"),
                   badgeColor:
                     "bg-blue-500/[0.08] border-blue-500/15 text-blue-300",
                 },
                 {
-                  role: "Officer",
-                  who: "Field officers, resolution staff",
-                  does: "See and action only their own assignments — update status, add notes, upload evidence",
-                  badge: "Assignment-scoped",
+                  role: t('landing.roleOfficer', "Officer"),
+                  who: t('landing.roleOfficerWho', "Field officers, resolution staff"),
+                  does: t('landing.roleOfficerDoes', "See and action only their own assignments — update status, add notes, upload evidence"),
+                  badge: t('landing.roleAssignmentScoped', "Assignment-scoped"),
                   badgeColor:
                     "bg-indigo-500/[0.08] border-indigo-500/15 text-indigo-300",
                 },
                 {
-                  role: "Call Operator",
-                  who: "Front-desk staff, call centre agents",
-                  does: "Log complaints on behalf of citizens — phone, walk-in, letter — and track them by ID",
-                  badge: "Intake only",
+                  role: t('landing.roleCallOperator', "Call Operator"),
+                  who: t('landing.roleCallOperatorWho', "Front-desk staff, call centre agents"),
+                  does: t('landing.roleCallOperatorDoes', "Log complaints on behalf of citizens — phone, walk-in, letter — and track them by ID"),
+                  badge: t('landing.roleIntakeOnly', "Intake only"),
                   badgeColor:
                     "bg-zinc-500/[0.08] border-zinc-500/15 text-zinc-400",
                 },
@@ -1092,49 +1086,49 @@ export default function Home() {
                 </div>
                 {[
                   [
-                    "Multi-office data isolation",
-                    "Paid enterprise tier",
-                    "Built in from ground up",
+                    t('landing.capIso', "Multi-office data isolation"),
+                    t('landing.genericPaid', "Paid enterprise tier"),
+                    t('landing.pcrmBuiltIn', "Built in from ground up"),
                   ],
                   [
-                    "Government role hierarchy",
-                    "Generic agent/admin",
-                    "5-level political hierarchy",
+                    t('landing.capRoles', "Government role hierarchy"),
+                    t('landing.genericRoles', "Generic agent/admin"),
+                    t('landing.pcrmRoles', "5-level political hierarchy"),
                   ],
                   [
-                    "SLA auto-escalation",
-                    "Manual rules only",
-                    "Background job — automatic",
+                    t('landing.capSla', "SLA auto-escalation"),
+                    t('landing.genericSla', "Manual rules only"),
+                    t('landing.pcrmSla', "Background job — automatic"),
                   ],
                   [
-                    "AI priority detection",
-                    "External API add-on",
-                    "Included, runs locally",
+                    t('landing.capAi', "AI priority detection"),
+                    t('landing.genericAi', "External API add-on"),
+                    t('landing.pcrmAi', "Included, runs locally"),
                   ],
                   [
-                    "Citizen tracking without login",
-                    "Not standard",
-                    "Core feature, no account needed",
+                    t('landing.capTrack', "Citizen tracking without login"),
+                    t('landing.genericTrack', "Not standard"),
+                    t('landing.pcrmTrack', "Core feature, no account needed"),
                   ],
                   [
-                    "Citizen satisfaction rating",
-                    "Not standard",
-                    "Built in, tracking ID only",
+                    t('landing.capRating', "Citizen satisfaction rating"),
+                    t('landing.genericRating', "Not standard"),
+                    t('landing.pcrmRating', "Built in, tracking ID only"),
                   ],
                   [
-                    "Duplicate complaint detection",
-                    "Not standard",
-                    "TF-IDF cosine similarity engine",
+                    t('landing.capDupe', "Duplicate complaint detection"),
+                    t('landing.genericDupe', "Not standard"),
+                    t('landing.pcrmDupe', "TF-IDF cosine similarity engine"),
                   ],
                   [
-                    "Department-scoped assignment",
-                    "Not standard",
-                    "Enforced in code — unbypassable",
+                    t('landing.capAssign', "Department-scoped assignment"),
+                    t('landing.genericAssign', "Not standard"),
+                    t('landing.pcrmAssign', "Enforced in code — unbypassable"),
                   ],
                   [
-                    "Immutable audit trail",
-                    "Basic logs",
-                    "Structured, queryable, atomic",
+                    t('landing.capAudit', "Immutable audit trail"),
+                    t('landing.genericAudit', "Basic logs"),
+                    t('landing.pcrmAudit', "Structured, queryable, atomic"),
                   ],
                 ].map(([feat, generic, pcrm], i) => (
                   <div
