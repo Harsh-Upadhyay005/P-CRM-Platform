@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AlertTriangle, Clock, ShieldAlert, Flame, Zap } from "lucide-react";
 import Link from "next/link";
+import { useTranslation } from 'react-i18next';
 import { useRole } from "@/hooks/useRole";
 
 function timeAgo(timestamp: string) {
@@ -63,6 +64,7 @@ function getAlertConfig(c: Complaint): {
 }
 
 export function AlertsPanel() {
+  const { t } = useTranslation();
   const { isCitizen } = useRole();
 
   // Always call hooks — just disable the queries for citizens
@@ -109,9 +111,7 @@ export function AlertsPanel() {
     <Card className="bg-slate-900/40 backdrop-blur-md border-white/5 shadow-lg h-full flex flex-col group hover:bg-slate-900/50 hover:border-white/10 hover:shadow-xl hover:shadow-purple-500/5 transition-all duration-500">
       <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
         <CardTitle className="text-sm font-medium text-slate-300 flex items-center gap-2">
-          <ShieldAlert size={16} className="text-red-400" />
-          Active Alerts
-        </CardTitle>
+          <ShieldAlert size={16} className="text-red-400" /> {t('dashboard.activeAlerts', 'Active Alerts')} </CardTitle>
         <Badge
           variant="outline"
           className="bg-red-500/10 text-red-400 border-red-500/25 text-xs font-mono"
@@ -132,9 +132,7 @@ export function AlertsPanel() {
               ))}
             </div>
           ) : alerts.length === 0 ? (
-            <p className="text-xs text-slate-400 text-center py-8">
-              No active alerts
-            </p>
+            <p className="text-xs text-slate-400 text-center py-8"> {t('dashboard.noActiveAlerts', 'No active alerts')} </p>
           ) : (
             <div className="space-y-2.5">
               {alerts.map((alert, i) => {
@@ -169,7 +167,7 @@ export function AlertsPanel() {
                                 variant="outline"
                                 className={`${cfg.badge} text-[9px] ml-auto`}
                               >
-                                {cfg.label}
+                                {t(`dashboard.alerts.${cfg.label.replace(/\s+/g, '')}`, cfg.label)}
                               </Badge>
                             </div>
                             <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-2">
