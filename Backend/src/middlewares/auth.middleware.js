@@ -1,6 +1,7 @@
 import { verifyAccessToken } from "../utils/token.utils.js";
 import { ApiError } from "../utils/ApiError.js";
 import { isTokenBlacklisted } from "../config/redis.js";
+import { prisma } from "../config/db.js";
 
 const readRawCookieValue = (cookieHeader, key) => {
   if (!cookieHeader || typeof cookieHeader !== "string") return null;
@@ -56,6 +57,30 @@ export const authMiddleware = async (req, res, next) => {
     throw new ApiError(401, "Token has been revoked");
   }
 
-  req.user = decoded;
+  const currentUser = await prisma.user.findUnique({
+    where: { id: decoded.userId },
+    select: {
+      id: true,
+      tenantId: true,
+      isActive: true,
+      isDeleted: true,
+      isPlatformOwner: true,
+      managedStateCode: true,
+      role: { select: { type: true } },
+    },
+  });
+
+  if (!currentUser || currentUser.isDeleted || !currentUser.isActive) {
+    throw new ApiError(401, "Account inactive or deleted");
+  }
+
+  req.user = {
+    ...decoded,
+    userId: currentUser.id,
+    tenantId: currentUser.tenantId,
+    role: currentUser.role?.type ?? decoded.role,
+    isPlatformOwner: currentUser.isPlatformOwner,
+    managedStateCode: currentUser.managedStateCode,
+  };
   next();
 };

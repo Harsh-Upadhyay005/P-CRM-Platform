@@ -8,8 +8,18 @@ const requireTenantId = (user) => {
 };
 
 export const forTenant = (user) => {
-  // SUPER_ADMIN is platform-level and has no tenantId — let them see all tenants
-  if (user?.role === "SUPER_ADMIN") return {};
+  // SUPER_ADMIN can be either platform owner (all states) or state-scoped.
+  if (user?.role === "SUPER_ADMIN") {
+    if (user?.isPlatformOwner) return {};
+    if (user?.managedStateCode) {
+      return {
+        tenant: {
+          is: { stateCode: user.managedStateCode },
+        },
+      };
+    }
+    throw new ApiError(403, "State super admin does not have an assigned state");
+  }
   return { tenantId: requireTenantId(user) };
 };
 
