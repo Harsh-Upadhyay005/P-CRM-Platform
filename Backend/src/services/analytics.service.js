@@ -1151,6 +1151,7 @@ const CITY_KEYWORD_MAP = [
 export const localityToStateId = (locality) => {
   if (!locality) return null;
   const lower = locality.toLowerCase();
+  const knownStateIds = new Set(LOCALITY_KEYWORD_MAP.map((entry) => entry.id));
   
   for (const entry of LOCALITY_KEYWORD_MAP) {
     if (entry.keywords.some((kw) => {
@@ -1162,8 +1163,26 @@ export const localityToStateId = (locality) => {
     }
   }
 
-  const upper = ` ${locality.toUpperCase().replace(/[^A-Z]/g, " ")} `;
-  if (upper.includes(" UP ")) return "UP";
+
+  const segmentTokens = String(locality)
+    .toUpperCase()
+    .split(",")
+    .map((segment) =>
+      segment
+        .replace(/[^A-Z]/g, " ")
+        .split(/\s+/)
+        .map((token) => token.trim())
+        .filter(Boolean),
+    )
+    .filter((tokens) => tokens.length > 0);
+
+  for (let i = segmentTokens.length - 1; i >= 0; i--) {
+    for (const token of segmentTokens[i]) {
+      if (token.length === 2 && knownStateIds.has(token)) {
+        return token;
+      }
+    }
+  }
 
   return null;
 };
