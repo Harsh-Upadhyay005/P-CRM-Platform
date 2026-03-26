@@ -1212,11 +1212,13 @@ export default function Home() {
                   href="/"
                   className="inline-flex items-center gap-2.5 group mb-4"
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-linear-to-br from-emerald-500 to-teal-400">
-                    <ShieldCheck className="h-4 w-4 text-white" />
-                  </div>
+                  <img 
+                    src="/logo.png" 
+                    alt="BharatSetu" 
+                    className="h-10 w-auto"
+                  />
                   <span className="text-[14px] font-bold text-white">
-                    {t('landing.brandName', 'Bharat-Setu')}
+                    {t('landing.brandName', 'BharatSetu')}
                   </span>
                 </Link>
                 <p className="text-[12.5px] text-zinc-400 leading-relaxed max-w-[200px]">
@@ -1299,7 +1301,7 @@ export default function Home() {
             {/* Bottom bar */}
             <div className="border-t border-white/[0.06] py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
               <p className="text-[11.5px] text-zinc-500">
-                &copy; {new Date().getFullYear()} P&#8209;CRM Platform. Built
+                &copy; {new Date().getFullYear()} BharatSetu. Built
                 for public service.
               </p>
               <div className="flex items-center gap-3">
