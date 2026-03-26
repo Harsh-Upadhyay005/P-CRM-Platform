@@ -37,7 +37,6 @@ const CommandCenter3D = dynamic(
   },
 );
 
-// ── Status Badge ────────────────────────────────────────────────────────────
 
 const statusStyles: Record<ComplaintStatus, string> = {
   OPEN: "bg-blue-500/20 text-blue-400 border-blue-500/30",
@@ -109,7 +108,7 @@ function StatCard({
 export function CitizenDashboard() {
   const { user } = useAuth();
 
-  // Fetch the citizen's own complaints (backend ABAC ensures only their data is returned)
+  
   const { data, isLoading } = useQuery({
     queryKey: ["complaints", "citizen-summary"],
     queryFn: () => complaintsApi.list({ limit: 100 }),
@@ -186,12 +185,10 @@ export function CitizenDashboard() {
         </div>
       </motion.div>
 
-      {/* ── Flag + Ashok Chakra Visual ─────────────────────────────────── */}
       <div>
         <CommandCenter3D />
       </div>
 
-      {/* ── Stats Row ───────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           label="Total Filed"
@@ -231,7 +228,7 @@ export function CitizenDashboard() {
         />
       </div>
 
-      {/* ── Recent Complaints ────────────────────────────────────────── */}
+      
       <Card className="bg-slate-900/40 backdrop-blur-md border-white/5 shadow-lg">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
@@ -355,14 +352,12 @@ export function CitizenDashboard() {
         </CardContent>
       </Card>
 
-      {/* ── Help Card ────────────────────────────────────────────────── */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35 }}
         className="grid grid-cols-1 sm:grid-cols-2 gap-4"
       >
-        {/* Track by Tracking ID */}
         <div className="flex items-start gap-4 bg-white/5 border border-white/10 rounded-xl p-5 hover:bg-white/10 hover:-translate-y-1 hover:shadow-xl hover:border-white/20 transition-all duration-500 group">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
             <Search size={18} className="text-emerald-400" />

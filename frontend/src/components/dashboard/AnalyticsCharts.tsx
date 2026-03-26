@@ -44,8 +44,7 @@ export function TrendsChart() {
     refetchInterval: 30_000,
   });
 
-  // getTrends returns ApiResponse<{ granularity, days, since, data: TrendPoint[] }>
-  // so actual array is at data.data.data
+  
   const trendData = (data?.data as any)?.data ?? [];
 
   // Show ~7 date labels regardless of dataset size; format as "M/D"
