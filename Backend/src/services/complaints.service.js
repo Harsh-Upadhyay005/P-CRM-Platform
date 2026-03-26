@@ -1028,7 +1028,7 @@ export const searchPublicTenants = async ({ q = "" } = {}) => {
         : {}),
     },
     select: { name: true, slug: true },
-    take: 12,
+    take: search ? 20 : 500,
     orderBy: { name: "asc" },
   });
 };
