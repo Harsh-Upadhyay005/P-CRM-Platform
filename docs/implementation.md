@@ -767,6 +767,21 @@ startSlaMonitor(); // boots immediately, then every 30 min
 
 ---
 
+## Workflow Automation Engine
+
+**File**: `src/services/workflow.service.js` (implementation)
+
+The automation engine implements rule-based routing, SLA policies, and auto-close behaviors. This engine runs automatically on complaint ingest or background intervals depending on the rule type.
+
+### Engine Components:
+
+- **Assignment Rules**: Prioritized list of regex or string matchers against complaint body, category, or locality. Matches result in automatic department/officer assignments and override default priorities.
+- **Auto-Close Rules**: Background schedule (similar to SLA monitor) that locates `RESOLVED` complaints untouched for X days and automatically transitions them to `CLOSED` to clear queues.
+- **Smart Routing (AI synergy)**: Can intercept the AI output (sentiment, detected categorization) to apply pre-configured tenant workflow settings.
+- **SLA Policy Modifiers**: Dynamically adjust SLA based on customized categories rather than global department defaults (e.g. 24h for Power, 72h for Roads).
+
+---
+
 ## Middleware Stack
 
 ### Global (applied in `app.js` in order)
