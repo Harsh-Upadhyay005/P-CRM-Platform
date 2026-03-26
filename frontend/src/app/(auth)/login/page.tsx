@@ -121,14 +121,12 @@ export default function LoginPage() {
                 <div className="flex items-center justify-between pt-2">
                     <label className="flex items-center space-x-2 cursor-pointer group">
                         <input type="checkbox" className="rounded bg-white/10 border-white/10 text-emerald-500 focus:ring-0 focus:ring-offset-0 w-4 h-4 checked:bg-emerald-500" />
-                        <span className="text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors">Remember me</span>
+                        <span className="text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors">{t('auth.rememberMe')}</span>
                     </label>
                     <Link 
                         href="/forgot-password" 
                         className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors font-medium"
-                    >
-                        Forgot Password?
-                    </Link>
+                    > {t('auth.forgotPassword')} </Link>
                 </div>
 
                 <button
@@ -140,8 +138,7 @@ export default function LoginPage() {
                     {loading ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
                     ) : (
-                        <>
-                        Sign In <ArrowRight className="w-4 h-4" />
+                        <> {t('auth.signIn')} <ArrowRight className="w-4 h-4" />
                         </>
                     )}
                 </button>
@@ -149,17 +146,15 @@ export default function LoginPage() {
 
             <div className="mt-8 text-center border-t border-white/5 pt-6 relative z-10">
                 <p className="text-zinc-400 text-xs">
-                    Don't have an account?{' '}
-                    <Link href="/register" className="text-emerald-400 font-medium hover:text-emerald-300 transition-colors hover:underline">
-                        Request Access
-                    </Link>
+                    {t('auth.noAccount')} {' '}
+                    <Link href="/register" className="text-emerald-400 font-medium hover:text-emerald-300 transition-colors hover:underline"> {t('auth.requestAccess')} </Link>
                 </p>
             </div>
         </div>
         
         {/* Footer */}
         <div className="text-center mt-6 text-[10px] text-zinc-600 uppercase tracking-widest">
-            &copy; 2026 BharatSetu Platform. Secure Access.
+            {t('auth.footerText')}
         </div>
       </motion.div>
     </div>

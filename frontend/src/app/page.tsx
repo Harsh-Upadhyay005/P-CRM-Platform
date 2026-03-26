@@ -137,7 +137,7 @@ export default function Home() {
               </div>
               <div className="leading-none">
                 <p className="text-[14px] font-bold tracking-tight text-white group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-linear-to-r group-hover:from-emerald-300 group-hover:to-teal-200 transition-all duration-300">
-                  Bharat&#8209;Setu
+                  {t('landing.brandName', 'Bharat-Setu')}
                 </p>
                 <p className="text-[9px] uppercase tracking-[0.2em] text-emerald-400/70 mt-0.5 group-hover:text-emerald-300 transition-colors duration-300">
                   {t('nav.brandSubtitle', 'Grievance Platform')}
@@ -170,7 +170,7 @@ export default function Home() {
               <button
                 onClick={toggleLanguage}
                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[13px] font-medium text-zinc-300 hover:text-white hover:bg-white/[0.06] transition-all duration-300 mr-2"
-                title="Toggle Language"
+                title={t('landing.toggleLanguage', 'Toggle Language')}
               >
                 {i18n.language === 'hi' ? 'EN' : 'HI'}
               </button>
@@ -206,7 +206,7 @@ export default function Home() {
               <button
                 onClick={toggleLanguage}
                 className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-[12px] font-medium text-zinc-300 hover:text-white hover:bg-white/[0.06] transition-all duration-300"
-                title="Toggle Language"
+                title={t('landing.toggleLanguage', 'Toggle Language')}
               >
                 {i18n.language === 'hi' ? 'EN' : 'HI'}
               </button>
@@ -239,11 +239,11 @@ export default function Home() {
           >
             <nav className="flex flex-col px-5 py-3 gap-0.5">
                 {[
-                  ["Problem", "#problem"],
-                  ["Features", "#features"],
-                  ["How it works", "#workflow"],
-                  ["For citizens", "#citizen"],
-                  ["Roles", "#roles"],
+                  [t('nav.problem', 'Problem'), "#problem"],
+                  [t('nav.features', 'Features'), "#features"],
+                  [t('nav.howItWorks', 'How it works'), "#workflow"],
+                  [t('nav.forCitizens', 'For citizens'), "#citizen"],
+                  [t('nav.roles', 'Roles'), "#roles"],
                 ].map(([label, href]) => (
                   <a
                     key={href}
@@ -328,9 +328,7 @@ export default function Home() {
               <Link
                 href="/register"
                 className="inline-flex items-center justify-center rounded-xl bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-7 py-3 text-[14px] font-semibold text-white shadow-xl shadow-emerald-900/40 hover:shadow-emerald-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]"
-              >
-                Request access
-                <ArrowRight className="ml-2 h-4 w-4" />
+              >{t('landing.requestAccess', 'Request access')}<ArrowRight className="ml-2 h-4 w-4" />
               </Link>
               <Link
                 href="/submit"
@@ -382,9 +380,7 @@ export default function Home() {
                     <p className="text-sm font-medium text-white mt-1">{t('landing.realTimeOverview')}</p>
                   </div>
                   <span className="inline-flex items-center rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-[10px] text-emerald-300">
-                    <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    Live
-                  </span>
+                    <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />{t('landing.live', 'Live')}</span>
                 </div>
 
                 {/* KPI Cards — matches actual dashboard style */}
@@ -451,10 +447,7 @@ export default function Home() {
           <div className="max-w-6xl mx-auto">
             <Reveal>
               <Eyebrow>{t('landing.theProblem', 'The problem')}</Eyebrow>
-              <SectionH2 className="max-w-3xl">
-                Complaints live in WhatsApp.
-                <br className="hidden sm:block" /> Not in systems.
-              </SectionH2>
+              <SectionH2 className="max-w-3xl">{t('landing.complaintsWhatsapp', 'Complaints live in WhatsApp.')}<br className="hidden sm:block" />{t('landing.notInSystems', 'Not in systems.')}</SectionH2>
               <p className="mt-5 text-zinc-300 text-[15px] leading-relaxed max-w-2xl font-light">
                 Phone calls, walk-ins, registers, sticky notes, group chats —
                 everything ends up scattered across people, and when someone
@@ -529,7 +522,7 @@ export default function Home() {
                         "Seven real-time analytics dashboards, scoped to authority",
                       ],
                       [
-                        "Immutable audit trail",
+                        t('landing.details.d3Title', t('landing.details.d3Title', t('landing.details.d3Title', "Immutable audit trail"))),
                         "Full status history survives any personnel change",
                       ],
                       [
@@ -575,40 +568,40 @@ export default function Home() {
                   bg: "bg-emerald-500/[0.08]",
                   border: "border-emerald-500/10",
                   iconColor: "text-emerald-400",
-                  title: "Structured lifecycle",
-                  desc: "OPEN → ASSIGNED → IN PROGRESS → RESOLVED → CLOSED. Role-gated transitions enforced by the system — no skipping, no silent closures, no workarounds.",
+                  title: t('landing.features.f1Title', t('landing.features.f1Title', t('landing.features.f1Title', "Structured lifecycle"))),
+                  desc: t('landing.features.f1Desc', t('landing.features.f1Desc', t('landing.features.f1Desc', "OPEN → ASSIGNED → IN PROGRESS → RESOLVED → CLOSED. Role-gated transitions enforced by the system — no skipping, no silent closures, no workarounds."))),
                 },
                 {
                   icon: <Sparkles className="h-5 w-5" />,
                   bg: "bg-teal-500/[0.08]",
                   border: "border-teal-500/10",
                   iconColor: "text-teal-300",
-                  title: "Built-in AI intelligence",
-                  desc: "Three on-device engines — priority prediction, sentiment analysis, duplicate detection — score every complaint before a human touches it. No external API, no extra cost.",
+                  title: t('landing.features.f2Title', t('landing.features.f2Title', t('landing.features.f2Title', "Built-in AI intelligence"))),
+                  desc: t('landing.features.f2Desc', t('landing.features.f2Desc', t('landing.features.f2Desc', "Three on-device engines — priority prediction, sentiment analysis, duplicate detection — score every complaint before a human touches it. No external API, no extra cost."))),
                 },
                 {
                   icon: <Timer className="h-5 w-5" />,
                   bg: "bg-amber-500/[0.08]",
                   border: "border-amber-500/10",
                   iconColor: "text-amber-400",
-                  title: "SLA auto-escalation",
-                  desc: "Per-department deadlines with a background job that warns at 75% elapsed time and auto-escalates breaches every 30 minutes — with email alerts dispatched automatically.",
+                  title: t('landing.features.f3Title', t('landing.features.f3Title', t('landing.features.f3Title', "SLA auto-escalation"))),
+                  desc: t('landing.features.f3Desc', t('landing.features.f3Desc', t('landing.features.f3Desc', "Per-department deadlines with a background job that warns at 75% elapsed time and auto-escalates breaches every 30 minutes — with email alerts dispatched automatically."))),
                 },
                 {
                   icon: <BarChart2 className="h-5 w-5" />,
                   bg: "bg-cyan-500/[0.08]",
                   border: "border-cyan-500/10",
                   iconColor: "text-cyan-300",
-                  title: "Executive analytics",
-                  desc: "Seven live reports — Overview, Trends, Department Performance, Officer Leaderboard, SLA Heatmap, Escalation Trends, Category Distribution — scoped to the viewer's authority.",
+                  title: t('landing.features.f4Title', t('landing.features.f4Title', t('landing.features.f4Title', "Executive analytics"))),
+                  desc: t('landing.features.f4Desc', t('landing.features.f4Desc', t('landing.features.f4Desc', "Seven live reports — Overview, Trends, Department Performance, Officer Leaderboard, SLA Heatmap, Escalation Trends, Category Distribution — scoped to the viewer's authority."))),
                 },
                 {
                   icon: <Bell className="h-5 w-5" />,
                   bg: "bg-indigo-500/[0.08]",
                   border: "border-indigo-500/10",
                   iconColor: "text-indigo-400",
-                  title: "Real-time notifications",
-                  desc: "Server-Sent Events deliver instant in-app alerts on assignment, status change and SLA breach. No polling, no page refresh — the dashboard updates the moment something changes.",
+                  title: t('landing.features.f5Title', t('landing.features.f5Title', t('landing.features.f5Title', "Real-time notifications"))),
+                  desc: t('landing.features.f5Desc', t('landing.features.f5Desc', t('landing.features.f5Desc', "Server-Sent Events deliver instant in-app alerts on assignment, status change and SLA breach. No polling, no page refresh — the dashboard updates the moment something changes."))),
                 },
                 {
                   icon: <Globe2 className="h-5 w-5" />,
@@ -649,9 +642,7 @@ export default function Home() {
                 {t('landing.threeEngines')}
               </SectionH2>
               <p className="mt-5 text-zinc-300 text-[15px] leading-relaxed max-w-2xl font-light">
-                Every new complaint is scored automatically before staff see it
-                — so critical cases surface to the top, not the bottom of the
-                queue.
+                {t('landing.autoScored')}
               </p>
             </Reveal>
 
@@ -661,40 +652,26 @@ export default function Home() {
                 <div className="rounded-2xl border border-white/[0.13] bg-white/[0.06] p-6 h-full flex flex-col gap-5">
                   <div>
                     <div className="flex items-center justify-between mb-5">
-                      <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400">
-                        Incoming complaint
-                      </p>
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400">{t('landing.incomingComplaint', 'Incoming complaint')}</p>
                       <code className="font-mono text-[10.5px] text-zinc-500">
                         BharatSetu-20260301-A4F7B3C2
                       </code>
                     </div>
                     <div className="space-y-3">
                       <div>
-                        <p className="text-[10px] text-zinc-400 uppercase tracking-[0.15em] mb-1">
-                          Description
-                        </p>
+                        <p className="text-[10px] text-zinc-400 uppercase tracking-[0.15em] mb-1">{t('landing.descriptionLabel', 'Description')}</p>
                         <p className="text-[13.5px] text-zinc-200 leading-relaxed font-light">
-                          &ldquo;Water supply has been cut for 3 days in Block
-                          12. Children are sick. Multiple families affected.
-                          Nobody is responding to our calls.&rdquo;
+                          {t('landing.complaintExample')}
                         </p>
                       </div>
                       <div className="pt-2 grid grid-cols-2 gap-2.5">
                         <div>
-                          <p className="text-[10px] text-zinc-400 mb-1">
-                            Category
-                          </p>
-                          <p className="text-[12.5px] text-zinc-300">
-                            Water Supply
-                          </p>
+                          <p className="text-[10px] text-zinc-400 mb-1">{t('landing.categoryLabel', 'Category')}</p>
+                          <p className="text-[12.5px] text-zinc-300">{t('landing.waterSupply', 'Water Supply')}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] text-zinc-400 mb-1">
-                            Filed by
-                          </p>
-                          <p className="text-[12.5px] text-zinc-300">
-                            Public portal
-                          </p>
+                          <p className="text-[10px] text-zinc-400 mb-1">{t('landing.filedByLabel', 'Filed by')}</p>
+                          <p className="text-[12.5px] text-zinc-300">{t('landing.publicPortal', 'Public portal')}</p>
                         </div>
                       </div>
                     </div>
@@ -705,22 +682,14 @@ export default function Home() {
                     <div>
                       <p className="text-[10px] text-zinc-500 mb-1">{t('landing.statusLabel')}</p>
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/[0.12] border border-amber-500/25 px-2 py-0.5 text-[10.5px] text-amber-300 font-medium">
-                        <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                        Escalated
-                      </span>
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />{t('landing.escalatedLabel', 'Escalated')}</span>
                     </div>
                     <div>
-                      <p className="text-[10px] text-zinc-500 mb-1">
-                        Department
-                      </p>
-                      <p className="text-[11.5px] text-zinc-300 font-medium">
-                        Water Dept.
-                      </p>
+                      <p className="text-[10px] text-zinc-500 mb-1">{t('landing.departmentLabel', 'Department')}</p>
+                      <p className="text-[11.5px] text-zinc-300 font-medium">{t('landing.waterDept', 'Water Dept.')}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-zinc-500 mb-1">
-                        Assigned to
-                      </p>
+                      <p className="text-[10px] text-zinc-500 mb-1">{t('landing.assignedToLabel', 'Assigned to')}</p>
                       <p className="text-[11.5px] text-zinc-300 font-medium">
                         R. Kumar
                       </p>
@@ -730,28 +699,18 @@ export default function Home() {
                   {/* SLA row */}
                   <div className="flex items-center justify-between text-[11px]">
                     <span className="text-zinc-500">{t('landing.slaDeadlineLabel')}</span>
-                    <span className="text-red-400 font-medium">
-                      Breached — 6 h ago
-                    </span>
+                    <span className="text-red-400 font-medium">{t('landing.breachedLabel', 'Breached — 6 h ago')}</span>
                   </div>
 
                   <div className="pt-0 border-t border-white/[0.1]">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400 mt-8 mb-2.5">
-                      AI analysis — completed in &lt;50ms
-                    </p>
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400 mt-8 mb-2.5">{t('landing.aiAnalysisLabel', 'AI analysis — completed in <50ms')}</p>
                     <div className="flex flex-wrap gap-2">
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/[0.1] border border-red-500/20 px-3 py-1.5 text-[11px] text-red-300 font-medium">
-                        <Sparkles className="h-3 w-3" />
-                        Priority: CRITICAL
-                      </span>
+                        <Sparkles className="h-3 w-3" />{t('landing.priorityCritical', 'Priority: CRITICAL')}</span>
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/[0.1] border border-amber-500/20 px-3 py-1.5 text-[11px] text-amber-300 font-medium">
-                        <TrendingUp className="h-3 w-3" />
-                        Sentiment: DISTRESSED
-                      </span>
+                        <TrendingUp className="h-3 w-3" />{t('landing.sentimentDistressed', 'Sentiment: DISTRESSED')}</span>
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/[0.1] border border-emerald-500/20 px-3 py-1.5 text-[11px] text-emerald-300 font-medium">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Duplicate: NONE
-                      </span>
+                        <CheckCircle2 className="h-3 w-3" />{t('landing.duplicateNone', 'Duplicate: NONE')}</span>
                     </div>
                   </div>
                 </div>
@@ -834,20 +793,20 @@ export default function Home() {
                   {
                     step: "01",
                     icon: <FileText className="h-4 w-4 text-emerald-400" />,
-                    title: "Citizen submits",
-                    desc: "Through the public portal or via staff. Instant tracking ID issued. AI scores priority, sentiment, and duplicate status before a human opens it.",
+                    title: t('landing.workflows.w1Title', t('landing.workflows.w1Title', t('landing.workflows.w1Title', "Citizen submits"))),
+                    desc: t('landing.workflows.w1Desc', t('landing.workflows.w1Desc', t('landing.workflows.w1Desc', "Through the public portal or via staff. Instant tracking ID issued. AI scores priority, sentiment, and duplicate status before a human opens it."))),
                   },
                   {
                     step: "02",
                     icon: <Users className="h-4 w-4 text-teal-300" />,
-                    title: "Routed to the right team",
-                    desc: "Admin or Department Head assigns to officer. System enforces scope — officers see only their own queue, heads only their department.",
+                    title: t('landing.workflows.w2Title', t('landing.workflows.w2Title', t('landing.workflows.w2Title', "Routed to the right team"))),
+                    desc: t('landing.workflows.w2Desc', t('landing.workflows.w2Desc', t('landing.workflows.w2Desc', "Admin or Department Head assigns to officer. System enforces scope — officers see only their own queue, heads only their department."))),
                   },
                   {
                     step: "03",
                     icon: <Zap className="h-4 w-4 text-amber-400" />,
-                    title: "Officer resolves",
-                    desc: "Officer moves through the enforced lifecycle with full notes, file attachments and an SLA timer visible on every card—escalating automatically if breached.",
+                    title: t('landing.workflows.w3Title', t('landing.workflows.w3Title', t('landing.workflows.w3Title', "Officer resolves"))),
+                    desc: t('landing.workflows.w3Desc', t('landing.workflows.w3Desc', t('landing.workflows.w3Desc', "Officer moves through the enforced lifecycle with full notes, file attachments and an SLA timer visible on every card—escalating automatically if breached."))),
                   },
                   {
                     step: "04",
@@ -904,9 +863,9 @@ export default function Home() {
                   icon: <FileText className="h-6 w-6 text-emerald-400" />,
                   bg: "bg-emerald-500/[0.07]",
                   border: "border-emerald-500/12",
-                  title: "File a complaint",
-                  desc: "Submit any grievance — road, water, sanitation, safety — with a description and optional contact details. No account, no app download.",
-                  action: "Submit now",
+                  title: t('landing.citizenCards.c1Title', t('landing.citizenCards.c1Title', t('landing.citizenCards.c1Title', "File a complaint"))),
+                  desc: t('landing.citizenCards.c1Desc', t('landing.citizenCards.c1Desc', t('landing.citizenCards.c1Desc', "Submit any grievance — road, water, sanitation, safety — with a description and optional contact details. No account, no app download."))),
+                  action: t('landing.citizenCards.c1Action', t('landing.citizenCards.c1Action', t('landing.citizenCards.c1Action', "Submit now"))),
                   href: "/submit",
                   badge: "Open to public",
                 },
@@ -914,9 +873,9 @@ export default function Home() {
                   icon: <Search className="h-6 w-6 text-teal-300" />,
                   bg: "bg-teal-500/[0.07]",
                   border: "border-teal-500/12",
-                  title: "Track your complaint",
-                  desc: "Enter your tracking ID to see the current status, assigned department, officer name, and last update — live, in real time.",
-                  action: "Track now",
+                  title: t('landing.citizenCards.c2Title', t('landing.citizenCards.c2Title', t('landing.citizenCards.c2Title', "Track your complaint"))),
+                  desc: t('landing.citizenCards.c2Desc', t('landing.citizenCards.c2Desc', t('landing.citizenCards.c2Desc', "Enter your tracking ID to see the current status, assigned department, officer name, and last update — live, in real time."))),
+                  action: t('landing.citizenCards.c2Action', t('landing.citizenCards.c2Action', t('landing.citizenCards.c2Action', "Track now"))),
                   href: "/track",
                   badge: "No login needed",
                 },
@@ -924,9 +883,9 @@ export default function Home() {
                   icon: <Star className="h-6 w-6 text-amber-400" />,
                   bg: "bg-amber-500/[0.07]",
                   border: "border-amber-500/12",
-                  title: "Rate the service",
+                  title: t('landing.citizenCards.c3Title', t('landing.citizenCards.c3Title', t('landing.citizenCards.c3Title', "Rate the service"))),
                   desc: t('landing.rateServiceDesc'),
-                  action: "Track to rate",
+                  action: t('landing.citizenCards.c3Action', t('landing.citizenCards.c3Action', t('landing.citizenCards.c3Action', "Track to rate"))),
                   href: "/track",
                   badge: "Anonymous",
                 },
@@ -978,19 +937,19 @@ export default function Home() {
               {[
                 {
                   icon: <Paperclip className="h-5 w-5 text-emerald-400" />,
-                  title: "File attachments",
-                  desc: "Officers and citizens attach photos, scanned documents, and site reports directly to the complaint. Files stored with signed, time-limited access links — no permanent public exposure.",
-                  detail: "Officers see evidence before visiting the site.",
+                  title: t('landing.details.d1Title', t('landing.details.d1Title', t('landing.details.d1Title', "File attachments"))),
+                  desc: t('landing.details.d1Desc', t('landing.details.d1Desc', t('landing.details.d1Desc', "Officers and citizens attach photos, scanned documents, and site reports directly to the complaint. Files stored with signed, time-limited access links — no permanent public exposure."))),
+                  detail: t('landing.details.d1Detail', t('landing.details.d1Detail', t('landing.details.d1Detail', "Officers see evidence before visiting the site."))),
                 },
                 {
                   icon: <MessageSquare className="h-5 w-5 text-teal-300" />,
-                  title: "Internal staff notes",
-                  desc: "Officers and department heads add private notes to complaints — field observations, coordination details, internal decisions — never visible to citizens.",
-                  detail: "No more parallel WhatsApp threads that disappear.",
+                  title: t('landing.details.d2Title', t('landing.details.d2Title', t('landing.details.d2Title', "Internal staff notes"))),
+                  desc: t('landing.details.d2Desc', t('landing.details.d2Desc', t('landing.details.d2Desc', "Officers and department heads add private notes to complaints — field observations, coordination details, internal decisions — never visible to citizens."))),
+                  detail: t('landing.details.d2Detail', t('landing.details.d2Detail', t('landing.details.d2Detail', "No more parallel WhatsApp threads that disappear."))),
                 },
                 {
                   icon: <Shield className="h-5 w-5 text-indigo-400" />,
-                  title: "Immutable audit trail",
+                  title: t('landing.details.d3Title'),
                   desc: t('landing.immutableAudit'),
                   detail:
                     t('landing.chronologicalRecord'),
@@ -1023,7 +982,7 @@ export default function Home() {
         >
           <div className="max-w-6xl mx-auto">
             <Reveal>
-              <Eyebrow>Designed for every role</Eyebrow>
+              <Eyebrow>{t('landing.designedForEveryRole', 'Designed for every role')}</Eyebrow>
               <SectionH2 className="max-w-2xl">
                 {t('landing.rolesTitle', 'Six distinctive roles')}
               </SectionH2>
@@ -1125,10 +1084,10 @@ export default function Home() {
             <Reveal delay={0.1}>
               <div className="mt-12 rounded-2xl border border-white/[0.13] bg-white/[0.06] overflow-hidden transition-all duration-300 hover:border-white/[0.25] hover:shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
                 <div className="grid grid-cols-3 text-[11px] uppercase tracking-[0.2em] text-zinc-400 border-b border-white/[0.1] px-6 py-3 bg-[#020617]/50">
-                  <span>Capability</span>
-                  <span className="text-center">Generic helpdesk</span>
+                  <span>{t('landing.capabilityLabel', 'Capability')}</span>
+                  <span className="text-center">{t('landing.genericHelpdesk', 'Generic helpdesk')}</span>
                   <span className="text-center text-emerald-400">
-                    Bharat&#8209;Setu
+                    {t('landing.brandName', 'Bharat-Setu')}
                   </span>
                 </div>
                 {[
@@ -1204,8 +1163,7 @@ export default function Home() {
               </div>
               <h2 className="text-2xl sm:text-[32px] font-light tracking-tight text-white leading-[1.2]">
                 {t('landing.readyToBring')}
-                <br className="hidden sm:block" /> to your office?
-              </h2>
+                <br className="hidden sm:block" />{t('landing.toYourOffice', 'to your office?')}</h2>
               <p className="mt-5 text-zinc-400 text-[14.5px] leading-relaxed max-w-lg mx-auto font-light">
                 {t('hero.subtitle', 'No complaint is lost. No deadline is invisible. No step is undocumented. Start managing citizen grievances the way a modern office should.')}
               </p>
@@ -1236,17 +1194,13 @@ export default function Home() {
                     href="/submit"
                     className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.03] border border-white/[0.13] px-4 py-2 text-[12px] font-medium text-zinc-300 hover:bg-white/[0.08] hover:border-white/[0.25] text-white transition-all duration-300 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:-translate-y-0.5 ease-out"
                   >
-                    <FileText className="h-3.5 w-3.5 text-emerald-400" />
-                    Submit a complaint
-                    <ArrowUpRight className="h-3 w-3 text-zinc-400" />
+                    <FileText className="h-3.5 w-3.5 text-emerald-400" />{t('landing.submitComplaintLabel', 'Submit a complaint')}<ArrowUpRight className="h-3 w-3 text-zinc-400" />
                   </Link>
                   <Link
                     href="/track"
                     className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.03] border border-white/[0.13] px-4 py-2 text-[12px] font-medium text-zinc-300 hover:bg-white/[0.08] hover:border-white/[0.25] text-white transition-all duration-300 hover:shadow-[0_0_15px_rgba(255,255,255,0.05)] hover:-translate-y-0.5 ease-out"
                   >
-                    <Search className="h-3.5 w-3.5 text-emerald-400" />
-                    Track a complaint
-                    <ArrowUpRight className="h-3 w-3 text-zinc-400" />
+                    <Search className="h-3.5 w-3.5 text-emerald-400" />{t('landing.trackComplaintLabel', 'Track a complaint')}<ArrowUpRight className="h-3 w-3 text-zinc-400" />
                   </Link>
                 </div>
               </div>
@@ -1268,27 +1222,24 @@ export default function Home() {
                     <ShieldCheck className="h-4 w-4 text-white" />
                   </div>
                   <span className="text-[14px] font-bold text-white">
-                    Bharat&#8209;Setu
+                    {t('landing.brandName', 'Bharat-Setu')}
                   </span>
                 </Link>
                 <p className="text-[12.5px] text-zinc-400 leading-relaxed max-w-[200px]">
-                  Modern grievance management for government offices —
-                  accountable, transparent, AI-powered.
+                  {t('landing.modernGrievance')}
                 </p>
               </div>
 
               {/* Platform */}
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-4">
-                  Platform
-                </p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-4">{t('landing.platformLabel', 'Platform')}</p>
                 <ul className="space-y-2.5">
                   {[
-                    ["Features", "#features"],
-                    ["How it works", "#workflow"],
+                    [t('nav.features', 'Features'), "#features"],
+                    [t('nav.howItWorks', 'How it works'), "#workflow"],
                     ["AI intelligence", "#features"],
                     ["Analytics", "#features"],
-                    ["Roles", "#roles"],
+                    [t('nav.roles', 'Roles'), "#roles"],
                   ].map(([label, href]) => (
                     <li key={label}>
                       <a
@@ -1304,9 +1255,7 @@ export default function Home() {
 
               {/* Citizens */}
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-4">
-                  Citizens
-                </p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-4">{t('landing.citizensLabel', 'Citizens')}</p>
                 <ul className="space-y-2.5">
                   {[
                     ["Submit a complaint", "/submit"],
@@ -1327,9 +1276,7 @@ export default function Home() {
 
               {/* Access */}
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-4">
-                  Access
-                </p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500 mb-4">{t('landing.accessLabel', 'Access')}</p>
                 <ul className="space-y-2.5">
                   {[
                     ["Staff sign in", "/login"],
@@ -1349,9 +1296,7 @@ export default function Home() {
                   <Link
                     href="/register"
                     className="inline-flex items-center gap-1.5 rounded-lg bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-4 py-2 text-[12.5px] font-semibold text-white transition-all"
-                  >
-                    Get started
-                    <ArrowRight className="h-3.5 w-3.5" />
+                  >{t('landing.getStarted', 'Get started')}<ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
               </div>
