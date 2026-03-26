@@ -97,7 +97,7 @@ function SlaTimer({
 }) {
   const [now] = React.useState(() => Date.now());
   if (status === "RESOLVED" || status === "CLOSED") {
-    return <span className="text-emerald-400 text-xs">{t('dashboard.done', 'Done')}</span>;
+    return <span className="text-emerald-400 text-xs">Done</span>;
   }
   const hrs = Math.floor((now - new Date(createdAt).getTime()) / 3600000);
   return (
@@ -118,13 +118,13 @@ function ComplaintsTable({ data }: { data: Complaint[] }) {
       <Table className="min-w-[680px]">
         <TableHeader>
           <TableRow className="border-white/5 hover:bg-transparent">
-            <TableHead className="text-slate-400 text-xs font-semibold w-32">{t('dashboard.trackingId', 'Tracking ID')}</TableHead>
-            <TableHead className="text-slate-400 text-xs font-semibold">{t('dashboard.citizen', 'Citizen')}</TableHead>
-            <TableHead className="text-slate-400 text-xs font-semibold hidden sm:table-cell">{t('dashboard.category', 'Category')}</TableHead>
-            <TableHead className="text-slate-400 text-xs font-semibold">{t('dashboard.priority', 'Priority')}</TableHead>
-            <TableHead className="text-slate-400 text-xs font-semibold">{t('dashboard.status', 'Status')}</TableHead>
-            <TableHead className="text-slate-400 text-xs font-semibold hidden md:table-cell">{t('dashboard.assignedTo', 'Assigned To')}</TableHead>
-            <TableHead className="text-slate-400 text-xs font-semibold">{t('dashboard.sla', 'SLA')}</TableHead>
+            <TableHead className="text-slate-400 text-xs font-semibold w-32">TableColumn</TableHead>
+            <TableHead className="text-slate-400 text-xs font-semibold">TableColumn</TableHead>
+            <TableHead className="text-slate-400 text-xs font-semibold hidden sm:table-cell">TableColumn</TableHead>
+            <TableHead className="text-slate-400 text-xs font-semibold">TableColumn</TableHead>
+            <TableHead className="text-slate-400 text-xs font-semibold">TableColumn</TableHead>
+            <TableHead className="text-slate-400 text-xs font-semibold hidden md:table-cell">TableColumn</TableHead>
+            <TableHead className="text-slate-400 text-xs font-semibold">TableColumn</TableHead>
             <TableHead className="text-slate-400 text-xs font-semibold w-10" />
           </TableRow>
         </TableHeader>
@@ -178,17 +178,17 @@ function ComplaintsTable({ data }: { data: Complaint[] }) {
                       onClick={() => router.push(`/complaints/${c.id}`)}
                       className="text-xs cursor-pointer hover:bg-white/5 gap-2"
                     >
-                      <Eye size={13} /> {t('dashboard.viewDetails', 'View Details')} </DropdownMenuItem>
+                      <Eye size={13} /> TableColumn </DropdownMenuItem>
                     <DropdownMenuItem
                       asChild
                       className="text-xs cursor-pointer hover:bg-white/5 gap-2"
                     >
                       <Link href={`/complaints/${c.id}/edit`}>
-                        <Edit2 size={13} /> {t('dashboard.editComplaint', 'Edit Complaint')} </Link>
+                        <Edit2 size={13} /> TableColumn </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator className="bg-white/5" />
                     <DropdownMenuItem className="text-xs cursor-pointer hover:bg-white/5 gap-2 text-red-400 focus:text-red-400">
-                      <Trash2 size={13} /> {t('dashboard.delete', 'Delete')} </DropdownMenuItem>
+                      <Trash2 size={13} /> TableColumn </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
@@ -220,7 +220,7 @@ function KanbanBoard({ data }: { data: Complaint[] }) {
           >
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                {t(`dashboard.${col.title.toLowerCase().replace(/\s/g, '')}`, col.title)}
+                {col.title}
               </h4>
               <Badge
                 variant="outline"
@@ -257,7 +257,7 @@ function KanbanBoard({ data }: { data: Complaint[] }) {
                   </Link>
                 ))}
                 {items.length === 0 && (
-                  <p className="text-xs text-slate-400 text-center py-8"> {t('dashboard.noItems', 'No items')} </p>
+                  <p className="text-xs text-slate-400 text-center py-8"> TableColumn </p>
                 )}
               </div>
             </ScrollArea>
@@ -301,14 +301,14 @@ export function ComplaintManager() {
     <Card className="bg-slate-900/40 backdrop-blur-md border-white/5 shadow-lg">
       <CardHeader className="pb-3">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-          <CardTitle className="text-sm font-medium text-slate-300"> {t('dashboard.complaintManagement', 'Complaint Management')} </CardTitle>
+          <CardTitle className="text-sm font-medium text-slate-300"> TableColumn </CardTitle>
           <div className="flex items-center gap-2 flex-wrap">
             <Link href="/complaints/new">
               <Button
                 size="sm"
                 className="h-8 bg-emerald-600 hover:bg-emerald-500 text-white text-xs gap-1.5"
               >
-                <Plus size={14} /> {t('dashboard.newComplaint', 'New Complaint')} </Button>
+                <Plus size={14} /> TableColumn </Button>
             </Link>
             <div className="relative">
               <Search
@@ -316,7 +316,7 @@ export function ComplaintManager() {
                 className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500"
               />
               <Input
-                placeholder={t('dashboard.searchComplaints', 'Search complaints…')}
+                placeholder="Search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-8 h-8 w-50 bg-slate-800/50 border-white/5 text-xs text-slate-200 placeholder:text-slate-600"
@@ -328,13 +328,13 @@ export function ComplaintManager() {
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
-                <SelectItem value="all" className="text-xs"> {t('dashboard.allStatus', 'All Status')} </SelectItem>
-                <SelectItem value="OPEN" className="text-xs"> {t('dashboard.open', 'Open')} </SelectItem>
-                <SelectItem value="ASSIGNED" className="text-xs"> {t('dashboard.assigned', 'Assigned')} </SelectItem>
-                <SelectItem value="IN_PROGRESS" className="text-xs"> {t('dashboard.inProgress', 'In Progress')} </SelectItem>
-                <SelectItem value="ESCALATED" className="text-xs"> {t('dashboard.escalated', 'Escalated')} </SelectItem>
-                <SelectItem value="RESOLVED" className="text-xs"> {t('dashboard.resolved', 'Resolved')} </SelectItem>
-                <SelectItem value="CLOSED" className="text-xs"> {t('dashboard.closed', 'Closed')} </SelectItem>
+                <SelectItem value="all" className="text-xs"> TableColumn </SelectItem>
+                <SelectItem value="OPEN" className="text-xs"> TableColumn </SelectItem>
+                <SelectItem value="ASSIGNED" className="text-xs"> TableColumn </SelectItem>
+                <SelectItem value="IN_PROGRESS" className="text-xs"> TableColumn </SelectItem>
+                <SelectItem value="ESCALATED" className="text-xs"> TableColumn </SelectItem>
+                <SelectItem value="RESOLVED" className="text-xs"> TableColumn </SelectItem>
+                <SelectItem value="CLOSED" className="text-xs"> TableColumn </SelectItem>
               </SelectContent>
             </Select>
             <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -342,11 +342,11 @@ export function ComplaintManager() {
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
-                <SelectItem value="all" className="text-xs"> {t('dashboard.allPriority', 'All Priority')} </SelectItem>
-                <SelectItem value="LOW" className="text-xs"> {t('dashboard.low', 'Low')} </SelectItem>
-                <SelectItem value="MEDIUM" className="text-xs"> {t('dashboard.medium', 'Medium')} </SelectItem>
-                <SelectItem value="HIGH" className="text-xs"> {t('dashboard.high', 'High')} </SelectItem>
-                <SelectItem value="CRITICAL" className="text-xs"> {t('dashboard.critical', 'Critical')} </SelectItem>
+                <SelectItem value="all" className="text-xs"> TableColumn </SelectItem>
+                <SelectItem value="LOW" className="text-xs"> TableColumn </SelectItem>
+                <SelectItem value="MEDIUM" className="text-xs"> TableColumn </SelectItem>
+                <SelectItem value="HIGH" className="text-xs"> TableColumn </SelectItem>
+                <SelectItem value="CRITICAL" className="text-xs"> TableColumn </SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -364,12 +364,12 @@ export function ComplaintManager() {
                 value="table"
                 className="text-xs text-slate-400 data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400 gap-1.5"
               >
-                <LayoutList size={13} /> {t('dashboard.table', 'Table')} </TabsTrigger>
+                <LayoutList size={13} /> TableColumn </TabsTrigger>
               <TabsTrigger
                 value="kanban"
                 className="text-xs text-slate-400 data-[state=active]:bg-purple-600/20 data-[state=active]:text-purple-400 gap-1.5"
               >
-                <Columns3 size={13} /> {t('dashboard.kanban', 'Kanban')} </TabsTrigger>
+                <Columns3 size={13} /> TableColumn </TabsTrigger>
             </TabsList>
             <TabsContent value="table" className="mt-0">
               <ComplaintsTable data={complaints} />
@@ -386,7 +386,7 @@ export function ComplaintManager() {
           <Link
             href="/complaints"
             className="text-purple-400 hover:text-purple-300 transition-colors"
-          >{t('dashboard.viewAll', 'View all')} →</Link>
+          >TableColumn →</Link>
         </div>
       </CardContent>
     </Card>

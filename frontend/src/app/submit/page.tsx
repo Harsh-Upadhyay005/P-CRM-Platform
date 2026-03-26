@@ -137,7 +137,7 @@ function TenantSearch({
         </p>
       )}
       {!selected && value === '' && query.length > 0 && (
-        <p className="text-xs text-slate-500 mt-1">{t('submit.selectOrgWarning')}</p>
+        <p className="text-xs text-slate-500 mt-1">Please select an organization from the list.</p>
       )}
     </div>
   );
