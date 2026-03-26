@@ -59,8 +59,8 @@ export default function TrackPage() {
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-purple-500/15 border border-purple-500/20 mb-4">
           <Search size={24} className="text-purple-400" />
         </div>
-        <h1 className="text-3xl font-bold text-white tracking-tight">Track Your Complaint</h1>
-        <p className="text-slate-400 text-sm mt-2">Enter your tracking ID to check the status of your complaint</p>
+        <h1 className="text-3xl font-bold text-white tracking-tight">{t('track.title')}</h1>
+        <p className="text-slate-400 text-sm mt-2">{t('track.subtitle')}</p>
       </motion.div>
 
       {/* Search Form */}
@@ -75,7 +75,7 @@ export default function TrackPage() {
           type="text"
           value={trackingId}
           onChange={(e) => setTrackingId(e.target.value.toUpperCase())}
-          placeholder="e.g. PCRM-20260101-A1B2C3D4"
+          placeholder={t('track.placeholder', 'e.g. PCRM-20260101-A1B2C3D4')}
           className="flex-1 bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-slate-600 font-mono text-sm focus:outline-none focus:border-purple-500/50 backdrop-blur-md"
         />
         <button
@@ -147,20 +147,20 @@ export default function TrackPage() {
               {/* Details */}
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <p className="text-slate-400 mb-0.5">Department</p>
+                  <p className="text-slate-400 mb-0.5"> {t('track.departmentTab')} </p>
                   <p className="text-slate-300">{complaint.department?.name ?? 'Pending assignment'}</p>
                 </div>
                 <div>
-                  <p className="text-slate-400 mb-0.5">Submitted</p>
+                  <p className="text-slate-400 mb-0.5"> {t('track.submittedTab')} </p>
                   <p className="text-slate-300">{fmt(complaint.createdAt)}</p>
                 </div>
                 <div>
-                  <p className="text-slate-400 mb-0.5">Priority</p>
+                  <p className="text-slate-400 mb-0.5"> {t('track.priorityTab')} </p>
                   <p className="text-slate-300">{complaint.priority}</p>
                 </div>
                 {complaint.resolvedAt && (
                   <div>
-                    <p className="text-slate-400 mb-0.5">Resolved</p>
+                    <p className="text-slate-400 mb-0.5"> {t('track.resolvedTab')} </p>
                     <p className="text-emerald-400">{fmt(complaint.resolvedAt)}</p>
                   </div>
                 )}
@@ -170,7 +170,7 @@ export default function TrackPage() {
             {/* Status Timeline */}
             {complaint.statusHistory?.length > 0 && (
               <div className="bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-2xl p-5">
-                <h3 className="text-sm font-semibold text-white mb-4">Status Timeline</h3>
+                <h3 className="text-sm font-semibold text-white mb-4">{t('track.timelineTab')}</h3>
                 <div className="space-y-3">
                   {complaint.statusHistory.map((h, i) => (
                     <div key={h.id} className="flex items-start gap-3">

@@ -12,6 +12,7 @@ import AbstractBackground from '@/components/3d/AbstractBackground';
 import toast from 'react-hot-toast';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 
@@ -136,7 +137,7 @@ function TenantSearch({
         </p>
       )}
       {!selected && value === '' && query.length > 0 && (
-        <p className="text-xs text-slate-500 mt-1">Please select an organisation from the list.</p>
+        <p className="text-xs text-slate-500 mt-1">{t('submit.selectOrgWarning')}</p>
       )}
     </div>
   );
@@ -145,6 +146,7 @@ function TenantSearch({
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PublicSubmitPage() {
+  const { t } = useTranslation();
   const { user, isAuthChecked }             = useAuth();
   const [isSubmitting, setIsSubmitting]     = useState(false);
   const [trackingId, setTrackingId]         = useState<string | null>(null);
@@ -295,9 +297,9 @@ export default function PublicSubmitPage() {
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-purple-500/15 border border-purple-500/20 mb-4">
             <Send size={22} className="text-purple-400" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Submit a Complaint</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">{t('submit.title')}</h1>
           <p className="text-slate-400 text-sm mt-2 max-w-sm mx-auto">
-            No account required. Fill in the details below and you&apos;ll receive a tracking ID instantly.
+            {t('submit.subtitle')}
           </p>
         </div>
       </div>
@@ -306,10 +308,10 @@ export default function PublicSubmitPage() {
       {trackingId && (
         <div className="z-10 w-full max-w-xl bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-8 text-center">
           <CheckCircle2 size={40} className="text-emerald-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Complaint Submitted!</h2>
-          <p className="text-slate-400 text-sm mb-4">Your complaint has been received. Use the tracking ID below to check its status anytime.</p>
+          <h2 className="text-xl font-bold text-white mb-2">{t('submit.successTitle')}</h2>
+          <p className="text-slate-400 text-sm mb-4">{t('submit.successDesc')}</p>
           <div className="bg-slate-900/80 border border-white/10 rounded-xl px-6 py-4 mb-6">
-            <p className="text-xs text-slate-500 mb-1 uppercase tracking-wider">Tracking ID</p>
+            <p className="text-xs text-slate-500 mb-1 uppercase tracking-wider">{t('submit.trackingIdLabel')}</p>
             <p className="font-mono text-2xl font-bold text-emerald-400">{trackingId}</p>
           </div>
           <div className="flex gap-3 justify-center flex-wrap">
@@ -322,9 +324,7 @@ export default function PublicSubmitPage() {
             <button
               onClick={() => setTrackingId(null)}
               className="px-5 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 text-sm font-medium rounded-xl border border-white/10 transition-colors"
-            >
-              Submit Another
-            </button>
+            > {t('submit.submitAnotherBtn')} </button>
           </div>
         </div>
       )}
@@ -338,7 +338,7 @@ export default function PublicSubmitPage() {
           {/* Organisation (search for public users, locked for logged-in citizens) */}
           {lockedTenantSlug && (
             <div>
-              <label className={labelCls}>Organisation</label>
+              <label className={labelCls}>{t('submit.organisationLabel')}</label>
               <div className="w-full bg-slate-800/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 flex items-center justify-between">
                 <span>{user?.tenant?.name ?? 'Your organisation'}</span>
                 <span className="text-xs text-slate-500 font-mono">{lockedTenantSlug}</span>
@@ -363,7 +363,7 @@ export default function PublicSubmitPage() {
             </div>
             <div>
               <label className={labelCls}>Phone Number <span className="text-red-400">*</span></label>
-              <input {...register('citizenPhone')} type="tel" placeholder="+91 98765 43210" className={fieldCls} />
+              <input {...register('citizenPhone')} type="tel" placeholder={t('submit.phonePlaceholder', '+91 98765 43210')} className={fieldCls} />
               {errors.citizenPhone && <p className="text-red-400 text-xs mt-1">{errors.citizenPhone.message}</p>}
             </div>
           </div>
@@ -372,7 +372,7 @@ export default function PublicSubmitPage() {
           <div>
             <label className={labelCls}>Email Address <span className="text-red-400">*</span></label>
             <input {...register('citizenEmail')} type="email" placeholder="you@example.com" className={fieldCls} />
-            <p className="text-slate-500 text-xs mt-1">You&apos;ll receive updates about your complaint on this email.</p>
+            <p className="text-slate-500 text-xs mt-1">{t('submit.emailHelp')}</p>
             {errors.citizenEmail && <p className="text-red-400 text-xs mt-1">{errors.citizenEmail.message}</p>}
           </div>
 
@@ -387,21 +387,21 @@ export default function PublicSubmitPage() {
               required={true}
               className="[&_.geoapify-autocomplete-input]:w-full [&_.geoapify-autocomplete-input]:bg-slate-800/60 [&_.geoapify-autocomplete-input]:border [&_.geoapify-autocomplete-input]:border-white/10 [&_.geoapify-autocomplete-input]:rounded-xl [&_.geoapify-autocomplete-input]:px-4 [&_.geoapify-autocomplete-input]:py-2.5 [&_.geoapify-autocomplete-input]:text-white [&_.geoapify-autocomplete-input]:text-sm [&_.geoapify-autocomplete-input]:placeholder:text-slate-600 [&_.geoapify-autocomplete-input]:focus:outline-none [&_.geoapify-autocomplete-input]:focus:border-purple-500/50"
             />
-            <p className="text-slate-500 text-xs mt-1">Helps us route your complaint to the right officer and prevents it from being marked as a duplicate of a similar complaint in a different area.</p>
+            <p className="text-slate-500 text-xs mt-1">{t('submit.localityHelp')}</p>
             {errors.locality && <p className="text-red-400 text-xs mt-1">{errors.locality.message}</p>}
           </div>
 
           {/* Category + Priority */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelCls}>Category</label>
+              <label className={labelCls}>{t('submit.categoryLabel')}</label>
               <div className="relative">
                 <select
                   value={categorySelect}
                   onChange={(e) => { setCategorySelect(e.target.value); setCategoryOther(''); }}
                   className={`${fieldCls} appearance-none pr-9`}
                 >
-                  <option value="">Select a category…</option>
+                  <option value="">{t('submit.categorySelectPlaceholder')}</option>
                   {COMPLAINT_CATEGORIES.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -420,13 +420,13 @@ export default function PublicSubmitPage() {
               )}
             </div>
             <div>
-              <label className={labelCls}>Priority</label>
+              <label className={labelCls}>{t('submit.priorityLabel')}</label>
               <div className="relative">
                 <select
                   {...register('priority', { setValueAs: (v) => v === '' ? undefined : v })}
                   className={`${fieldCls} appearance-none pr-9`}
                 >
-                  <option value="">Auto-Detect (AI)</option>
+                  <option value="">{t('submit.autoDetectAI')}</option>
                   <option value="LOW">Low</option>
                   <option value="MEDIUM">Medium</option>
                   <option value="HIGH">High</option>
