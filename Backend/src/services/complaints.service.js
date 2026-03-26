@@ -89,6 +89,107 @@ const complaintDetailSelect = {
   },
 };
 
+const ADDRESS_ALIAS_CODE_MAP = {
+  TG: "TS",
+  UK: "UT",
+  OD: "OR",
+};
+
+const escapeRegExp = (value) =>
+  String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const cleanAddressToken = (value) =>
+  String(value || "")
+    .trim()
+    .replace(/\b\d{6}\b/g, "")
+    .replace(/[()]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const normalizeStateToken = (value) =>
+  cleanAddressToken(value).toLowerCase().replace(/\./g, "").trim();
+
+const normalizeDistrictLabel = (value) =>
+  cleanAddressToken(value)
+    .toLowerCase()
+    .replace(/\bdistrict\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+const buildStateHints = (tenant) => {
+  const hints = [];
+  const stateCode = normalizeStateToken(tenant?.stateCode || "").toUpperCase();
+  const stateLabel = normalizeStateToken(tenant?.stateLabel || "");
+
+  if (stateCode) {
+    hints.push(stateCode.toLowerCase());
+    const aliasCode = Object.entries(ADDRESS_ALIAS_CODE_MAP).find(
+      ([, mapped]) => mapped === stateCode,
+    )?.[0];
+    if (aliasCode) hints.push(aliasCode.toLowerCase());
+  }
+  if (stateLabel) hints.push(stateLabel);
+
+  return [...new Set(hints)];
+};
+
+const inferDistrictFromAddress = (address, stateHints = []) => {
+  if (!address) return null;
+
+  const rawTokens = String(address)
+    .split(",")
+    .map(cleanAddressToken)
+    .filter(Boolean);
+
+  if (!rawTokens.length) return null;
+
+  const normalizedTokens = rawTokens.map((token) => token.toLowerCase());
+  const normalizedStateHints = stateHints.map(normalizeStateToken);
+  const stateIndex = normalizedTokens.findIndex((token) =>
+    normalizedStateHints.some((hint) => normalizeStateToken(token) === hint),
+  );
+
+  if (stateIndex <= 0) return null;
+  return rawTokens[stateIndex - 1] ?? null;
+};
+
+const inferTenantDistrict = (tenant) => {
+  if (cleanAddressToken(tenant?.districtLabel)) {
+    return cleanAddressToken(tenant.districtLabel);
+  }
+
+  const stateHints = buildStateHints(tenant);
+  for (const area of tenant?.areas ?? []) {
+    const inferred = inferDistrictFromAddress(area, stateHints);
+    if (inferred) return inferred;
+  }
+
+  return null;
+};
+
+const assertComplaintDistrictMatchesTenant = (locality, tenant) => {
+  const tenantDistrictRaw = inferTenantDistrict(tenant);
+  const tenantDistrict = normalizeDistrictLabel(tenantDistrictRaw);
+  if (!tenantDistrict) return;
+
+  const stateHints = buildStateHints(tenant);
+  const inferredComplaintDistrict = inferDistrictFromAddress(locality, stateHints);
+  const complaintDistrictSource = inferredComplaintDistrict || locality;
+  const complaintDistrict = normalizeDistrictLabel(complaintDistrictSource);
+
+  const districtPattern = new RegExp(
+    `(^|\\b)${escapeRegExp(tenantDistrict)}(\\b|$)`,
+    "i",
+  );
+
+  if (!districtPattern.test(complaintDistrict)) {
+    throw new ApiError(
+      400,
+      `Complaint locality must belong to district \"${tenantDistrictRaw}\" for this tenant`,
+    );
+  }
+};
+
 const getABACFilter = async (user) => {
   const { userId, role } = user;
 
@@ -173,6 +274,24 @@ export const createComplaint = async (data, user) => {
   } = data;
 
   let resolvedDepartmentId = departmentId ?? null;
+
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: user.tenantId },
+    select: {
+      id: true,
+      isActive: true,
+      stateCode: true,
+      stateLabel: true,
+      districtLabel: true,
+      areas: true,
+    },
+  });
+
+  if (!tenant || !tenant.isActive) {
+    throw new ApiError(404, "Tenant not found");
+  }
+
+  assertComplaintDistrictMatchesTenant(locality, tenant);
 
   
   if (!resolvedDepartmentId && locality) {
@@ -917,6 +1036,8 @@ export const createPublicComplaint = async (data) => {
     where: { slug: tenantSlug, isActive: true },
   });
   if (!tenant) throw new ApiError(404, "Portal not found");
+
+  assertComplaintDistrictMatchesTenant(locality, tenant);
 
   let resolvedDepartmentId = departmentId ?? null;
 
