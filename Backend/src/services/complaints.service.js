@@ -206,17 +206,13 @@ const getABACFilter = async (user) => {
   }
 
   if (role === "DEPARTMENT_HEAD") {
-    const dbUser = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { departmentId: true },
-    });
-    if (!dbUser?.departmentId) {
+    if (!user.departmentId) {
       throw new ApiError(
         403,
         "Department head is not assigned to any department",
       );
     }
-    return { departmentId: dbUser.departmentId };
+    return { departmentId: user.departmentId };
   }
 
   return {};
@@ -401,6 +397,7 @@ export const listComplaints = async (query, user) => {
     assignedToId,
     stateId,
     tenantId: tenantIdParam,
+    departmentId,
   } = query;
 
   const tenantFilter =
@@ -410,16 +407,15 @@ export const listComplaints = async (query, user) => {
 
   const abacFilter = await getABACFilter(user);
 
+  const explicitDeptFilter = departmentId && user.role !== "DEPARTMENT_HEAD" 
+    ? { departmentId } 
+    : {};
+
   const where = {
     isDeleted: false,
     ...tenantFilter,
     ...abacFilter,
-    ...(slaBreached === "true"
-      ? { status: { notIn: TERMINAL_STATUSES } }
-      : { ...(status && { status }) }),
-    ...(priority && { priority }),
-    ...(category && { category }),
-    ...(assignedToId && { assignedToId }),
+    ...explicitDeptFilter,
     ...(search && {
       OR: [
         { trackingId: { contains: search, mode: "insensitive" } },
