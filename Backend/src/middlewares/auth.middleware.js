@@ -62,6 +62,7 @@ export const authMiddleware = async (req, res, next) => {
     select: {
       id: true,
       tenantId: true,
+      departmentId: true,
       isActive: true,
       isDeleted: true,
       isPlatformOwner: true,
@@ -78,6 +79,7 @@ export const authMiddleware = async (req, res, next) => {
     ...decoded,
     userId: currentUser.id,
     tenantId: currentUser.tenantId,
+    departmentId: currentUser.departmentId,
     role: currentUser.role?.type ?? decoded.role,
     isPlatformOwner: currentUser.isPlatformOwner,
     managedStateCode: currentUser.managedStateCode,
