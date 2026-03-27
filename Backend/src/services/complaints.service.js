@@ -401,6 +401,7 @@ export const listComplaints = async (query, user) => {
     assignedToId,
     stateId,
     tenantId: tenantIdParam,
+    departmentId,
   } = query;
 
   const tenantFilter =
@@ -420,6 +421,7 @@ export const listComplaints = async (query, user) => {
     ...(priority && { priority }),
     ...(category && { category }),
     ...(assignedToId && { assignedToId }),
+    ...(departmentId && { departmentId }),
     ...(search && {
       OR: [
         { trackingId: { contains: search, mode: "insensitive" } },
