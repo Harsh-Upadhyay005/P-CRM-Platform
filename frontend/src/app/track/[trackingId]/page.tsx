@@ -151,16 +151,16 @@ export default function TrackPage() {
                   <p className="text-slate-300">{complaint.department?.name ?? 'Pending assignment'}</p>
                 </div>
                 <div>
-                  <p className="text-slate-400 mb-0.5"> TranslatedText </p>
+                  <p className="text-slate-400 mb-0.5"> Created At </p>
                   <p className="text-slate-300">{fmt(complaint.createdAt)}</p>
                 </div>
                 <div>
-                  <p className="text-slate-400 mb-0.5"> TranslatedText </p>
+                  <p className="text-slate-400 mb-0.5"> Priority </p>
                   <p className="text-slate-300">{complaint.priority}</p>
                 </div>
                 {complaint.resolvedAt && (
                   <div>
-                    <p className="text-slate-400 mb-0.5"> TranslatedText </p>
+                    <p className="text-slate-400 mb-0.5"> Resolved At </p>
                     <p className="text-emerald-400">{fmt(complaint.resolvedAt)}</p>
                   </div>
                 )}
@@ -170,7 +170,7 @@ export default function TrackPage() {
             {/* Status Timeline */}
             {complaint.statusHistory?.length > 0 && (
               <div className="bg-slate-900/60 backdrop-blur-md border border-white/10 rounded-2xl p-5">
-                <h3 className="text-sm font-semibold text-white mb-4">TranslatedText</h3>
+                <h3 className="text-sm font-semibold text-white mb-4">Status History</h3>
                 <div className="space-y-3">
                   {complaint.statusHistory.map((h, i) => (
                     <div key={h.id} className="flex items-start gap-3">

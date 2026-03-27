@@ -416,6 +416,14 @@ export const listComplaints = async (query, user) => {
     ...tenantFilter,
     ...abacFilter,
     ...explicitDeptFilter,
+    ...(assignedToId && { assignedToId }),
+    ...(status && {
+      status: status.includes(",")
+        ? { in: status.split(",").map((s) => s.trim()) }
+        : status,
+    }),
+    ...(priority && { priority }),
+    ...(category && { category }),
     ...(search && {
       OR: [
         { trackingId: { contains: search, mode: "insensitive" } },
