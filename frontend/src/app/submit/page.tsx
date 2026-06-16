@@ -12,7 +12,6 @@ import AbstractBackground from '@/components/3d/AbstractBackground';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
-import { detectAndGeocodeLocation, type LocationData } from "@/lib/geocode";
 import { LocationPinMap } from '@/components/dashboard/LocationPinMap';
 
 // Schema 
@@ -34,9 +33,11 @@ type SubmitForm = z.infer<typeof submitSchema>;
 function TenantSearch({
   value,
   onChange,
+  autoSelectSlug,
 }: {
   value: string;
   onChange: (slug: string) => void;
+  autoSelectSlug?: string;
 }) {
   const [query, setQuery]       = useState('');
   const [results, setResults]   = useState<{ name: string; slug: string }[]>([]);
@@ -45,6 +46,7 @@ function TenantSearch({
   const [selected, setSelected] = useState<{ name: string; slug: string } | null>(null);
   const debounceRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef            = useRef<HTMLDivElement>(null);
+  const hasAutoSelected         = useRef(false);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -61,12 +63,29 @@ function TenantSearch({
     try {
       const res = await complaintsApi.searchPublicTenants(q);
       setResults((res.data as { name: string; slug: string }[]) ?? []);
+      return (res.data as { name: string; slug: string }[]) ?? [];
     } catch {
       setResults([]);
+      return [];
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // Auto-select tenant on mount if autoSelectSlug is provided
+  useEffect(() => {
+    if (autoSelectSlug && !hasAutoSelected.current && !selected) {
+      hasAutoSelected.current = true;
+      search('').then((results) => {
+        const match = results.find((r) => r.slug === autoSelectSlug);
+        if (match) {
+          setSelected(match);
+          setQuery(match.name);
+          onChange(match.slug);
+        }
+      });
+    }
+  }, [autoSelectSlug, selected, onChange, search]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const q = e.target.value;
@@ -162,11 +181,8 @@ export default function PublicSubmitPage() {
   const [showPinMap, setShowPinMap]         = useState(false);
   const fileInputRef                       = useRef<HTMLInputElement>(null);
 
-  // Location state
-const [location, setLocation]     = useState<LocationData | null>(null);
-const [locating, setLocating]     = useState(false);
-const [locError, setLocError]     = useState('');
-const [manualLocality, setManualLocality] = useState('');
+  // Manual locality input state
+  const [manualLocality, setManualLocality] = useState('');
 
   const envTenantSlug = process.env.NEXT_PUBLIC_TENANT_SLUG ?? '';
   const isCitizenUser = user?.role?.type === 'CITIZEN';
@@ -246,14 +262,8 @@ const [manualLocality, setManualLocality] = useState('');
         locality:     (data as any).locality || undefined,
         category:     resolvedCategory || undefined,
         departmentId: departmentId || undefined,
-
         tenantSlug:   resolvedSlug,
-        // New GPS coordinated from Nominatim 
-        latitude:     location?.lat    ?? undefined,
-        longitude:    location?.lng    ?? undefined,
-        geoAddress:   location?.address ?? undefined,
-        district:     location?.district ?? undefined,
-        pincode:      location?.pincode  ?? undefined,
+        // Location coordinates will be geocoded on backend from locality text
       });
       const trackingIdFromResponse = (res.data as { trackingId: string }).trackingId;
       
@@ -285,9 +295,7 @@ const [manualLocality, setManualLocality] = useState('');
       setCategoryOther('');
       setDepartmentId('');
       setAttachments([]);
-      setLocation(null);
       setManualLocality('');
-      setLocError('');
       toast.success('Complaint submitted successfully!');
     } catch (err) {
       setSubmitError(getErrorMessage(err));
@@ -306,17 +314,10 @@ const [manualLocality, setManualLocality] = useState('');
     district: string;
     pincode: string;
   }) => {
-    setLocation({
-      lat: loc.lat,
-      lng: loc.lng,
-      address: loc.address,
-      district: loc.district,
-      pincode: loc.pincode,
-      state: "Delhi",
-    });
+    // Set the locality value from the selected location
     const localityValue = [loc.district, "Delhi"].filter(Boolean).join(", ");
     setValue("locality", localityValue, { shouldValidate: true });
-    setManualLocality("");
+    setManualLocality(localityValue);
   };
 
   return (
@@ -394,7 +395,11 @@ const [manualLocality, setManualLocality] = useState('');
               <label className={labelCls}>
                 Organisation <span className="text-red-400">*</span>
               </label>
-              <TenantSearch value={tenantSlug} onChange={setTenantSlug} />
+              <TenantSearch 
+                value={tenantSlug} 
+                onChange={setTenantSlug}
+                autoSelectSlug="main-office"
+              />
             </div>
           )}
 
@@ -421,109 +426,31 @@ const [manualLocality, setManualLocality] = useState('');
           </div>
 
           {/* Locality */}
-          {/* ✅ NEW — Locality with GPS auto-detect */}
 <div>
   <label className={labelCls}>
     Locality / Area <span className="text-red-400">*</span>
   </label>
 
-  <div className="space-y-2">
-    {/* GPS detect button */}
-    <button
-      type="button"
-      onClick={async () => {
-        setLocating(true);
-        setLocError('');
-        try {
-          const loc = await detectAndGeocodeLocation();
-          setLocation(loc);
-          // Fill the locality field with detected address
-          const localityValue = [loc.district, loc.state].filter(Boolean).join(', ') || loc.address;
-          setValue('locality', localityValue, { shouldValidate: true });
-          setManualLocality('');
-        } catch (err: any) {
-          if (err.code === 1) {
-            setLocError('Location permission denied. Please type your area manually below.');
-          } else {
-            setLocError('Could not detect location. Please type your area manually.');
-          }
-        } finally {
-          setLocating(false);
-        }
-      }}
-      disabled={locating}
-      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-slate-800/60 text-sm text-slate-300 hover:bg-white/10 hover:border-purple-500/50 transition-all disabled:opacity-50"
-    >
-      {locating ? (
-        <>
-          <Loader2 size={14} className="animate-spin" />
-          Detecting your location…
-        </>
-      ) : (
-        <>
-          📍 Auto-detect my location
-        </>
-      )}
-    </button>
+  {/* Pick location on map button */}
+  <button
+    type="button"
+    onClick={() => setShowPinMap(true)}
+    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-slate-800/60 text-sm text-slate-300 hover:bg-white/10 hover:border-purple-500/50 transition-all"
+  >
+    🗺️ Pick location on map
+  </button>
 
-    {/* ShowPinMap */}
-      <button
-        type="button"
-        onClick={ async () => 
-          setShowPinMap(true)}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-slate-800/60 text-sm text-slate-300 hover:bg-white/10 hover:border-purple-500/50 transition-all"
-      >
-        🗺️ Pick location on map
-      </button>
-
-    {/* Detected location confirmation */}
-    {location && (
-      <div className="flex items-start justify-between gap-2 px-3 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-emerald-400">
-            📍 {location.district || 'Location detected'}
-            {location.pincode && <span className="text-emerald-500/70 ml-1">· {location.pincode}</span>}
-          </p>
-          <p className="text-xs text-emerald-500/60 truncate mt-0.5">{location.address}</p>
-        </div>
-        {/* Allow clearing so user can type manually instead */}
-        <button
-          type="button"
-          onClick={() => {
-            setLocation(null);
-            setValue('locality', manualLocality, { shouldValidate: false });
-          }}
-          className="shrink-0 p-0.5 hover:bg-white/10 rounded transition-colors"
-        >
-          <X size={13} className="text-slate-500 hover:text-red-400" />
-        </button>
-      </div>
-    )}
-
-    {/* Divider */}
-    <div className="flex items-center gap-2">
-      <div className="flex-1 h-px bg-white/5" />
-      <span className="text-xs text-slate-600">or type manually</span>
-      <div className="flex-1 h-px bg-white/5" />
+  {/* Display selected location */}
+  {manualLocality && (
+    <div className="mt-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+      <p className="text-xs font-medium text-emerald-400 flex items-center gap-1.5">
+        <CheckCircle2 size={12} />
+        {manualLocality}
+      </p>
     </div>
+  )}
 
-    {/* Manual text input — always visible as fallback */}
-    <input
-      type="text"
-      value={manualLocality}
-      onChange={(e) => {
-        setManualLocality(e.target.value);
-        // If user types manually, clear GPS data and use typed value
-        if (location) setLocation(null);
-        setValue('locality', e.target.value, { shouldValidate: true });
-      }}
-      placeholder="e.g. Rohini Sector 7, North Delhi"
-      className={fieldCls}
-    />
-  </div>
-
-  {locError && <p className="text-amber-400 text-xs mt-1.5">⚠ {locError}</p>}
-  <p className="text-slate-500 text-xs mt-1">{t('submit.localityHelp')}</p>
+  <p className="text-slate-500 text-xs mt-1.5">{t('submit.localityHelp')}</p>
   {errors.locality && <p className="text-red-400 text-xs mt-1">{errors.locality.message}</p>}
 </div>
 
