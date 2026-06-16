@@ -10,11 +10,11 @@ import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Loader2, Send, Paperclip, Search, Building2, ChevronDown, X, FileText, Image, Upload } from 'lucide-react';
 import AbstractBackground from '@/components/3d/AbstractBackground';
 import toast from 'react-hot-toast';
-import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
+import { detectAndGeocodeLocation, type LocationData } from "@/lib/geocode";
 
-// ─── Schema ───────────────────────────────────────────────────────────────────
+// Schema 
 
 const submitSchema = z.object({
   citizenName:  z.string().min(2, 'Name must be at least 2 characters'),
@@ -28,7 +28,7 @@ const submitSchema = z.object({
 
 type SubmitForm = z.infer<typeof submitSchema>;
 
-// ─── Tenant Search Combobox ───────────────────────────────────────────────────
+//  Tenant Search Combobox 
 
 function TenantSearch({
   value,
@@ -143,7 +143,7 @@ function TenantSearch({
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+//  Page 
 
 export default function PublicSubmitPage() {
   const { t } = useTranslation();
@@ -159,6 +159,12 @@ export default function PublicSubmitPage() {
   const [attachments, setAttachments]       = useState<File[]>([]);
   const [isUploading, setIsUploading]     = useState(false);
   const fileInputRef                       = useRef<HTMLInputElement>(null);
+
+  // Location state
+const [location, setLocation]     = useState<LocationData | null>(null);
+const [locating, setLocating]     = useState(false);
+const [locError, setLocError]     = useState('');
+const [manualLocality, setManualLocality] = useState('');
 
   const envTenantSlug = process.env.NEXT_PUBLIC_TENANT_SLUG ?? '';
   const isCitizenUser = user?.role?.type === 'CITIZEN';
@@ -239,6 +245,12 @@ export default function PublicSubmitPage() {
         category:     resolvedCategory || undefined,
         departmentId: departmentId || undefined,
         tenantSlug:   resolvedSlug,
+        // New GPS coordinated from Nominatim 
+        latitude:     location?.lat    ?? undefined,
+        longitude:    location?.lng    ?? undefined,
+        geoAddress:   location?.address ?? undefined,
+        district:     location?.district ?? undefined,
+        pincode:      location?.pincode  ?? undefined,
       });
       const trackingIdFromResponse = (res.data as { trackingId: string }).trackingId;
       
@@ -270,6 +282,9 @@ export default function PublicSubmitPage() {
       setCategoryOther('');
       setDepartmentId('');
       setAttachments([]);
+      setLocation(null);
+      setManualLocality('');
+      setLocError('');
       toast.success('Complaint submitted successfully!');
     } catch (err) {
       setSubmitError(getErrorMessage(err));
@@ -304,7 +319,7 @@ export default function PublicSubmitPage() {
         </div>
       </div>
 
-      {/* ── Success State ── */}
+      {/*  Success State  */}
       {trackingId && (
         <div className="z-10 w-full max-w-xl bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-8 text-center">
           <CheckCircle2 size={40} className="text-emerald-400 mx-auto mb-4" />
@@ -329,7 +344,7 @@ export default function PublicSubmitPage() {
         </div>
       )}
 
-      {/* ── Form ── */}
+        {/*  Form  */}
       {!trackingId && (
         <form
           onSubmit={handleSubmit(onSubmit)}
@@ -377,19 +392,101 @@ export default function PublicSubmitPage() {
           </div>
 
           {/* Locality */}
-          <div>
-            <label className={labelCls}>Locality / Area <span className="text-red-400">*</span></label>
-            <LocationAutocomplete
-              value={watch('locality')}
-              onChange={(value) => setValue('locality', value)}
-              placeholder="e.g. Banaras Hindu University, Varanasi"
-              name="locality"
-              required={true}
-              className="[&_.geoapify-autocomplete-input]:w-full [&_.geoapify-autocomplete-input]:bg-slate-800/60 [&_.geoapify-autocomplete-input]:border [&_.geoapify-autocomplete-input]:border-white/10 [&_.geoapify-autocomplete-input]:rounded-xl [&_.geoapify-autocomplete-input]:px-4 [&_.geoapify-autocomplete-input]:py-2.5 [&_.geoapify-autocomplete-input]:text-white [&_.geoapify-autocomplete-input]:text-sm [&_.geoapify-autocomplete-input]:placeholder:text-slate-600 [&_.geoapify-autocomplete-input]:focus:outline-none [&_.geoapify-autocomplete-input]:focus:border-purple-500/50"
-            />
-            <p className="text-slate-500 text-xs mt-1">{t('submit.localityHelp')}</p>
-            {errors.locality && <p className="text-red-400 text-xs mt-1">{errors.locality.message}</p>}
-          </div>
+          {/* ✅ NEW — Locality with GPS auto-detect */}
+<div>
+  <label className={labelCls}>
+    Locality / Area <span className="text-red-400">*</span>
+  </label>
+
+  <div className="space-y-2">
+    {/* GPS detect button */}
+    <button
+      type="button"
+      onClick={async () => {
+        setLocating(true);
+        setLocError('');
+        try {
+          const loc = await detectAndGeocodeLocation();
+          setLocation(loc);
+          // Fill the locality field with detected address
+          const localityValue = [loc.district, loc.state].filter(Boolean).join(', ') || loc.address;
+          setValue('locality', localityValue, { shouldValidate: true });
+          setManualLocality('');
+        } catch (err: any) {
+          if (err.code === 1) {
+            setLocError('Location permission denied. Please type your area manually below.');
+          } else {
+            setLocError('Could not detect location. Please type your area manually.');
+          }
+        } finally {
+          setLocating(false);
+        }
+      }}
+      disabled={locating}
+      className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-slate-800/60 text-sm text-slate-300 hover:bg-white/10 hover:border-purple-500/50 transition-all disabled:opacity-50"
+    >
+      {locating ? (
+        <>
+          <Loader2 size={14} className="animate-spin" />
+          Detecting your location…
+        </>
+      ) : (
+        <>
+          📍 Auto-detect my location
+        </>
+      )}
+    </button>
+
+    {/* Detected location confirmation */}
+    {location && (
+      <div className="flex items-start justify-between gap-2 px-3 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-emerald-400">
+            📍 {location.district || 'Location detected'}
+            {location.pincode && <span className="text-emerald-500/70 ml-1">· {location.pincode}</span>}
+          </p>
+          <p className="text-xs text-emerald-500/60 truncate mt-0.5">{location.address}</p>
+        </div>
+        {/* Allow clearing so user can type manually instead */}
+        <button
+          type="button"
+          onClick={() => {
+            setLocation(null);
+            setValue('locality', manualLocality, { shouldValidate: false });
+          }}
+          className="shrink-0 p-0.5 hover:bg-white/10 rounded transition-colors"
+        >
+          <X size={13} className="text-slate-500 hover:text-red-400" />
+        </button>
+      </div>
+    )}
+
+    {/* Divider */}
+    <div className="flex items-center gap-2">
+      <div className="flex-1 h-px bg-white/5" />
+      <span className="text-xs text-slate-600">or type manually</span>
+      <div className="flex-1 h-px bg-white/5" />
+    </div>
+
+    {/* Manual text input — always visible as fallback */}
+    <input
+      type="text"
+      value={manualLocality}
+      onChange={(e) => {
+        setManualLocality(e.target.value);
+        // If user types manually, clear GPS data and use typed value
+        if (location) setLocation(null);
+        setValue('locality', e.target.value, { shouldValidate: true });
+      }}
+      placeholder="e.g. Rohini Sector 7, North Delhi"
+      className={fieldCls}
+    />
+  </div>
+
+  {locError && <p className="text-amber-400 text-xs mt-1.5">⚠ {locError}</p>}
+  <p className="text-slate-500 text-xs mt-1">{t('submit.localityHelp')}</p>
+  {errors.locality && <p className="text-red-400 text-xs mt-1">{errors.locality.message}</p>}
+</div>
 
           {/* Category + Priority */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
