@@ -192,24 +192,7 @@ export default function UsersPage() {
     onError: (e) => toast.error(getErrorMessage(e)),
   });
 
-  const generateCodeMutation = useMutation({
-    mutationFn: () => authApi.generateSuperAdminCode({
-      stateCode: codeStateCode,
-      expiresInDays: Number(codeExpiresDays || 30),
-    }),
-    onSuccess: (res) => {
-      const created = res?.data;
-      if (created) {
-        setGeneratedCode({
-          code: created.code,
-          stateCode: created.stateCode,
-          expiresAt: created.expiresAt,
-        });
-      }
-      toast.success('State admin signup code generated');
-    },
-    onError: (e) => toast.error(getErrorMessage(e)),
-  });
+
 
   if (!isAdmin) {
     return (
