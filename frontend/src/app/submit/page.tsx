@@ -13,6 +13,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import { detectAndGeocodeLocation, type LocationData } from "@/lib/geocode";
+import { LocationPinMap } from '@/components/dashboard/LocationPinMap';
 
 // Schema 
 
@@ -44,6 +45,7 @@ function TenantSearch({
   const [selected, setSelected] = useState<{ name: string; slug: string } | null>(null);
   const debounceRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef            = useRef<HTMLDivElement>(null);
+  const [ showPinMap, setShowPinMap ] = useState(false);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -244,6 +246,7 @@ const [manualLocality, setManualLocality] = useState('');
         locality:     (data as any).locality || undefined,
         category:     resolvedCategory || undefined,
         departmentId: departmentId || undefined,
+
         tenantSlug:   resolvedSlug,
         // New GPS coordinated from Nominatim 
         latitude:     location?.lat    ?? undefined,
@@ -299,7 +302,13 @@ const [manualLocality, setManualLocality] = useState('');
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-start font-sans pt-12 pb-16 px-4 overflow-hidden">
       <AbstractBackground />
-
+      {/* Pin Drop Map Modal */}
+      {showPinMap && (
+        <LocationPinMap
+          onLocationSelect={handlePinLocation}
+          onClose={() => setShowPinMap(false)}
+        />
+      )}
       {/* Header */}
       <div className="z-10 w-full max-w-xl mb-8">
         <Link
@@ -437,6 +446,16 @@ const [manualLocality, setManualLocality] = useState('');
       )}
     </button>
 
+    {/* ShowPinMap */}
+      <button
+        type="button"
+        onClick={ async () => 
+          setShowPinMap(true)}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-slate-800/60 text-sm text-slate-300 hover:bg-white/10 hover:border-purple-500/50 transition-all"
+      >
+        🗺️ Pick location on map
+      </button>
+
     {/* Detected location confirmation */}
     {location && (
       <div className="flex items-start justify-between gap-2 px-3 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
@@ -460,6 +479,28 @@ const [manualLocality, setManualLocality] = useState('');
         </button>
       </div>
     )}
+
+    const handlePinLocation = (loc: 
+    {
+      lat: number;
+      lng: number;
+      address: string;
+      district: string;
+      pincode: string;
+    }); 
+    {
+      setLocation({
+        lat: loc.lat,
+        lng: loc.lng,
+        address: loc.address,
+        district: loc.district,
+        pincode: loc.pincode,
+        state: "Delhi",
+  });
+  const localityValue = [loc.district, "Delhi"].filter(Boolean).join(", ");
+  setValue("locality", localityValue, { shouldValidate: true });
+  setManualLocality("");
+};
 
     {/* Divider */}
     <div className="flex items-center gap-2">

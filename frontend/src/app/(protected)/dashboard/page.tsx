@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { Activity, Shield } from "lucide-react";
 import { useRole } from "@/hooks/useRole";
 import { useTranslation } from 'react-i18next';
+import { DelhiDistrictMap } from "@/components/dashboard/DelhiDistrictMap";
 
 // Lazy-load the 3D component to avoid SSR issues and reduce initial bundle
 const CommandCenter3D = dynamic(
@@ -57,7 +58,7 @@ export default function Dashboard() {
     );
   }, [isCitizen]);
 
-  // ── Citizen View ────────────────────────────────────────────────────────
+  //  Citizen View 
   if (isCitizen) {
     return (
       <div ref={dashboardRef} className="w-full pb-24">
@@ -70,10 +71,10 @@ export default function Dashboard() {
     );
   }
 
-  // ── Staff / Admin View ──────────────────────────────────────────────────
+  // Staff / Admin View 
   return (
     <div ref={dashboardRef} className="w-full flex flex-col gap-6 pb-24">
-      {/* ── Header ────────────────────────────────────────── */}
+      {/* Header  */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -119,7 +120,7 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* ── 3D Command Center ──────────────────────────────── */}
+      {/* 3D Command Center  */}
       <div className="dashboard-section">
         <Suspense
           fallback={
@@ -137,7 +138,7 @@ export default function Dashboard() {
 
       {/* ── India Map ──────────────────────────────────────── */}
       <div className="dashboard-section">
-        <IndiaMapView windowDays="all" />
+        <DelhiDistrictMap windowDays="all" />
       </div>
 
       {/* ── Analytics + Alerts ─────────────────────────────── */}
