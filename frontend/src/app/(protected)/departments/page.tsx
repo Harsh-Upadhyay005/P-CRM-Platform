@@ -31,8 +31,8 @@ import toast from 'react-hot-toast';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
 
 const ROLE_LABELS: Record<RoleType, string> = {
-  SUPER_ADMIN: 'Super Admin',
-  ADMIN: 'Admin',
+  SUPER_ADMIN: 'Delhi CM Office',
+  ADMIN: 'Dept. Admin',
   DEPARTMENT_HEAD: 'Dept. Head',
   OFFICER: 'Officer',
   CALL_OPERATOR: 'Operator',
@@ -224,7 +224,7 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
   });
   const allUsers: User[] = allUsersData?.data?.data ?? [];
   const memberIds = new Set(members.map((m) => m.id));
-  const availableUsers = allUsers.filter((u) => !memberIds.has(u.id) && u.isActive);
+  const availableUsers = allUsers.filter((u) => !memberIds.has(u.id) && u.isActive && u.role.type !== 'SUPER_ADMIN');
 
   const assignMutation = useMutation({
     mutationFn: (userId: string) => departmentsApi.assignUser(userId, dept.id),
@@ -252,8 +252,9 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
   const changeRoleMutation = useMutation({
     mutationFn: ({ userId, roleType }: { userId: string; roleType: RoleType }) =>
       usersApi.assignRole(userId, roleType, dept.id),
-    onSuccess: () => {
-      toast.success('Role updated');
+    onSuccess: (_, { roleType }) => {
+      const label = roleType === 'DEPARTMENT_HEAD' ? 'Department Head' : 'Department Admin';
+      toast.success(`User set as ${label}`);
       qc.invalidateQueries({ queryKey: ['users', 'dept-members', dept.id] });
       qc.invalidateQueries({ queryKey: ['users', 'all-for-assign', dept.tenantId] });
     },
@@ -261,6 +262,7 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
   });
 
   const deptHead = members.find((m) => m.role.type === 'DEPARTMENT_HEAD');
+  const deptAdmin = members.find((m) => m.role.type === 'ADMIN');
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
@@ -272,21 +274,42 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
           </DialogTitle>
         </DialogHeader>
 
-        {/* Dept head banner */}
-        {deptHead ? (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-sm">
-            <Crown size={13} className="text-purple-400 shrink-0" />
-            <span className="text-slate-300">Head:</span>
-            <span className="text-white font-medium">{deptHead.name}</span>
+        {/* Head & Admin banners */}
+        <div className="grid grid-cols-2 gap-2">
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${
+            deptHead
+              ? 'bg-purple-500/10 border-purple-500/20'
+              : 'bg-amber-500/10 border-amber-500/20'
+          }`}>
+            <Crown size={11} className={deptHead ? 'text-purple-400' : 'text-amber-400'} />
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Head</p>
+              <p className={`font-medium truncate ${
+                deptHead ? 'text-white' : 'text-amber-400'
+              }`}>
+                {deptHead?.name ?? 'Not assigned'}
+              </p>
+            </div>
           </div>
-        ) : (
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
-            <Crown size={11} /> No department head assigned yet
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${
+            deptAdmin
+              ? 'bg-orange-500/10 border-orange-500/20'
+              : 'bg-slate-700/30 border-white/5'
+          }`}>
+            <UserCog size={11} className={deptAdmin ? 'text-orange-400' : 'text-slate-500'} />
+            <div className="min-w-0">
+              <p className="text-[10px] text-slate-400 uppercase tracking-wider">Admin</p>
+              <p className={`font-medium truncate ${
+                deptAdmin ? 'text-white' : 'text-slate-500'
+              }`}>
+                {deptAdmin?.name ?? 'Not assigned'}
+              </p>
+            </div>
           </div>
-        )}
+        </div>
 
         {/* Members list */}
-        <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+        <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
           {membersLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
@@ -306,31 +329,43 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
                   </Avatar>
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-slate-200 truncate">{m.name}</p>
-                    <p className="text-[10px] text-slate-500 truncate">{m.email}</p>
+                    <p className="text-[10px] text-slate-500 truncate">{ROLE_LABELS[m.role.type]}</p>
                   </div>
                   {m.role.type === 'DEPARTMENT_HEAD' && (
                     <span title="Department Head">
                       <Crown size={11} className="text-purple-400 shrink-0" />
                     </span>
                   )}
+                  {m.role.type === 'ADMIN' && (
+                    <span title="Department Admin">
+                      <UserCog size={11} className="text-orange-400 shrink-0" />
+                    </span>
+                  )}
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                  <Select
-                    value={m.role.type}
-                    onValueChange={(role) =>
-                      changeRoleMutation.mutate({ userId: m.id, roleType: role as RoleType })
-                    }
-                    disabled={changeRoleMutation.isPending}
-                  >
-                    <SelectTrigger className="h-6 w-[96px] text-[10px] bg-slate-700/40 border-white/10 px-2">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
-                      <SelectItem value="CALL_OPERATOR" className="text-xs">Operator</SelectItem>
-                      <SelectItem value="OFFICER" className="text-xs">Officer</SelectItem>
-                      <SelectItem value="DEPARTMENT_HEAD" className="text-xs">Dept. Head</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="flex items-center gap-1 shrink-0 ml-2">
+                  {/* Promote to Head */}
+                  {m.role.type !== 'DEPARTMENT_HEAD' && (
+                    <button
+                      title="Set as Department Head"
+                      disabled={changeRoleMutation.isPending}
+                      onClick={() => changeRoleMutation.mutate({ userId: m.id, roleType: 'DEPARTMENT_HEAD' })}
+                      className="h-6 px-2 rounded text-[10px] font-medium bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 hover:text-purple-300 border border-purple-500/20 transition-all disabled:opacity-40"
+                    >
+                      Set Head
+                    </button>
+                  )}
+                  {/* Promote to Admin */}
+                  {m.role.type !== 'ADMIN' && m.role.type !== 'DEPARTMENT_HEAD' && (
+                    <button
+                      title="Set as Department Admin"
+                      disabled={changeRoleMutation.isPending}
+                      onClick={() => changeRoleMutation.mutate({ userId: m.id, roleType: 'ADMIN' })}
+                      className="h-6 px-2 rounded text-[10px] font-medium bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 hover:text-orange-300 border border-orange-500/20 transition-all disabled:opacity-40"
+                    >
+                      Set Admin
+                    </button>
+                  )}
+                  {/* Remove from dept */}
                   <Button
                     variant="ghost"
                     size="icon"

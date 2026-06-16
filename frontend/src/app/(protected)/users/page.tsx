@@ -449,9 +449,6 @@ export default function UsersPage() {
                 <SelectValue placeholder="Select role" />
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
-                {canManagePlatformSuperAdmins && (
-                  <SelectItem value="SUPER_ADMIN">Delhi CM Office</SelectItem>
-                )}
                 <SelectItem value="CITIZEN">Citizen</SelectItem>
                 <SelectItem value="CALL_OPERATOR">Call Operator</SelectItem>
                 <SelectItem value="OFFICER">Officer</SelectItem>
@@ -584,9 +581,6 @@ export default function UsersPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
-                  {canManagePlatformSuperAdmins && (
-                    <SelectItem value="SUPER_ADMIN">Delhi CM Office</SelectItem>
-                  )}
                   <SelectItem value="CALL_OPERATOR">Call Operator</SelectItem>
                   <SelectItem value="OFFICER">Officer</SelectItem>
                   <SelectItem value="DEPARTMENT_HEAD">Department Head</SelectItem>
