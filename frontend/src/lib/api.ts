@@ -458,7 +458,34 @@ export interface AnalyticsOverview {
   [key: string]: unknown;
 }
 export interface TrendPoint { date: string; complaints: number; resolved: number }
-export interface DeptStat { department: string; total: number; resolved: number; avgHours: number }
+export interface DeptStat {
+  department: {
+    id: string;
+    name: string;
+    slug: string;
+    slaHours: number;
+    tenant?: {
+      id: string;
+      name: string;
+      slug: string;
+    } | null;
+  };
+  total: number;
+  byStatus: {
+    OPEN: number;
+    ASSIGNED: number;
+    IN_PROGRESS: number;
+    ESCALATED: number;
+    RESOLVED: number;
+    CLOSED: number;
+  };
+  sla: {
+    activeCount: number;
+    breachedCount: number;
+    breachPct: number;
+  };
+  avgResolutionTime: string;
+}
 export interface OfficerStat { name: string; assigned: number; completed: number; avgHours: number; satisfaction: number }
 export interface SlaHeatmapPoint { hour: number; day: string; count: number }
 export interface EscalationPoint { date: string; escalations: number }

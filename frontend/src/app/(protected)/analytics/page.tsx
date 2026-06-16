@@ -217,6 +217,8 @@ function TrendsTab() {
 
   // getTrends returns ApiResponse<{ granularity, days, since, data: TrendPoint[] }>
   const trendData = (data?.data as any)?.data ?? [];
+  const totalFiled = trendData.reduce((s: number, d: any) => s + (d.total ?? 0), 0);
+  const totalResolved = trendData.reduce((s: number, d: any) => s + (d.resolved ?? 0), 0);
 
   return (
     <div className="space-y-4">
@@ -238,27 +240,48 @@ function TrendsTab() {
         </CardHeader>
         <CardContent>
           {isLoading ? <LoadingCard height={300} /> : (
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="gc" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#a855f7" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#a855f7" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="gr" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-                <Area type="monotone" dataKey="total" name="Filed" stroke="#a855f7" fill="url(#gc)" strokeWidth={2} dot={false} />
-                <Area type="monotone" dataKey="resolved" name="Resolved" stroke="#10b981" fill="url(#gr)" strokeWidth={2} dot={false} />
-                <Legend verticalAlign="top" align="right" iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
-              </AreaChart>
-            </ResponsiveContainer>
+            <div className="space-y-4">
+              <ResponsiveContainer width="100%" height={240}>
+                <AreaChart data={trendData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gc" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#a855f7" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="#a855f7" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="gr" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="date" tick={false} axisLine={false} tickLine={false} height={10} />
+                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                  <Area type="monotone" dataKey="total" name="Filed" stroke="#a855f7" fill="url(#gc)" strokeWidth={2} dot={false} />
+                  <Area type="monotone" dataKey="resolved" name="Resolved" stroke="#10b981" fill="url(#gr)" strokeWidth={2} dot={false} />
+                  <Legend verticalAlign="top" align="right" iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
+                </AreaChart>
+              </ResponsiveContainer>
+
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 justify-center px-1 pt-1 max-h-24 overflow-y-auto">
+                <div className="flex items-center gap-1 text-[9px] text-slate-400 bg-slate-800/30 px-1.5 py-0.5 rounded border border-white/5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#a855f7]" />
+                  <span>Total Filed:</span>
+                  <span className="font-semibold ml-0.5 text-white">{totalFiled}</span>
+                </div>
+                <div className="flex items-center gap-1 text-[9px] text-slate-400 bg-slate-800/30 px-1.5 py-0.5 rounded border border-white/5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
+                  <span>Total Resolved:</span>
+                  <span className="font-semibold ml-0.5 text-white">{totalResolved}</span>
+                </div>
+                <div className="flex items-center gap-1 text-[9px] text-slate-400 bg-slate-800/30 px-1.5 py-0.5 rounded border border-white/5">
+                  <span>Net Change:</span>
+                  <span className={`font-semibold ml-0.5 ${totalFiled - totalResolved > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    {totalFiled - totalResolved > 0 ? '+' : ''}{totalFiled - totalResolved}
+                  </span>
+                </div>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -278,6 +301,10 @@ function DepartmentTab() {
   const rawDepts: any[] = data?.data ?? [];
   const deptData = rawDepts.map((d) => ({
     name: d.department?.name ?? 'Unknown',
+    tenantName: d.department?.tenant?.name ?? null,
+    label: d.department?.tenant?.name
+      ? `${d.department?.name ?? 'Unknown'} (${d.department.tenant.name})`
+      : (d.department?.name ?? 'Unknown'),
     total: d.total ?? 0,
     resolved: (d.byStatus?.RESOLVED ?? 0) + (d.byStatus?.CLOSED ?? 0),
     breachPct: d.sla?.breachPct ?? 0,
@@ -296,7 +323,13 @@ function DepartmentTab() {
             <ResponsiveContainer width="100%" height={340}>
               <BarChart data={deptData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <XAxis 
+                  dataKey="label" 
+                  tick={false} 
+                  axisLine={false} 
+                  tickLine={false} 
+                  height={10}
+                />
                 <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={false} />
                 <Bar dataKey="total" name="Total" fill="#a855f7" radius={[4, 4, 0, 0]} opacity={0.85} />
@@ -320,6 +353,7 @@ function DepartmentTab() {
                 .sort((a: any, b: any) => (b.total ?? 0) - (a.total ?? 0))
                 .map((d: any, i: number) => {
                   const name = d.department?.name ?? 'Unknown';
+                  const tenantName = d.department?.tenant?.name ?? null;
                   const tot = d.total ?? 0;
                   const resolved = (d.byStatus?.RESOLVED ?? 0) + (d.byStatus?.CLOSED ?? 0);
                   const breachPct: number = d.sla?.breachPct ?? 0;
@@ -327,7 +361,12 @@ function DepartmentTab() {
                   return (
                     <div key={d.department?.id ?? i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 transition-colors">
                       <span className="text-xs font-bold text-slate-500 w-5 shrink-0">#{i + 1}</span>
-                      <span className="text-xs font-medium text-white flex-1 truncate">{name}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-white truncate">{name}</p>
+                        {tenantName && (
+                          <p className="text-[10px] text-slate-400 truncate">Tenant: {tenantName}</p>
+                        )}
+                      </div>
                       <span className="text-xs text-slate-400 w-16 text-right shrink-0">{tot} total</span>
                       <span className="text-xs text-emerald-400 w-16 text-right shrink-0">{resolved} done</span>
                       <div className="w-24 hidden sm:block shrink-0">
@@ -373,17 +412,17 @@ function OfficersTab() {
           <CardTitle className="text-sm font-medium text-slate-300">Officer Leaderboard</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? <LoadingCard height={340} /> : officers.length === 0 ? (
+          {isLoading ? <LoadingCard height={300} /> : officers.length === 0 ? (
             <p className="text-slate-500 text-sm text-center py-12">No officer data available.</p>
           ) : (
-            <ResponsiveContainer width="100%" height={340}>
-              <BarChart data={officers} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-                <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={80} />
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={officers} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="name" tick={false} axisLine={false} tickLine={false} height={10} />
+                <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                 <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={false} />
-                <Bar dataKey="assigned" name="Assigned" fill="#3b82f6" radius={[0, 4, 4, 0]} opacity={0.85} />
-                <Bar dataKey="completed" name="Resolved" fill="#10b981" radius={[0, 4, 4, 0]} opacity={0.85} />
+                <Bar dataKey="assigned" name="Assigned" fill="#3b82f6" radius={[4, 4, 0, 0]} opacity={0.85} />
+                <Bar dataKey="completed" name="Resolved" fill="#10b981" radius={[4, 4, 0, 0]} opacity={0.85} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
               </BarChart>
             </ResponsiveContainer>
@@ -447,40 +486,81 @@ function SlaHeatmapTab() {
 
   // getSlaHeatmap returns { granularity, since, periods, departments: [{ id, name, slaHours, heatmap:[{period,total,breached,breachPct}] }] }
   const raw = data?.data as any;
-  const slaByDept = (raw?.departments ?? []).map((d: any) => {
+  const slaByDept = (raw?.departments ?? []).map((d: any, i: number) => {
     const hm: any[] = d.heatmap ?? [];
     const total = hm.reduce((s: number, h: any) => s + (h.total ?? 0), 0);
     const breached = hm.reduce((s: number, h: any) => s + (h.breached ?? 0), 0);
+    const resolvedName = d.tenant?.name ? `${d.name ?? 'Unknown'} (${d.tenant.name})` : (d.name ?? 'Unknown');
     return {
-      name: d.name ?? 'Unknown',
+      id: d.id ?? i,
+      name: resolvedName,
+      deptName: d.name ?? 'Unknown',
+      tenantName: d.tenant?.name ?? null,
       breachPct: total > 0 ? +(breached / total * 100).toFixed(1) : 0,
       total,
       breached,
     };
   });
 
+  const sortedList = [...slaByDept].sort((a, b) => b.breachPct - a.breachPct);
+
   return (
-    <Card className="bg-slate-900/40 backdrop-blur-md border-white/5">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-slate-300">SLA Breach Rate by Department</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {isLoading ? <LoadingCard height={300} /> : slaByDept.length === 0 ? (
-          <p className="text-slate-500 text-sm text-center py-12">No SLA data available.</p>
-        ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={slaByDept} layout="vertical" margin={{ top: 5, right: 40, left: 90, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
-              <XAxis type="number" unit="%" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} width={90} />
-              <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={false} />
-              <Bar dataKey="breachPct" name="Breach %" fill="#ef4444" radius={[0, 4, 4, 0]} opacity={0.85} />
-              <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
-            </BarChart>
-          </ResponsiveContainer>
-        )}
-      </CardContent>
-    </Card>
+    <div className="space-y-4">
+      <Card className="bg-slate-900/40 backdrop-blur-md border-white/5">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-slate-300">SLA Breach Rate by Department</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? <LoadingCard height={300} /> : slaByDept.length === 0 ? (
+            <p className="text-slate-500 text-sm text-center py-12">No SLA data available.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={slaByDept} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="name" tick={false} axisLine={false} tickLine={false} height={10} />
+                <YAxis unit="%" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={false} />
+                <Bar dataKey="breachPct" name="Breach %" fill="#ef4444" radius={[4, 4, 0, 0]} opacity={0.85} />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px', color: '#94a3b8' }} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
+
+      {!isLoading && slaByDept.length > 0 && (
+        <Card className="bg-slate-900/40 backdrop-blur-md border-white/5">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-slate-300">Breach Leaderboard</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1.5">
+              {sortedList.map((d: any, i: number) => (
+                <div key={d.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-800/30 hover:bg-slate-800/50 transition-colors">
+                  <span className="text-xs font-bold text-slate-500 w-5 shrink-0">#{i + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-white truncate">{d.deptName}</p>
+                    {d.tenantName && (
+                      <p className="text-[10px] text-slate-400 truncate">Tenant: {d.tenantName}</p>
+                    )}
+                  </div>
+                  <span className="text-xs text-slate-400 w-16 text-right shrink-0">{d.total} total</span>
+                  <span className="text-xs text-red-400 w-20 text-right shrink-0">{d.breached} breached</span>
+                  <div className="w-24 hidden sm:block shrink-0">
+                    <div className="h-1.5 rounded-full bg-slate-700 overflow-hidden">
+                      <div className={`h-full rounded-full ${d.breachPct > 30 ? 'bg-red-500' : d.breachPct > 10 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${d.breachPct}%` }} />
+                    </div>
+                  </div>
+                  <span className={`text-[10px] font-semibold w-20 text-right shrink-0 ${d.breachPct > 30 ? 'text-red-400' : d.breachPct > 10 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                    {d.breachPct}% breach
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }
 
@@ -492,6 +572,11 @@ function EscalationTab() {
     queryFn: () => analyticsApi.getEscalationTrends(days),
     staleTime: 60_000,
   });
+
+  const escData = (data?.data as any)?.data ?? [];
+  const totalEsc = escData.reduce((s: number, d: any) => s + (d.escalations ?? 0), 0);
+  const maxEsc = escData.reduce((max: number, d: any) => (d.escalations ?? 0) > max ? (d.escalations ?? 0) : max, 0);
+  const sortedEsc = [...escData].filter((d: any) => d.escalations > 0).sort((a: any, b: any) => b.escalations - a.escalations);
 
   return (
     <Card className="bg-slate-900/40 backdrop-blur-md border-white/5">
@@ -511,16 +596,37 @@ function EscalationTab() {
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading ? <LoadingCard height={280} /> : (
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={(data?.data as any)?.data ?? []} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
-              <Line type="monotone" dataKey="escalations" name="Escalations" stroke="#f97316" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
+        {isLoading ? <LoadingCard height={300} /> : (
+          <div className="space-y-4">
+            <ResponsiveContainer width="100%" height={240}>
+              <LineChart data={escData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="date" tick={false} axisLine={false} tickLine={false} height={10} />
+                <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+                <Line type="monotone" dataKey="escalations" name="Escalations" stroke="#f97316" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 justify-center px-1 pt-1 max-h-24 overflow-y-auto">
+              <div className="flex items-center gap-1 text-[9px] text-slate-400 bg-slate-800/30 px-1.5 py-0.5 rounded border border-white/5">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                <span>Total Escalations:</span>
+                <span className="font-semibold ml-0.5 text-white">{totalEsc}</span>
+              </div>
+              <div className="flex items-center gap-1 text-[9px] text-slate-400 bg-slate-800/30 px-1.5 py-0.5 rounded border border-white/5">
+                <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                <span>Peak (Single Day):</span>
+                <span className="font-semibold ml-0.5 text-white">{maxEsc}</span>
+              </div>
+              {sortedEsc.slice(0, 8).map((d: any, i: number) => (
+                <div key={i} className="flex items-center gap-1 text-[9px] text-slate-400 bg-slate-800/30 px-1.5 py-0.5 rounded border border-orange-500/20">
+                  <span>{d.date}</span>
+                  <span className="font-semibold ml-0.5 text-orange-400">{d.escalations} escalations</span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -550,18 +656,30 @@ function CategoryTab() {
           <CardTitle className="text-sm font-medium text-slate-300">By Volume</CardTitle>
         </CardHeader>
         <CardContent>
-          {isLoading ? <LoadingCard height={280} /> : (
-            <ResponsiveContainer width="100%" height={290}>
-              <BarChart data={categoryData} margin={{ top: 5, right: 10, left: -20, bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#94a3b8' }} tickMargin={25} axisLine={false} tickLine={false} angle={-35} textAnchor="end" />
-                <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={false} />
-                <Bar dataKey="value" name="Complaints" radius={[4, 4, 0, 0]}>
-                  {categoryData.map((e, i) => <Cell key={i} fill={e.fill} opacity={0.85} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          {isLoading ? <LoadingCard height={300} /> : (
+            <div className="space-y-4">
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={categoryData} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="name" tick={false} axisLine={false} tickLine={false} height={10} />
+                  <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} wrapperStyle={{ background: "transparent", border: "none", boxShadow: "none", padding: 0, outline: "none" }} cursor={false} />
+                  <Bar dataKey="value" name="Complaints" radius={[4, 4, 0, 0]}>
+                    {categoryData.map((e, i) => <Cell key={i} fill={e.fill} opacity={0.85} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 justify-center px-1 pt-1 max-h-24 overflow-y-auto">
+                {[...categoryData].sort((a, b) => b.value - a.value).map((d: any, i) => (
+                  <div key={i} className="flex items-center gap-1 text-[9px] text-slate-400 bg-slate-800/30 px-1.5 py-0.5 rounded border border-white/5">
+                    <span className="w-1.5 h-1.5 rounded-full" style={{ background: d.fill }} />
+                    <span className="truncate max-w-[120px]" title={d.name}>{d.name}</span>
+                    <span className="font-semibold ml-0.5 text-white">{d.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

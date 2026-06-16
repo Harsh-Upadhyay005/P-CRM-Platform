@@ -85,7 +85,12 @@ export function AlertsPanel() {
 
   const { data: slaData } = useQuery({
     queryKey: ["complaints", "sla-breached"],
-    queryFn: () => complaintsApi.list({ slaBreached: "true", limit: 10 }),
+    queryFn: () =>
+      complaintsApi.list({
+        slaBreached: "true",
+        status: "OPEN,ASSIGNED,IN_PROGRESS,ESCALATED",
+        limit: 10,
+      }),
     staleTime: 30_000,
     enabled: !isCitizen,
   });

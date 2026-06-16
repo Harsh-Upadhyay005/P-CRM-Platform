@@ -169,7 +169,19 @@ export const getDepartmentStats = async (user) => {
 
   const departments = await prisma.department.findMany({
     where: { isDeleted: false, ...tenantFilter, ...deptIdFilter },
-    select: { id: true, name: true, slug: true, slaHours: true },
+    select: {
+      id: true,
+      name: true,
+      slug: true,
+      slaHours: true,
+      tenant: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+        },
+      },
+    },
   });
 
   if (departments.length === 0) return [];
@@ -243,7 +255,19 @@ export const getDepartmentStats = async (user) => {
     }).length;
 
     return {
-      department: { id: dept.id, name: dept.name, slug: dept.slug, slaHours: dept.slaHours },
+      department: {
+        id: dept.id,
+        name: dept.name,
+        slug: dept.slug,
+        slaHours: dept.slaHours,
+        tenant: dept.tenant
+          ? {
+              id: dept.tenant.id,
+              name: dept.tenant.name,
+              slug: dept.tenant.slug,
+            }
+          : null,
+      },
       total,
       byStatus: {
         OPEN: statusMap.OPEN ?? 0,
@@ -525,7 +549,15 @@ export const getSlaHeatmap = async (user, query = {}) => {
   const [departments, complaints] = await Promise.all([
     prisma.department.findMany({
       where: { isDeleted: false, isActive: true, ...tenantFilter, ...deptIdFilter },
-      select: { id: true, name: true, slug: true, slaHours: true },
+      select: { 
+        id: true, 
+        name: true, 
+        slug: true, 
+        slaHours: true,
+        tenant: {
+          select: { id: true, name: true, slug: true }
+        }
+      },
     }),
     prisma.complaint.findMany({
       where: {

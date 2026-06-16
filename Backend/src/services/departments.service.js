@@ -119,6 +119,9 @@ export const listDepartments = async (query, user) => {
     isDeleted: false,
     ...tenantFilter,
     ...stateScopeWhere,
+    ...(user.role === "DEPARTMENT_HEAD" && user.departmentId
+      ? { id: user.departmentId }
+      : {}),
     ...(isActive !== undefined && { isActive: isActive === "true" }),
     ...(search && {
       name: { contains: search, mode: "insensitive" },
