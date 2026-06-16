@@ -17,24 +17,36 @@ import {
   ChevronRight,
   RefreshCw,
 } from "lucide-react";
+
+// import { geoMercator, geoPath } from "d3-geo";
+// import indiaData from "./india.json";
+
 import { geoMercator, geoPath } from "d3-geo";
-import indiaData from "./india.json";
+import { DelhiDistrictMap } from "./DelhiDistrictMap";
+
 import { analyticsApi } from "@/lib/api";
 
-/* ─────────────────────────────────────────────────────────────
-   India Map – SVG-based interactive choropleth
-   Shows complaint density per state with government color palette
-   ───────────────────────────────────────────────────────────── */
+  //  India Map - SVG-based interactive choropleth
+  //  Shows complaint density per state with government color palette
 
 // ── State Data shape
-export interface StateData {
+// export interface StateData {
+//   id: string;
+//   name: string;
+//   complaints: number;
+//   resolved: number;
+//   pending: number;
+//   critical: number;
+//   cities: { name: string; complaints: number; lat: number; lng: number }[];
+// }
+
+export interface DistrictData {
   id: string;
   name: string;
   complaints: number;
   resolved: number;
   pending: number;
   critical: number;
-  cities: { name: string; complaints: number; lat: number; lng: number }[];
 }
 
 interface IndiaMapViewProps {
@@ -45,427 +57,442 @@ interface IndiaMapViewProps {
 
 // ── Static base: geographic / city info only — numbers start at zero
 // Real counts are merged from the API response.
-const BASE_INDIA_STATES: StateData[] = [
-  {
-    id: "JK",
-    name: "Jammu & Kashmir",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Srinagar", complaints: 0, lat: 34.08, lng: 74.79 },
-      { name: "Jammu", complaints: 0, lat: 32.73, lng: 74.87 },
-    ],
-  },
-  {
-    id: "HP",
-    name: "Himachal Pradesh",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Shimla", complaints: 0, lat: 31.1, lng: 77.17 },
-      { name: "Dharamsala", complaints: 0, lat: 32.22, lng: 76.32 },
-    ],
-  },
-  {
-    id: "PB",
-    name: "Punjab",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Chandigarh", complaints: 0, lat: 30.73, lng: 76.78 },
-      { name: "Amritsar", complaints: 0, lat: 31.63, lng: 74.87 },
-      { name: "Ludhiana", complaints: 0, lat: 30.9, lng: 75.85 },
-    ],
-  },
-  {
-    id: "UK",
-    name: "Uttarakhand",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Dehradun", complaints: 0, lat: 30.32, lng: 78.03 },
-      { name: "Haridwar", complaints: 0, lat: 29.95, lng: 78.16 },
-    ],
-  },
-  {
-    id: "HR",
-    name: "Haryana",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Gurugram", complaints: 0, lat: 28.46, lng: 77.03 },
-      { name: "Faridabad", complaints: 0, lat: 28.41, lng: 77.31 },
-    ],
-  },
-  {
-    id: "DL",
-    name: "Delhi",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "New Delhi", complaints: 0, lat: 28.61, lng: 77.21 },
-      { name: "Dwarka", complaints: 0, lat: 28.59, lng: 77.04 },
-      { name: "Rohini", complaints: 0, lat: 28.74, lng: 77.11 },
-    ],
-  },
-  {
-    id: "RJ",
-    name: "Rajasthan",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Jaipur", complaints: 0, lat: 26.92, lng: 75.79 },
-      { name: "Jodhpur", complaints: 0, lat: 26.24, lng: 73.02 },
-      { name: "Udaipur", complaints: 0, lat: 24.58, lng: 73.68 },
-    ],
-  },
-  {
-    id: "UP",
-    name: "Uttar Pradesh",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Lucknow", complaints: 0, lat: 26.85, lng: 80.95 },
-      { name: "Noida", complaints: 0, lat: 28.57, lng: 77.32 },
-      { name: "Varanasi", complaints: 0, lat: 25.32, lng: 83.01 },
-      { name: "Agra", complaints: 0, lat: 27.18, lng: 78.02 },
-    ],
-  },
-  {
-    id: "BR",
-    name: "Bihar",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Patna", complaints: 0, lat: 25.6, lng: 85.1 },
-      { name: "Gaya", complaints: 0, lat: 24.8, lng: 85.0 },
-    ],
-  },
-  {
-    id: "SK",
-    name: "Sikkim",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [{ name: "Gangtok", complaints: 0, lat: 27.33, lng: 88.62 }],
-  },
-  {
-    id: "AR",
-    name: "Arunachal Pradesh",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [{ name: "Itanagar", complaints: 0, lat: 27.1, lng: 93.62 }],
-  },
-  {
-    id: "NL",
-    name: "Nagaland",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Kohima", complaints: 0, lat: 25.67, lng: 94.11 },
-      { name: "Dimapur", complaints: 0, lat: 25.91, lng: 93.73 },
-    ],
-  },
-  {
-    id: "MN",
-    name: "Manipur",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [{ name: "Imphal", complaints: 0, lat: 24.82, lng: 93.95 }],
-  },
-  {
-    id: "MZ",
-    name: "Mizoram",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [{ name: "Aizawl", complaints: 0, lat: 23.73, lng: 92.72 }],
-  },
-  {
-    id: "TR",
-    name: "Tripura",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [{ name: "Agartala", complaints: 0, lat: 23.83, lng: 91.28 }],
-  },
-  {
-    id: "ML",
-    name: "Meghalaya",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [{ name: "Shillong", complaints: 0, lat: 25.57, lng: 91.88 }],
-  },
-  {
-    id: "AS",
-    name: "Assam",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Guwahati", complaints: 0, lat: 26.14, lng: 91.74 },
-      { name: "Dibrugarh", complaints: 0, lat: 27.47, lng: 94.91 },
-    ],
-  },
-  {
-    id: "WB",
-    name: "West Bengal",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Kolkata", complaints: 0, lat: 22.57, lng: 88.36 },
-      { name: "Siliguri", complaints: 0, lat: 26.71, lng: 88.43 },
-      { name: "Durgapur", complaints: 0, lat: 23.55, lng: 87.32 },
-    ],
-  },
-  {
-    id: "JH",
-    name: "Jharkhand",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Ranchi", complaints: 0, lat: 23.34, lng: 85.31 },
-      { name: "Jamshedpur", complaints: 0, lat: 22.8, lng: 86.2 },
-    ],
-  },
-  {
-    id: "OD",
-    name: "Odisha",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Bhubaneswar", complaints: 0, lat: 20.3, lng: 85.82 },
-      { name: "Cuttack", complaints: 0, lat: 20.46, lng: 85.89 },
-    ],
-  },
-  {
-    id: "CT",
-    name: "Chhattisgarh",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Raipur", complaints: 0, lat: 21.25, lng: 81.63 },
-      { name: "Bilaspur", complaints: 0, lat: 22.08, lng: 82.15 },
-    ],
-  },
-  {
-    id: "MP",
-    name: "Madhya Pradesh",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Bhopal", complaints: 0, lat: 23.26, lng: 77.41 },
-      { name: "Indore", complaints: 0, lat: 22.72, lng: 75.86 },
-      { name: "Jabalpur", complaints: 0, lat: 23.18, lng: 79.95 },
-    ],
-  },
-  {
-    id: "GJ",
-    name: "Gujarat",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Ahmedabad", complaints: 0, lat: 23.02, lng: 72.57 },
-      { name: "Surat", complaints: 0, lat: 21.17, lng: 72.83 },
-      { name: "Vadodara", complaints: 0, lat: 22.31, lng: 73.19 },
-    ],
-  },
-  {
-    id: "MH",
-    name: "Maharashtra",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Mumbai", complaints: 0, lat: 19.08, lng: 72.88 },
-      { name: "Pune", complaints: 0, lat: 18.52, lng: 73.86 },
-      { name: "Nagpur", complaints: 0, lat: 21.15, lng: 79.09 },
-      { name: "Nashik", complaints: 0, lat: 20.0, lng: 73.79 },
-    ],
-  },
-  {
-    id: "GA",
-    name: "Goa",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Panaji", complaints: 0, lat: 15.5, lng: 73.83 },
-      { name: "Margao", complaints: 0, lat: 15.28, lng: 73.96 },
-    ],
-  },
-  {
-    id: "KA",
-    name: "Karnataka",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Bengaluru", complaints: 0, lat: 12.97, lng: 77.59 },
-      { name: "Mysuru", complaints: 0, lat: 12.3, lng: 76.65 },
-      { name: "Hubli", complaints: 0, lat: 15.36, lng: 75.12 },
-    ],
-  },
-  {
-    id: "KL",
-    name: "Kerala",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Thiruvananthapuram", complaints: 0, lat: 8.52, lng: 76.94 },
-      { name: "Kochi", complaints: 0, lat: 9.93, lng: 76.27 },
-      { name: "Kozhikode", complaints: 0, lat: 11.25, lng: 75.77 },
-    ],
-  },
-  {
-    id: "TN",
-    name: "Tamil Nadu",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Chennai", complaints: 0, lat: 13.08, lng: 80.27 },
-      { name: "Coimbatore", complaints: 0, lat: 11.02, lng: 76.96 },
-      { name: "Madurai", complaints: 0, lat: 9.92, lng: 78.12 },
-    ],
-  },
-  {
-    id: "AP",
-    name: "Andhra Pradesh",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Visakhapatnam", complaints: 0, lat: 17.69, lng: 83.22 },
-      { name: "Vijayawada", complaints: 0, lat: 16.51, lng: 80.65 },
-      { name: "Tirupati", complaints: 0, lat: 13.63, lng: 79.42 },
-    ],
-  },
-  {
-    id: "TS",
-    name: "Telangana",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [
-      { name: "Hyderabad", complaints: 0, lat: 17.38, lng: 78.49 },
-      { name: "Warangal", complaints: 0, lat: 17.98, lng: 79.6 },
-      { name: "Nizamabad", complaints: 0, lat: 18.67, lng: 78.09 },
-    ],
-  },
-  {
-    id: "LD",
-    name: "Lakshadweep",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [{ name: "Kavaratti", complaints: 0, lat: 10.57, lng: 72.64 }],
-  },
-  {
-    id: "AN",
-    name: "Andaman & Nicobar",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [{ name: "Port Blair", complaints: 0, lat: 11.67, lng: 92.74 }],
-  },
-  {
-    id: "LA",
-    name: "Ladakh",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [{ name: "Leh", complaints: 0, lat: 34.15, lng: 77.58 }],
-  },
-  {
-    id: "PY",
-    name: "Puducherry",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [{ name: "Puducherry", complaints: 0, lat: 11.93, lng: 79.83 }],
-  },
-  {
-    id: "CH",
-    name: "Chandigarh",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [{ name: "Chandigarh", complaints: 0, lat: 30.73, lng: 76.78 }],
-  },
-  {
-    id: "DN",
-    name: "Dadra & Nagar Haveli",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [{ name: "Silvassa", complaints: 0, lat: 20.27, lng: 73.01 }],
-  },
-  {
-    id: "DD",
-    name: "Daman & Diu",
-    complaints: 0,
-    resolved: 0,
-    pending: 0,
-    critical: 0,
-    cities: [{ name: "Daman", complaints: 0, lat: 20.41, lng: 72.85 }],
-  },
+
+// const BASE_INDIA_STATES: StateData[] = [
+//   {
+//     id: "JK",
+//     name: "Jammu & Kashmir",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Srinagar", complaints: 0, lat: 34.08, lng: 74.79 },
+//       { name: "Jammu", complaints: 0, lat: 32.73, lng: 74.87 },
+//     ],
+//   },
+//   {
+//     id: "HP",
+//     name: "Himachal Pradesh",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Shimla", complaints: 0, lat: 31.1, lng: 77.17 },
+//       { name: "Dharamsala", complaints: 0, lat: 32.22, lng: 76.32 },
+//     ],
+//   },
+//   {
+//     id: "PB",
+//     name: "Punjab",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Chandigarh", complaints: 0, lat: 30.73, lng: 76.78 },
+//       { name: "Amritsar", complaints: 0, lat: 31.63, lng: 74.87 },
+//       { name: "Ludhiana", complaints: 0, lat: 30.9, lng: 75.85 },
+//     ],
+//   },
+//   {
+//     id: "UK",
+//     name: "Uttarakhand",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Dehradun", complaints: 0, lat: 30.32, lng: 78.03 },
+//       { name: "Haridwar", complaints: 0, lat: 29.95, lng: 78.16 },
+//     ],
+//   },
+//   {
+//     id: "HR",
+//     name: "Haryana",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Gurugram", complaints: 0, lat: 28.46, lng: 77.03 },
+//       { name: "Faridabad", complaints: 0, lat: 28.41, lng: 77.31 },
+//     ],
+//   },
+//   {
+//     id: "DL",
+//     name: "Delhi",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "New Delhi", complaints: 0, lat: 28.61, lng: 77.21 },
+//       { name: "Dwarka", complaints: 0, lat: 28.59, lng: 77.04 },
+//       { name: "Rohini", complaints: 0, lat: 28.74, lng: 77.11 },
+//     ],
+//   },
+//   {
+//     id: "RJ",
+//     name: "Rajasthan",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Jaipur", complaints: 0, lat: 26.92, lng: 75.79 },
+//       { name: "Jodhpur", complaints: 0, lat: 26.24, lng: 73.02 },
+//       { name: "Udaipur", complaints: 0, lat: 24.58, lng: 73.68 },
+//     ],
+//   },
+//   {
+//     id: "UP",
+//     name: "Uttar Pradesh",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Lucknow", complaints: 0, lat: 26.85, lng: 80.95 },
+//       { name: "Noida", complaints: 0, lat: 28.57, lng: 77.32 },
+//       { name: "Varanasi", complaints: 0, lat: 25.32, lng: 83.01 },
+//       { name: "Agra", complaints: 0, lat: 27.18, lng: 78.02 },
+//     ],
+//   },
+//   {
+//     id: "BR",
+//     name: "Bihar",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Patna", complaints: 0, lat: 25.6, lng: 85.1 },
+//       { name: "Gaya", complaints: 0, lat: 24.8, lng: 85.0 },
+//     ],
+//   },
+//   {
+//     id: "SK",
+//     name: "Sikkim",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [{ name: "Gangtok", complaints: 0, lat: 27.33, lng: 88.62 }],
+//   },
+//   {
+//     id: "AR",
+//     name: "Arunachal Pradesh",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [{ name: "Itanagar", complaints: 0, lat: 27.1, lng: 93.62 }],
+//   },
+//   {
+//     id: "NL",
+//     name: "Nagaland",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Kohima", complaints: 0, lat: 25.67, lng: 94.11 },
+//       { name: "Dimapur", complaints: 0, lat: 25.91, lng: 93.73 },
+//     ],
+//   },
+//   {
+//     id: "MN",
+//     name: "Manipur",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [{ name: "Imphal", complaints: 0, lat: 24.82, lng: 93.95 }],
+//   },
+//   {
+//     id: "MZ",
+//     name: "Mizoram",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [{ name: "Aizawl", complaints: 0, lat: 23.73, lng: 92.72 }],
+//   },
+//   {
+//     id: "TR",
+//     name: "Tripura",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [{ name: "Agartala", complaints: 0, lat: 23.83, lng: 91.28 }],
+//   },
+//   {
+//     id: "ML",
+//     name: "Meghalaya",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [{ name: "Shillong", complaints: 0, lat: 25.57, lng: 91.88 }],
+//   },
+//   {
+//     id: "AS",
+//     name: "Assam",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Guwahati", complaints: 0, lat: 26.14, lng: 91.74 },
+//       { name: "Dibrugarh", complaints: 0, lat: 27.47, lng: 94.91 },
+//     ],
+//   },
+//   {
+//     id: "WB",
+//     name: "West Bengal",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Kolkata", complaints: 0, lat: 22.57, lng: 88.36 },
+//       { name: "Siliguri", complaints: 0, lat: 26.71, lng: 88.43 },
+//       { name: "Durgapur", complaints: 0, lat: 23.55, lng: 87.32 },
+//     ],
+//   },
+//   {
+//     id: "JH",
+//     name: "Jharkhand",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Ranchi", complaints: 0, lat: 23.34, lng: 85.31 },
+//       { name: "Jamshedpur", complaints: 0, lat: 22.8, lng: 86.2 },
+//     ],
+//   },
+//   {
+//     id: "OD",
+//     name: "Odisha",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Bhubaneswar", complaints: 0, lat: 20.3, lng: 85.82 },
+//       { name: "Cuttack", complaints: 0, lat: 20.46, lng: 85.89 },
+//     ],
+//   },
+//   {
+//     id: "CT",
+//     name: "Chhattisgarh",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Raipur", complaints: 0, lat: 21.25, lng: 81.63 },
+//       { name: "Bilaspur", complaints: 0, lat: 22.08, lng: 82.15 },
+//     ],
+//   },
+//   {
+//     id: "MP",
+//     name: "Madhya Pradesh",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Bhopal", complaints: 0, lat: 23.26, lng: 77.41 },
+//       { name: "Indore", complaints: 0, lat: 22.72, lng: 75.86 },
+//       { name: "Jabalpur", complaints: 0, lat: 23.18, lng: 79.95 },
+//     ],
+//   },
+//   {
+//     id: "GJ",
+//     name: "Gujarat",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Ahmedabad", complaints: 0, lat: 23.02, lng: 72.57 },
+//       { name: "Surat", complaints: 0, lat: 21.17, lng: 72.83 },
+//       { name: "Vadodara", complaints: 0, lat: 22.31, lng: 73.19 },
+//     ],
+//   },
+//   {
+//     id: "MH",
+//     name: "Maharashtra",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Mumbai", complaints: 0, lat: 19.08, lng: 72.88 },
+//       { name: "Pune", complaints: 0, lat: 18.52, lng: 73.86 },
+//       { name: "Nagpur", complaints: 0, lat: 21.15, lng: 79.09 },
+//       { name: "Nashik", complaints: 0, lat: 20.0, lng: 73.79 },
+//     ],
+//   },
+//   {
+//     id: "GA",
+//     name: "Goa",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Panaji", complaints: 0, lat: 15.5, lng: 73.83 },
+//       { name: "Margao", complaints: 0, lat: 15.28, lng: 73.96 },
+//     ],
+//   },
+//   {
+//     id: "KA",
+//     name: "Karnataka",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Bengaluru", complaints: 0, lat: 12.97, lng: 77.59 },
+//       { name: "Mysuru", complaints: 0, lat: 12.3, lng: 76.65 },
+//       { name: "Hubli", complaints: 0, lat: 15.36, lng: 75.12 },
+//     ],
+//   },
+//   {
+//     id: "KL",
+//     name: "Kerala",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Thiruvananthapuram", complaints: 0, lat: 8.52, lng: 76.94 },
+//       { name: "Kochi", complaints: 0, lat: 9.93, lng: 76.27 },
+//       { name: "Kozhikode", complaints: 0, lat: 11.25, lng: 75.77 },
+//     ],
+//   },
+//   {
+//     id: "TN",
+//     name: "Tamil Nadu",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Chennai", complaints: 0, lat: 13.08, lng: 80.27 },
+//       { name: "Coimbatore", complaints: 0, lat: 11.02, lng: 76.96 },
+//       { name: "Madurai", complaints: 0, lat: 9.92, lng: 78.12 },
+//     ],
+//   },
+//   {
+//     id: "AP",
+//     name: "Andhra Pradesh",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Visakhapatnam", complaints: 0, lat: 17.69, lng: 83.22 },
+//       { name: "Vijayawada", complaints: 0, lat: 16.51, lng: 80.65 },
+//       { name: "Tirupati", complaints: 0, lat: 13.63, lng: 79.42 },
+//     ],
+//   },
+//   {
+//     id: "TS",
+//     name: "Telangana",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [
+//       { name: "Hyderabad", complaints: 0, lat: 17.38, lng: 78.49 },
+//       { name: "Warangal", complaints: 0, lat: 17.98, lng: 79.6 },
+//       { name: "Nizamabad", complaints: 0, lat: 18.67, lng: 78.09 },
+//     ],
+//   },
+//   {
+//     id: "LD",
+//     name: "Lakshadweep",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [{ name: "Kavaratti", complaints: 0, lat: 10.57, lng: 72.64 }],
+//   },
+//   {
+//     id: "AN",
+//     name: "Andaman & Nicobar",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [{ name: "Port Blair", complaints: 0, lat: 11.67, lng: 92.74 }],
+//   },
+//   {
+//     id: "LA",
+//     name: "Ladakh",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [{ name: "Leh", complaints: 0, lat: 34.15, lng: 77.58 }],
+//   },
+//   {
+//     id: "PY",
+//     name: "Puducherry",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [{ name: "Puducherry", complaints: 0, lat: 11.93, lng: 79.83 }],
+//   },
+//   {
+//     id: "CH",
+//     name: "Chandigarh",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [{ name: "Chandigarh", complaints: 0, lat: 30.73, lng: 76.78 }],
+//   },
+//   {
+//     id: "DN",
+//     name: "Dadra & Nagar Haveli",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [{ name: "Silvassa", complaints: 0, lat: 20.27, lng: 73.01 }],
+//   },
+//   {
+//     id: "DD",
+//     name: "Daman & Diu",
+//     complaints: 0,
+//     resolved: 0,
+//     pending: 0,
+//     critical: 0,
+//     cities: [{ name: "Daman", complaints: 0, lat: 20.41, lng: 72.85 }],
+//   },
+// ];
+
+const BASE_DELHI_DISTRICTS: DistrictData[] = [
+  { id: "Central Delhi",      name: "Central Delhi",      complaints: 0, resolved: 0, pending: 0, critical: 0 },
+  { id: "East Delhi",         name: "East Delhi",         complaints: 0, resolved: 0, pending: 0, critical: 0 },
+  { id: "New Delhi",          name: "New Delhi",          complaints: 0, resolved: 0, pending: 0, critical: 0 },
+  { id: "North Delhi",        name: "North Delhi",        complaints: 0, resolved: 0, pending: 0, critical: 0 },
+  { id: "North East Delhi",   name: "North East Delhi",   complaints: 0, resolved: 0, pending: 0, critical: 0 },
+  { id: "North West Delhi",   name: "North West Delhi",   complaints: 0, resolved: 0, pending: 0, critical: 0 },
+  { id: "Shahdara",           name: "Shahdara",           complaints: 0, resolved: 0, pending: 0, critical: 0 },
+  { id: "South Delhi",        name: "South Delhi",        complaints: 0, resolved: 0, pending: 0, critical: 0 },
+  { id: "South East Delhi",   name: "South East Delhi",   complaints: 0, resolved: 0, pending: 0, critical: 0 },
+  { id: "South West Delhi",   name: "South West Delhi",   complaints: 0, resolved: 0, pending: 0, critical: 0 },
+  { id: "West Delhi",         name: "West Delhi",         complaints: 0, resolved: 0, pending: 0, critical: 0 },
 ];
 
 // Heat color based on complaint count — green (low) → saffron (mid) → deep red (high)
@@ -488,67 +515,68 @@ function getHeatOpacity(complaints: number, max: number): number {
 }
 
 // ── SVG paths for Indian states using d3-geo and imported GeoJSON
-const STATE_MAPPING: Record<string, string> = {
-  INAN: "AN",
-  INAP: "AP",
-  INAR: "AR",
-  INAS: "AS",
-  INBR: "BR",
-  INCH: "CH",
-  INCT: "CT",
-  INDH: "DN",
-  INDL: "DL",
-  INGA: "GA",
-  INGJ: "GJ",
-  INHR: "HR",
-  INHP: "HP",
-  INJH: "JH",
-  INKA: "KA",
-  INKL: "KL",
-  INLD: "LD",
-  INMP: "MP",
-  INMH: "MH",
-  INMN: "MN",
-  INML: "ML",
-  INMZ: "MZ",
-  INNL: "NL",
-  INOR: "OD",
-  INPY: "PY",
-  INPB: "PB",
-  INRJ: "RJ",
-  INSK: "SK",
-  INTN: "TN",
-  INTG: "TS",
-  INTR: "TR",
-  INUP: "UP",
-  INUT: "UK",
-  INWB: "WB",
-  INJK: "JK",
-  INLA: "LA",
-};
 
-const projection = geoMercator().fitSize(
-  [460, 520],
-  indiaData as unknown as GeoJSON.FeatureCollection,
-);
-const pathGenerator = geoPath().projection(projection);
+// const STATE_MAPPING: Record<string, string> = {
+//   INAN: "AN",
+//   INAP: "AP",
+//   INAR: "AR",
+//   INAS: "AS",
+//   INBR: "BR",
+//   INCH: "CH",
+//   INCT: "CT",
+//   INDH: "DN",
+//   INDL: "DL",
+//   INGA: "GA",
+//   INGJ: "GJ",
+//   INHR: "HR",
+//   INHP: "HP",
+//   INJH: "JH",
+//   INKA: "KA",
+//   INKL: "KL",
+//   INLD: "LD",
+//   INMP: "MP",
+//   INMH: "MH",
+//   INMN: "MN",
+//   INML: "ML",
+//   INMZ: "MZ",
+//   INNL: "NL",
+//   INOR: "OD",
+//   INPY: "PY",
+//   INPB: "PB",
+//   INRJ: "RJ",
+//   INSK: "SK",
+//   INTN: "TN",
+//   INTG: "TS",
+//   INTR: "TR",
+//   INUP: "UP",
+//   INUT: "UK",
+//   INWB: "WB",
+//   INJK: "JK",
+//   INLA: "LA",
+// };
 
-const STATE_PATHS: Record<string, string> = {};
-const STATE_CENTERS: Record<string, [number, number]> = {};
+// const projection = geoMercator().fitSize(
+//   [460, 520],
+//   indiaData as unknown as GeoJSON.FeatureCollection,
+// );
+// const pathGenerator = geoPath().projection(projection);
 
-(indiaData as unknown as GeoJSON.FeatureCollection).features.forEach(
-  (feature: GeoJSON.Feature) => {
-    const code = (feature.properties as Record<string, unknown>)?.id as string;
-    const mappedId = STATE_MAPPING[code];
-    if (mappedId) {
-      STATE_PATHS[mappedId] = pathGenerator(feature) || "";
-      const centroid = pathGenerator.centroid(feature);
-      if (!Number.isNaN(centroid[0]) && !Number.isNaN(centroid[1])) {
-        STATE_CENTERS[mappedId] = centroid as [number, number];
-      }
-    }
-  },
-);
+// const STATE_PATHS: Record<string, string> = {};
+// const STATE_CENTERS: Record<string, [number, number]> = {};
+
+// (indiaData as unknown as GeoJSON.FeatureCollection).features.forEach(
+//   (feature: GeoJSON.Feature) => {
+//     const code = (feature.properties as Record<string, unknown>)?.id as string;
+//     const mappedId = STATE_MAPPING[code];
+//     if (mappedId) {
+//       STATE_PATHS[mappedId] = pathGenerator(feature) || "";
+//       const centroid = pathGenerator.centroid(feature);
+//       if (!Number.isNaN(centroid[0]) && !Number.isNaN(centroid[1])) {
+//         STATE_CENTERS[mappedId] = centroid as [number, number];
+//       }
+//     }
+//   },
+// );
 
 // ── Tooltip Component
 function StateTooltip({
@@ -666,7 +694,7 @@ function MapLegend() {
 }
 
 // ── Summary Stats Bar
-function StatsSummary({ states }: { states: StateData[] }) {
+function StatsSummary({ states }: { states: DistrictData[] }) {
   const total = states.reduce((s, st) => s + st.complaints, 0);
   const resolved = states.reduce((s, st) => s + st.resolved, 0);
   const critical = states.reduce((s, st) => s + st.critical, 0);
@@ -720,7 +748,7 @@ function StatsSummary({ states }: { states: StateData[] }) {
 }
 
 // ── Top States List
-function TopStates({ states }: { states: StateData[] }) {
+function TopStates({ states }: { states: DistrictData[] }) {
   const totalComplaints = states.reduce((sum, state) => sum + state.complaints, 0);
   const sorted = [...states]
     .sort((a, b) => b.complaints - a.complaints)
@@ -793,9 +821,9 @@ function MapSkeleton() {
   );
 }
 
-// ═══════════════════════════════════════════════════════════════
+
 // MAIN COMPONENT
-// ═══════════════════════════════════════════════════════════════
+
 export function IndiaMapView({
   visibleStateIds,
   windowDays = 7,
@@ -808,10 +836,14 @@ export function IndiaMapView({
   const [selectedState, setSelectedState] = useState<string | null>(null);
 
   // ── Real data state
-  const [stateData, setStateData] = useState<StateData[]>(BASE_INDIA_STATES);
+  // const [stateData, setStateData] = useState<StateData[]>(BASE_INDIA_STATES);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [districtData, setDistrictData] = useState<DistrictData[]>(BASE_DELHI_DISTRICTS);
+  const [geoFeatures, setGeoFeatures] = useState<GeoJSON.Feature[]> ([]);
+  const [districtPaths, setDistrictPaths] = useState<Record<string, string>>({});
+  const [districtCenters, setDistrictCenters] = useState<Record<string, [number, number]>>({});
 
   // ── Fetch map stats and merge with base geographic data
   const fetchMapStats = useCallback(async () => {
@@ -842,7 +874,7 @@ export function IndiaMapView({
         };
       }
 
-      const merged: StateData[] = BASE_INDIA_STATES.map((base) => {
+      const merged: DistrictData[] = BASE_DELHI_DISTRICTS.map((base) => {
         const data = apiLookup[base.id];
         if (!data || data.complaints === 0) return base;
 
