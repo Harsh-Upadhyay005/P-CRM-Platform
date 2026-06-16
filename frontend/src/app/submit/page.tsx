@@ -45,7 +45,6 @@ function TenantSearch({
   const [selected, setSelected] = useState<{ name: string; slug: string } | null>(null);
   const debounceRef             = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef            = useRef<HTMLDivElement>(null);
-  const [ showPinMap, setShowPinMap ] = useState(false);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -160,6 +159,7 @@ export default function PublicSubmitPage() {
   const [categoryOther, setCategoryOther]   = useState('');
   const [attachments, setAttachments]       = useState<File[]>([]);
   const [isUploading, setIsUploading]     = useState(false);
+  const [showPinMap, setShowPinMap]         = useState(false);
   const fileInputRef                       = useRef<HTMLInputElement>(null);
 
   // Location state
@@ -298,6 +298,26 @@ const [manualLocality, setManualLocality] = useState('');
 
   const fieldCls = 'w-full bg-slate-800/60 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm placeholder:text-slate-600 focus:outline-none focus:border-purple-500/50';
   const labelCls = 'block text-xs font-medium text-slate-300 mb-1.5';
+
+  const handlePinLocation = (loc: {
+    lat: number;
+    lng: number;
+    address: string;
+    district: string;
+    pincode: string;
+  }) => {
+    setLocation({
+      lat: loc.lat,
+      lng: loc.lng,
+      address: loc.address,
+      district: loc.district,
+      pincode: loc.pincode,
+      state: "Delhi",
+    });
+    const localityValue = [loc.district, "Delhi"].filter(Boolean).join(", ");
+    setValue("locality", localityValue, { shouldValidate: true });
+    setManualLocality("");
+  };
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-start font-sans pt-12 pb-16 px-4 overflow-hidden">
@@ -479,28 +499,6 @@ const [manualLocality, setManualLocality] = useState('');
         </button>
       </div>
     )}
-
-    const handlePinLocation = (loc: 
-    {
-      lat: number;
-      lng: number;
-      address: string;
-      district: string;
-      pincode: string;
-    }); 
-    {
-      setLocation({
-        lat: loc.lat,
-        lng: loc.lng,
-        address: loc.address,
-        district: loc.district,
-        pincode: loc.pincode,
-        state: "Delhi",
-  });
-  const localityValue = [loc.district, "Delhi"].filter(Boolean).join(", ");
-  setValue("locality", localityValue, { shouldValidate: true });
-  setManualLocality("");
-};
 
     {/* Divider */}
     <div className="flex items-center gap-2">

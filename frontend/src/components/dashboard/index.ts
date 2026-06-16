@@ -4,5 +4,5 @@ export { AlertsPanel } from "./AlertsPanel";
 export { ComplaintManager } from "./ComplaintManager";
 export { TeamPerformance } from "./TeamPerformance";
 export { QuickActions } from "./QuickActions";
-export { IndiaMapView } from "./IndiaMapView";
+export { DelhiDistrictMap } from "./DelhiDistrictMap";
 export { CitizenDashboard } from "./CitizenDashboard";
