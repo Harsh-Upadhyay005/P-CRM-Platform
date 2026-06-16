@@ -409,7 +409,10 @@ export const listComplaints = async (query, user) => {
 
   const abacFilter = await getABACFilter(user);
 
-  const explicitDeptFilter = departmentId && user.role !== "DEPARTMENT_HEAD" 
+  // Department-scoped roles (ADMIN, DEPARTMENT_HEAD) must always use their ABAC filter.
+  // Never let a ?departmentId= query param override the isolation boundary.
+  const isDeptScoped = user.role === "ADMIN" || user.role === "DEPARTMENT_HEAD";
+  const explicitDeptFilter = departmentId && !isDeptScoped
     ? { departmentId } 
     : {};
 

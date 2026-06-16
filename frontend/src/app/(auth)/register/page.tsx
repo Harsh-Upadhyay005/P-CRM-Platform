@@ -10,13 +10,11 @@ import { useTranslation } from 'react-i18next';
 
 export default function SignupPage() {
   const { t } = useTranslation();
-  const [signupMode, setSignupMode] = useState<'citizen' | 'superAdmin'>('citizen');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     tenantSlug: '',
-    signupCode: '',
   });
   const [tenants, setTenants] = useState<{ name: string; slug: string }[]>([]);
   const [tenantsLoading, setTenantsLoading] = useState(true);
@@ -45,21 +43,12 @@ export default function SignupPage() {
     setError('');
 
     try {
-      if (signupMode === 'superAdmin') {
-        await authApi.superAdminSignup({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          signupCode: formData.signupCode,
-        });
-      } else {
-        await authApi.register({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          tenantSlug: formData.tenantSlug,
-        });
-      }
+      await authApi.register({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        tenantSlug: formData.tenantSlug,
+      });
       setSuccess(true);
     } catch (err: unknown) {
       if (err && typeof err === 'object' && 'response' in err) {
@@ -86,7 +75,6 @@ export default function SignupPage() {
         >
           <div className="absolute inset-0 bg-emerald-500/5 pointer-events-none" />
 
-          {/* Animated mail icon */}
           <div className="relative w-16 h-16 mx-auto mb-6">
             <div className="absolute inset-0 rounded-full bg-emerald-500/20 animate-ping opacity-40" />
             <div className="relative w-16 h-16 bg-emerald-500/20 rounded-full flex items-center justify-center ring-1 ring-emerald-500/40 shadow-[0_0_20px_rgba(16,185,129,0.25)]">
@@ -94,28 +82,13 @@ export default function SignupPage() {
             </div>
           </div>
 
-          {signupMode === 'superAdmin' ? (
-            <>
-              <h2 className="text-xl font-semibold text-white mb-2">Account Created</h2>
-              <p className="text-zinc-400 text-sm mb-1">Your state super-admin account is ready for</p>
-              <p className="text-emerald-400 font-medium text-sm mb-5 break-all">{formData.email}</p>
-              <p className="text-zinc-500 text-xs mb-8 leading-relaxed">
-                You can now sign in directly with your email and password.
-              </p>
-            </>
-          ) : (
-            <>
-              <h2 className="text-xl font-semibold text-white mb-2">Check Your Email</h2>
-              <p className="text-zinc-400 text-sm mb-1">
-                A verification link has been sent to
-              </p>
-              <p className="text-emerald-400 font-medium text-sm mb-5 break-all">{formData.email}</p>
-              <p className="text-zinc-500 text-xs mb-8 leading-relaxed">
-                Click the link in the email to activate your account before logging in.
-                If you don&apos;t see it, check your spam folder.
-              </p>
-            </>
-          )}
+          <h2 className="text-xl font-semibold text-white mb-2">Check Your Email</h2>
+          <p className="text-zinc-400 text-sm mb-1">A verification link has been sent to</p>
+          <p className="text-emerald-400 font-medium text-sm mb-5 break-all">{formData.email}</p>
+          <p className="text-zinc-500 text-xs mb-8 leading-relaxed">
+            Click the link in the email to activate your account before logging in.
+            If you don&apos;t see it, check your spam folder.
+          </p>
 
           <Link
             href="/login"
@@ -140,18 +113,16 @@ export default function SignupPage() {
       >
         <div className="backdrop-blur-xl bg-[#020617]/40 border border-white/5 shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] rounded-2xl p-8 relative overflow-hidden">
         
-          {/* Decorative Elements */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-teal-500/10 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
-          {/* Back to Home */}
           <Link href="/" className="absolute top-4 left-4 z-20 flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition-colors">
             <ArrowLeft className="w-3.5 h-3.5" />{t('auth.home', 'Home')}</Link>
 
           <div className="mb-8 relative z-10 flex items-center justify-between">
             <div>
                 <h1 className="text-2xl font-light text-white mb-1">Join the Network</h1>
-                <p className="text-zinc-500 text-xs uppercase tracking-widest">New User Registration</p>
+                <p className="text-zinc-500 text-xs uppercase tracking-widest">Citizen Registration</p>
             </div>
             <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center border border-white/10">
                 <LayoutGrid className="w-5 h-5 text-emerald-300" />
@@ -166,30 +137,6 @@ export default function SignupPage() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4 relative z-10">
-            <div className="grid grid-cols-2 gap-2 rounded-lg border border-white/5 bg-black/20 p-1">
-              <button
-                type="button"
-                onClick={() => setSignupMode('citizen')}
-                className={`rounded-md px-3 py-2 text-xs font-medium transition ${
-                  signupMode === 'citizen'
-                    ? 'bg-emerald-600/30 text-emerald-100 border border-emerald-400/30'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                Citizen Signup
-              </button>
-              <button
-                type="button"
-                onClick={() => setSignupMode('superAdmin')}
-                className={`rounded-md px-3 py-2 text-xs font-medium transition ${
-                  signupMode === 'superAdmin'
-                    ? 'bg-emerald-600/30 text-emerald-100 border border-emerald-400/30'
-                    : 'text-zinc-400 hover:text-zinc-200'
-                }`}
-              >
-                State Super Admin
-              </button>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">{t('auth.fullName', 'Full Name')}</label>
@@ -246,60 +193,43 @@ export default function SignupPage() {
                 <p className="text-[10px] text-zinc-500 mt-1">Must be 8-64 chars with uppercase, lowercase, number &amp; special character.</p>
             </div>
 
-            {signupMode === 'citizen' ? (
-              <div className="space-y-1">
-                  <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">Organization</label>
-                  <div className="relative group">
-                      <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors z-10 pointer-events-none" />
-                      {tenantsLoading ? (
-                        <div className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-4 text-zinc-500 text-sm animate-pulse">
-                          Loading organizations…
-                        </div>
-                      ) : tenants.length > 0 ? (
-                        <>
-                          <select
-                            required
-                            value={formData.tenantSlug}
-                            onChange={(e) => setFormData({ ...formData, tenantSlug: e.target.value })}
-                            className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-8 text-zinc-200 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30 appearance-none"
-                          >
-                            {tenants.map((t) => (
-                              <option key={t.slug} value={t.slug} className="bg-slate-900">
-                                {t.name}
-                              </option>
-                            ))}
-                          </select>
-                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
-                        </>
-                      ) : (
-                        <input
-                            type="text"
-                            required
-                            className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-4 text-zinc-200 text-sm placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30"
-                            placeholder="workspace-slug"
-                            value={formData.tenantSlug}
-                            onChange={(e) => setFormData({ ...formData, tenantSlug: e.target.value })}
-                        />
-                      )}
-                  </div>
-                  <p className="text-[10px] text-zinc-500 mt-1">Select your organisation / municipality.</p>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">Signup Code</label>
+            <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-zinc-400 uppercase ml-1">Organization</label>
                 <div className="relative group">
-                  <input
-                    type="text"
-                    required
-                    value={formData.signupCode}
-                    onChange={(e) => setFormData({ ...formData, signupCode: e.target.value })}
-                    placeholder="UP_SIGNUP_ABC123..."
-                    className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 px-4 text-zinc-200 text-sm placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30"
-                  />
+                    <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors z-10 pointer-events-none" />
+                    {tenantsLoading ? (
+                      <div className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-4 text-zinc-500 text-sm animate-pulse">
+                        Loading organizations…
+                      </div>
+                    ) : tenants.length > 0 ? (
+                      <>
+                        <select
+                          required
+                          value={formData.tenantSlug}
+                          onChange={(e) => setFormData({ ...formData, tenantSlug: e.target.value })}
+                          className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-8 text-zinc-200 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30 appearance-none"
+                        >
+                          {tenants.map((t) => (
+                            <option key={t.slug} value={t.slug} className="bg-slate-900">
+                              {t.name}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none" />
+                      </>
+                    ) : (
+                      <input
+                          type="text"
+                          required
+                          className="w-full bg-black/20 border border-white/5 rounded-lg py-2.5 pl-9 pr-4 text-zinc-200 text-sm placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-emerald-500/40 focus:border-emerald-500/40 transition-all hover:bg-black/30"
+                          placeholder="workspace-slug"
+                          value={formData.tenantSlug}
+                          onChange={(e) => setFormData({ ...formData, tenantSlug: e.target.value })}
+                      />
+                    )}
                 </div>
-                <p className="text-[10px] text-zinc-500 mt-1">Use the one-time code generated by the platform owner.</p>
-              </div>
-            )}
+                <p className="text-[10px] text-zinc-500 mt-1">Select your organisation / municipality.</p>
+            </div>
 
             <button
               type="submit"
@@ -311,7 +241,7 @@ export default function SignupPage() {
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
-                  Initialize Account
+                  Create Account
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -319,7 +249,7 @@ export default function SignupPage() {
           </form>
 
           <div className="mt-8 text-center pt-4 border-t border-dashed border-white/5 text-xs">
-            <span className="text-zinc-500">Authorized personnel only. </span>
+            <span className="text-zinc-500">Already have an account? </span>
             <Link href="/login" className="text-emerald-300 font-medium hover:text-white transition-colors">
               Return to Login
             </Link>
