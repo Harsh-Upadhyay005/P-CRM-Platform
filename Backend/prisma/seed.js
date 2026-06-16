@@ -17,14 +17,14 @@ if (!env.SEED_SUPER_ADMIN_EMAIL || !env.SEED_SUPER_ADMIN_PASSWORD) {
 
 const DEFAULT_TENANTS = [
   {
-    name: "BharatSetu Main Office",
+    name: "Delhi CM Office",
     slug: "main-office",
-    stateCode: "UP",
-    stateLabel: "Uttar Pradesh",
-    districtLabel: "Varanasi",
-    areas: ["BHU"],
+    stateCode: "DL",
+    stateLabel: "Delhi",
+    districtLabel: "Central Delhi",
+    areas: ["Delhi"],
     superAdmin: {
-      name: "Super Admin",
+      name: "Delhi CM Office",
       email: superAdminEmail,
       password: superAdminPassword,
     },

@@ -205,11 +205,12 @@ const getABACFilter = async (user) => {
     return { assignedToId: userId };
   }
 
-  if (role === "DEPARTMENT_HEAD") {
+  // Both Department Admin (ADMIN) and DEPARTMENT_HEAD see all complaints in their dept
+  if (role === "ADMIN" || role === "DEPARTMENT_HEAD") {
     if (!user.departmentId) {
       throw new ApiError(
         403,
-        "Department head is not assigned to any department",
+        `${role === "ADMIN" ? "Department admin" : "Department head"} is not assigned to any department`,
       );
     }
     return { departmentId: user.departmentId };
@@ -242,7 +243,8 @@ const assertComplaintAccess = async (complaint, user) => {
     return;
   }
 
-  if (role === "DEPARTMENT_HEAD") {
+  // Both Department Admin (ADMIN) and DEPARTMENT_HEAD: scoped to their own department
+  if (role === "ADMIN" || role === "DEPARTMENT_HEAD") {
     const dbUser = await prisma.user.findUnique({
       where: { id: userId },
       select: { departmentId: true },
@@ -632,7 +634,8 @@ export const assignComplaint = async (id, data, user) => {
     });
     if (!dept) throw new ApiError(404, "Department not found");
 
-    if (user.role === "DEPARTMENT_HEAD") {
+    // Department Admin and Department Head can only assign within their own department
+    if (user.role === "ADMIN" || user.role === "DEPARTMENT_HEAD") {
       const dbUser = await prisma.user.findUnique({
         where: { id: user.userId },
         select: { departmentId: true },
@@ -640,7 +643,7 @@ export const assignComplaint = async (id, data, user) => {
       if (dbUser?.departmentId !== departmentId) {
         throw new ApiError(
           403,
-          "Department heads can only assign within their own department",
+          "You can only assign within your own department",
         );
       }
     }
@@ -683,7 +686,7 @@ export const assignComplaint = async (id, data, user) => {
 
     officerDetails = { name: officer.name, email: officer.email };
 
-    if (user.role === "DEPARTMENT_HEAD") {
+    if (user.role === "ADMIN" || user.role === "DEPARTMENT_HEAD") {
       const effectiveDeptId = departmentId ?? complaint.departmentId;
       if (effectiveDeptId && officer.departmentId !== effectiveDeptId) {
         throw new ApiError(
@@ -778,7 +781,8 @@ export const updateComplaintStatus = async (id, { newStatus, note }, user) => {
     throw new ApiError(404, "Complaint not found");
   }
 
-  if (user.role === "DEPARTMENT_HEAD") {
+  // Department Admin and Department Head: scoped to their own department
+  if (user.role === "ADMIN" || user.role === "DEPARTMENT_HEAD") {
     const dbUser = await prisma.user.findUnique({
       where: { id: user.userId },
       select: { departmentId: true },

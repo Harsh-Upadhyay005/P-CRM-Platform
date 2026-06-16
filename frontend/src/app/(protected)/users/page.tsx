@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { usersApi, departmentsApi, tenantsApi, authApi, getErrorMessage } from '@/lib/api';
+import { usersApi, departmentsApi, tenantsApi, getErrorMessage } from '@/lib/api';
 import { useRole } from '@/hooks/useRole';
 import { useAuth } from '@/hooks/useAuth';
 import { User, RoleType, Department, Tenant } from '@/types';
@@ -28,7 +28,7 @@ import {
 import { Search, MoreVertical, Users, ShieldCheck, UserX, Trash2, RefreshCw, UserPlus, CheckCircle2, Clock } from 'lucide-react';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { STATE_CODES, getStateLabelFromCode } from '@/lib/state-codes';
+import { ROLE_SHORT_LABELS } from '@/lib/roleLabels';
 
 const ROLE_COLORS: Record<RoleType, string> = {
   SUPER_ADMIN: 'bg-red-500/15 text-red-400 border-red-500/30',
@@ -39,14 +39,6 @@ const ROLE_COLORS: Record<RoleType, string> = {
   CITIZEN: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
 };
 
-const ROLE_LABELS: Record<RoleType, string> = {
-  SUPER_ADMIN: 'Super Admin',
-  ADMIN: 'Admin',
-  DEPARTMENT_HEAD: 'Dept. Head',
-  OFFICER: 'Officer',
-  CALL_OPERATOR: 'Operator',
-  CITIZEN: 'Citizen',
-};
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -67,7 +59,6 @@ export default function UsersPage() {
   const [newRole, setNewRole] = useState<RoleType>('OFFICER');
   const [newDepartmentId, setNewDepartmentId] = useState<string>('');
 
-  // Create user state
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [createName, setCreateName] = useState('');
   const [createEmail, setCreateEmail] = useState('');
@@ -75,10 +66,6 @@ export default function UsersPage() {
   const [createRole, setCreateRole] = useState<RoleType>('CALL_OPERATOR');
   const [createDeptId, setCreateDeptId] = useState<string>('');
   const [createTenantId, setCreateTenantId] = useState<string>('');
-  const [showGenerateCodeDialog, setShowGenerateCodeDialog] = useState(false);
-  const [codeStateCode, setCodeStateCode] = useState<string>('UP');
-  const [codeExpiresDays, setCodeExpiresDays] = useState<string>('30');
-  const [generatedCode, setGeneratedCode] = useState<{ code: string; stateCode: string; expiresAt: string } | null>(null);
 
   // For SUPER_ADMIN, department lists must be explicitly tenant-scoped.
   const scopedDeptTenantId = isSuperAdmin
@@ -129,6 +116,7 @@ export default function UsersPage() {
   const tenants: Tenant[] = tenantsData?.data?.data ?? [];
 
   const canManagePlatformSuperAdmins = isSuperAdmin && !!user?.isPlatformOwner;
+
 
   const deptHeadTargetDeptId =
     newRole === 'DEPARTMENT_HEAD'
@@ -252,15 +240,6 @@ export default function UsersPage() {
           <p className="text-slate-400 text-sm mt-1">Manage team members, roles and access</p>
         </div>
         <div className="flex items-center gap-2">
-          {canManagePlatformSuperAdmins && (
-            <Button
-              variant="outline"
-              className="border-emerald-400/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-200 flex items-center gap-2"
-              onClick={() => setShowGenerateCodeDialog(true)}
-            >
-              Generate State Admin Code
-            </Button>
-          )}
           <Button
             className="bg-purple-600 hover:bg-purple-500 text-white flex items-center gap-2"
             onClick={() => setShowCreateDialog(true)}
@@ -289,8 +268,8 @@ export default function UsersPage() {
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
                 <SelectItem value="all">All Roles</SelectItem>
-                {isSuperAdmin && <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>}
-                <SelectItem value="ADMIN">Admin</SelectItem>
+                {isSuperAdmin && <SelectItem value="SUPER_ADMIN">Delhi CM Office</SelectItem>}
+                <SelectItem value="ADMIN">Department Admin</SelectItem>
                 <SelectItem value="DEPARTMENT_HEAD">Dept. Head</SelectItem>
                 <SelectItem value="OFFICER">Officer</SelectItem>
                 <SelectItem value="CALL_OPERATOR">Call Operator</SelectItem>
@@ -375,13 +354,13 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={`${ROLE_COLORS[u.role.type]} text-[10px] font-semibold`}>
-                        {ROLE_LABELS[u.role.type]}
+                        {ROLE_SHORT_LABELS[u.role.type] ?? u.role.type}
                       </Badge>
                     </TableCell>
                     {isSuperAdmin && (
                       <TableCell className="text-xs text-slate-400">
                         {u.role.type === 'SUPER_ADMIN'
-                          ? (u.isPlatformOwner ? 'Platform Owner (All States)' : (u.managedStateCode ? `State ${u.managedStateCode}` : 'State Not Assigned'))
+                          ? (u.isPlatformOwner ? 'Platform Owner (All Delhi)' : (u.managedStateCode ? `Delhi (${u.managedStateCode})` : 'Scope Not Assigned'))
                           : (u.tenant?.name ?? '—')}
                       </TableCell>
                     )}
@@ -488,13 +467,13 @@ export default function UsersPage() {
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
                 {canManagePlatformSuperAdmins && (
-                  <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                  <SelectItem value="SUPER_ADMIN">Delhi CM Office</SelectItem>
                 )}
                 <SelectItem value="CITIZEN">Citizen</SelectItem>
                 <SelectItem value="CALL_OPERATOR">Call Operator</SelectItem>
                 <SelectItem value="OFFICER">Officer</SelectItem>
                 <SelectItem value="DEPARTMENT_HEAD">Department Head</SelectItem>
-                <SelectItem value="ADMIN">Admin</SelectItem>
+                <SelectItem value="ADMIN">Department Admin</SelectItem>
               </SelectContent>
             </Select>
             {(newRole === 'OFFICER' || newRole === 'DEPARTMENT_HEAD') && (
@@ -623,12 +602,12 @@ export default function UsersPage() {
                 </SelectTrigger>
                 <SelectContent className="bg-slate-900 border-white/10 text-slate-200">
                   {canManagePlatformSuperAdmins && (
-                    <SelectItem value="SUPER_ADMIN">Super Admin</SelectItem>
+                    <SelectItem value="SUPER_ADMIN">Delhi CM Office</SelectItem>
                   )}
                   <SelectItem value="CALL_OPERATOR">Call Operator</SelectItem>
                   <SelectItem value="OFFICER">Officer</SelectItem>
                   <SelectItem value="DEPARTMENT_HEAD">Department Head</SelectItem>
-                  <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="ADMIN">Department Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -668,89 +647,6 @@ export default function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={showGenerateCodeDialog}
-        onOpenChange={(o) => {
-          setShowGenerateCodeDialog(o);
-          if (!o) {
-            setGeneratedCode(null);
-            setCodeStateCode('UP');
-            setCodeExpiresDays('30');
-          }
-        }}
-      >
-        <DialogContent className="bg-slate-900 border-white/10 text-slate-200 max-w-sm max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-white">Generate State Admin Signup Code</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1">
-              <p className="text-xs text-slate-400 font-medium">State</p>
-              <Select value={codeStateCode} onValueChange={setCodeStateCode}>
-                <SelectTrigger className="bg-slate-800/50 border-white/10 text-slate-200">
-                  <SelectValue placeholder="Select state" />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/10 text-slate-200 max-h-64">
-                  {STATE_CODES.map((code) => (
-                    <SelectItem key={code} value={code}>{code} - {getStateLabelFromCode(code)}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <p className="text-xs text-slate-400 font-medium">Expires In (days)</p>
-              <Input
-                type="number"
-                min={1}
-                max={90}
-                value={codeExpiresDays}
-                onChange={(e) => setCodeExpiresDays(e.target.value)}
-                className="bg-slate-800/50 border-white/10 text-slate-200"
-              />
-            </div>
-
-            {generatedCode && (
-              <div className="rounded-lg border border-emerald-400/40 bg-slate-900 px-3 py-3 text-xs text-emerald-50 space-y-2 shadow-[0_0_0_1px_rgba(16,185,129,0.12)]">
-                <p className="font-semibold text-emerald-300">Code generated successfully</p>
-                <p className="break-all rounded-md bg-slate-950/90 px-2 py-1.5 font-mono text-[12px] text-emerald-100 border border-emerald-400/25">
-                  {generatedCode.code}
-                </p>
-                <p className="text-emerald-200">
-                  Scope: {generatedCode.stateCode} - {getStateLabelFromCode(generatedCode.stateCode)}
-                </p>
-                <p className="text-emerald-200">Expires: {new Date(generatedCode.expiresAt).toLocaleString()}</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="mt-1 h-8 text-xs border-emerald-300 bg-emerald-500/20 text-emerald-50 hover:bg-emerald-500/35 hover:text-white"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(generatedCode.code);
-                      toast.success('Code copied');
-                    } catch {
-                      toast.error('Could not copy code');
-                    }
-                  }}
-                >
-                  Copy Code
-                </Button>
-              </div>
-            )}
-
-            <div className="flex gap-2 justify-end pt-1">
-              <Button variant="ghost" size="sm" onClick={() => setShowGenerateCodeDialog(false)}>Cancel</Button>
-              <Button
-                size="sm"
-                className="bg-emerald-600 hover:bg-emerald-500"
-                disabled={generateCodeMutation.isPending || !codeStateCode}
-                onClick={() => generateCodeMutation.mutate()}
-              >
-                {generateCodeMutation.isPending ? 'Generating…' : 'Generate'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

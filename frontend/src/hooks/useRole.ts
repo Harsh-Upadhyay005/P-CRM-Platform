@@ -1,5 +1,6 @@
 import { useAuth } from "./useAuth";
 import { RoleType } from "@/types";
+import { getRoleLabel } from "@/lib/roleLabels";
 
 const ROLE_RANK: Record<string, number> = {
   SUPER_ADMIN: 5,
@@ -25,13 +26,19 @@ export function useRole() {
 
   return {
     role: userRole,
+    /** Human-readable display label for the user's role (e.g. "Delhi CM Office"). */
+    roleLabel: getRoleLabel(userRole),
     hasMinimumRole,
     isExactRole,
     isCitizen: isExactRole("CITIZEN"),
     isCallOperator: isExactRole("CALL_OPERATOR"),
     isOfficer: hasMinimumRole("OFFICER"),
     isDeptHead: hasMinimumRole("DEPARTMENT_HEAD"),
+    /** True only when the user is exactly the Department Admin role. */
+    isDepAdmin: isExactRole("ADMIN"),
+    /** True for ADMIN and above (SUPER_ADMIN, ADMIN). */
     isAdmin: hasMinimumRole("ADMIN"),
     isSuperAdmin: isExactRole("SUPER_ADMIN"),
   };
 }
+

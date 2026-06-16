@@ -192,13 +192,15 @@ export const listUsers = async (query, user) => {
 
   let deptFilter = {};
 
-  if (role === "DEPARTMENT_HEAD") {
+  // Both ADMIN (Department Admin) and DEPARTMENT_HEAD are scoped to their own department
+  if (role === "ADMIN" || role === "DEPARTMENT_HEAD") {
     const dbUser = await prisma.user.findUnique({
       where: { id: user.userId },
       select: { departmentId: true },
     });
     if (!dbUser?.departmentId) {
-      throw new ApiError(403, "Department head is not assigned to any department");
+      const label = role === "ADMIN" ? "Department admin" : "Department head";
+      throw new ApiError(403, `${label} is not assigned to any department`);
     }
     deptFilter = { departmentId: dbUser.departmentId };
   } else if (departmentId) {
@@ -259,7 +261,8 @@ export const getUserById = async (targetId, user) => {
 
   if (!target) throw new ApiError(404, "User not found");
 
-  if (role === "DEPARTMENT_HEAD") {
+  // Both ADMIN (Department Admin) and DEPARTMENT_HEAD are scoped to their own department
+  if (role === "ADMIN" || role === "DEPARTMENT_HEAD") {
     const dbUser = await prisma.user.findUnique({
       where: { id: user.userId },
       select: { departmentId: true },
@@ -467,13 +470,24 @@ export const assignDepartment = async (targetId, { departmentId }, user) => {
 export const setUserActiveStatus = async (targetId, { isActive }, user) => {
   const target = await prisma.user.findFirst({
     where: { id: targetId, isDeleted: false, ...forTenant(user) },
-    select: { id: true, role: { select: { type: true } } },
+    select: { id: true, role: { select: { type: true } }, departmentId: true },
   });
 
   if (!target) throw new ApiError(404, "User not found");
 
   if (!canManageUser(user.role, target.role.type)) {
     throw new ApiError(403, "You cannot activate/deactivate a user with an equal or higher role");
+  }
+
+  // Department Admin is scoped to their own department
+  if (user.role === "ADMIN") {
+    const dbAdmin = await prisma.user.findUnique({
+      where: { id: user.userId },
+      select: { departmentId: true },
+    });
+    if (!dbAdmin?.departmentId || target.departmentId !== dbAdmin.departmentId) {
+      throw new ApiError(403, "You can only manage users within your own department");
+    }
   }
 
   if (targetId === user.userId) {
@@ -492,13 +506,24 @@ export const setUserActiveStatus = async (targetId, { isActive }, user) => {
 export const softDeleteUser = async (targetId, user) => {
   const target = await prisma.user.findFirst({
     where: { id: targetId, isDeleted: false, ...forTenant(user) },
-    select: { id: true, role: { select: { type: true } } },
+    select: { id: true, role: { select: { type: true } }, departmentId: true },
   });
 
   if (!target) throw new ApiError(404, "User not found");
 
   if (!canManageUser(user.role, target.role.type)) {
     throw new ApiError(403, "You cannot delete a user with an equal or higher role");
+  }
+
+  // Department Admin is scoped to their own department
+  if (user.role === "ADMIN") {
+    const dbAdmin = await prisma.user.findUnique({
+      where: { id: user.userId },
+      select: { departmentId: true },
+    });
+    if (!dbAdmin?.departmentId || target.departmentId !== dbAdmin.departmentId) {
+      throw new ApiError(403, "You can only manage users within your own department");
+    }
   }
 
   if (targetId === user.userId) {
@@ -549,7 +574,20 @@ export const createUser = async ({ name, email, password, roleType = "CALL_OPERA
   }
 
   if (roleType === "SUPER_ADMIN" && user.role !== "SUPER_ADMIN") {
-    throw new ApiError(403, "Only SUPER_ADMIN can create SUPER_ADMIN users");
+    throw new ApiError(403, "Only the Delhi CM Office can create Delhi CM Office users");
+  }
+
+  // Department Admin can only create users within their own department
+  if (user.role === "ADMIN") {
+    const dbAdmin = await prisma.user.findUnique({
+      where: { id: user.userId },
+      select: { departmentId: true },
+    });
+    if (!dbAdmin?.departmentId) {
+      throw new ApiError(403, "Department admin is not assigned to any department");
+    }
+    // Force the new user into the admin's department, ignoring any passed departmentId
+    departmentId = dbAdmin.departmentId;
   }
 
   const passwordErr = validatePassword(password);

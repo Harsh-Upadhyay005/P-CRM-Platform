@@ -7,6 +7,17 @@ export const ROLE_RANK = Object.freeze({
   CITIZEN: 0,
 });
 
+// Human-readable display labels for the Delhi platform.
+// The underlying DB enums stay unchanged — only presentation changes.
+export const ROLE_DISPLAY_LABELS = Object.freeze({
+  SUPER_ADMIN: "Delhi CM Office",
+  ADMIN: "Department Admin",
+  DEPARTMENT_HEAD: "Department Head",
+  OFFICER: "Officer",
+  CALL_OPERATOR: "Call Operator",
+  CITIZEN: "Citizen",
+});
+
 export const getRank = (role) => {
   const rank = ROLE_RANK[role];
   if (rank === undefined) throw new Error(`Unknown role: "${role}"`);

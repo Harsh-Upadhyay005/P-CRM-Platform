@@ -24,6 +24,7 @@ import clsx from "clsx";
 import { useAuth } from "@/hooks/useAuth";
 import { useSidebar } from "@/lib/sidebar-context";
 import { useTranslation } from 'react-i18next';
+import { getRoleLabel } from "@/lib/roleLabels";
 
 export function Sidebar() {
   const { t } = useTranslation();
@@ -187,7 +188,7 @@ export function Sidebar() {
             </h1>
             <p className="text-[9px] text-[#FFFFFF]/70 uppercase tracking-widest font-mono flex items-center gap-1.5 mt-0.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#138808] animate-pulse" />
-              {role?.replace("_", " ") || "GUEST"}
+              {getRoleLabel(role) || "GUEST"}
             </p>
           </div>
         </div>

@@ -21,7 +21,7 @@ import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 import { useRole } from '@/hooks/useRole';
 import { LocationAutocomplete } from '@/components/ui/LocationAutocomplete';
-import { STATE_CODES, getStateLabelFromCode, inferLocationFromServiceArea, inferLocationFromServiceAreas } from '@/lib/state-codes';
+import { inferLocationFromServiceArea, inferLocationFromServiceAreas } from '@/lib/state-codes';
 import { useAuth } from '@/hooks/useAuth';
 
 interface TenantFormData {
@@ -35,8 +35,8 @@ interface TenantFormData {
 const empty: TenantFormData = {
   name: '',
   slug: '',
-  stateCode: '',
-  stateLabel: '',
+  stateCode: 'DL',
+  stateLabel: 'Delhi',
   districtLabel: '',
   areas: [],
 };
@@ -93,8 +93,8 @@ export default function TenantsPage() {
     setForm({
       name: t.name,
       slug: t.slug,
-      stateCode: t.stateCode ?? inferred?.stateCode ?? '',
-      stateLabel: t.stateLabel ?? inferred?.stateLabel ?? '',
+      stateCode: 'DL', // Platform is locked to Delhi
+      stateLabel: t.stateLabel ?? inferred?.stateLabel ?? 'Delhi',
       districtLabel: t.districtLabel ?? inferred?.districtLabel ?? '',
       areas: t.areas ?? [],
     });
@@ -140,7 +140,7 @@ export default function TenantsPage() {
         <div className="text-center">
           <Building2 size={48} className="text-red-400 mx-auto mb-3" />
           <p className="text-white font-semibold">Access Denied</p>
-          <p className="text-slate-400 text-sm mt-1">Tenant management requires Super Admin access</p>
+          <p className="text-slate-400 text-sm mt-1">Tenant management requires Delhi CM Office access</p>
         </div>
       </div>
     );
@@ -315,39 +315,27 @@ export default function TenantsPage() {
               <p className="text-[11px] text-slate-600">Used in URLs. Only lowercase letters, numbers, hyphens.</p>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-slate-300 text-sm">State Code (auto from service area)</Label>
-              <select
-                value={form.stateCode}
-                onChange={(e) => setForm((f) => ({ ...f, stateCode: e.target.value }))}
-                disabled={!!editing && !user?.isPlatformOwner}
-                className="w-full bg-slate-800/60 border border-white/10 rounded-md px-3 py-2 text-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 disabled:opacity-50"
-              >
-                <option value="" className="bg-slate-900">Select state code</option>
-                {STATE_CODES.map((code) => (
-                  <option key={code} value={code} className="bg-slate-900">
-                    {code} - {getStateLabelFromCode(code)}
-                  </option>
-                ))}
-              </select>
-              {!!editing && !user?.isPlatformOwner && (
-                <p className="text-[11px] text-amber-300">Only platform owner can change tenant state code.</p>
-              )}
+              <Label className="text-slate-300 text-sm">State Code</Label>
+              <div className="w-full bg-slate-800/60 border border-white/10 rounded-md px-3 py-2 text-slate-400 text-sm flex items-center gap-2">
+                <span className="font-mono font-semibold text-slate-200">DL</span>
+                <span className="text-slate-500">— Delhi (platform scope is locked to Delhi)</span>
+              </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-slate-300 text-sm">State Label (auto from service area)</Label>
+              <Label className="text-slate-300 text-sm">State Label</Label>
               <Input
                 value={form.stateLabel}
                 onChange={(e) => setForm((f) => ({ ...f, stateLabel: e.target.value }))}
-                placeholder="Uttar Pradesh"
+                placeholder="Delhi"
                 className="bg-slate-800/60 border-white/10 text-slate-200 placeholder:text-slate-600"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-slate-300 text-sm">District Label (auto from service area)</Label>
+              <Label className="text-slate-300 text-sm">District Label</Label>
               <Input
                 value={form.districtLabel}
                 onChange={(e) => setForm((f) => ({ ...f, districtLabel: e.target.value }))}
-                placeholder="Varanasi"
+                placeholder="Central Delhi"
                 className="bg-slate-800/60 border-white/10 text-slate-200 placeholder:text-slate-600"
               />
             </div>

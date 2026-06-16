@@ -111,10 +111,10 @@ export const resetPassword = asyncHandler(async (req, res) => {
 
 export const generateSuperAdminCode = asyncHandler(async (req, res) => {
   const data = await authService.generateSuperAdminSignupCode(req.body, req.user);
-  res.status(201).json(new ApiResponse(201, data, "Super admin signup code generated"));
+  res.status(201).json(new ApiResponse(201, data, "Delhi CM Office signup code generated"));
 });
 
 export const superAdminSignup = asyncHandler(async (req, res) => {
   const user = await authService.signupSuperAdminWithCode(req.body);
-  res.status(201).json(new ApiResponse(201, user, "Super admin account created"));
+  res.status(201).json(new ApiResponse(201, user, "Delhi CM Office account created"));
 });

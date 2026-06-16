@@ -393,16 +393,14 @@ export const resetPassword = async (token, newPassword) => {
   return true;
 };
 
-export const generateSuperAdminSignupCode = async ({ stateCode, expiresInDays = 30 }, user) => {
+export const generateSuperAdminSignupCode = async ({ expiresInDays = 30 }, user) => {
   const actor = await getSuperAdminScope(user.userId);
   if (!actor.isPlatformOwner) {
-    throw new ApiError(403, "Only platform owner can generate super admin signup codes");
+    throw new ApiError(403, "Only platform owner can generate Delhi CM Office signup codes");
   }
 
-  const normalizedStateCode = String(stateCode).trim().toUpperCase();
-  if (!isValidStateCode(normalizedStateCode)) {
-    throw new ApiError(400, "Invalid state code");
-  }
+  // This platform operates in Delhi only
+  const normalizedStateCode = "DL";
 
   const randomPart = crypto.randomBytes(6).toString("hex").toUpperCase();
   const code = `${normalizedStateCode}_SIGNUP_${randomPart}`;
