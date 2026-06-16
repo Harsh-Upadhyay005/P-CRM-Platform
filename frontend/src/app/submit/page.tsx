@@ -168,6 +168,7 @@ function TenantSearch({
 export default function PublicSubmitPage() {
   const { t } = useTranslation();
   const { user, isAuthChecked }             = useAuth();
+  const [currentStep, setCurrentStep]       = useState(1);
   const [isSubmitting, setIsSubmitting]     = useState(false);
   const [trackingId, setTrackingId]         = useState<string | null>(null);
   const [submitError, setSubmitError]       = useState('');
@@ -190,6 +191,8 @@ export default function PublicSubmitPage() {
   const awaitingTenantResolution = !envTenantSlug && !isAuthChecked;
   const resolvedSlug  = lockedTenantSlug || envTenantSlug || tenantSlug;
   const needsSlug     = !awaitingTenantResolution && !lockedTenantSlug && !envTenantSlug;
+
+  const totalSteps = 3;
 
   // Load departments whenever a tenant slug is confirmed
   useEffect(() => {
@@ -320,6 +323,64 @@ export default function PublicSubmitPage() {
     setManualLocality(localityValue);
   };
 
+  // Step validation
+  const validateStep = (step: number): boolean => {
+    const values = getValues();
+    
+    if (step === 1) {
+      // Step 1: Personal Information
+      if (!values.citizenName || values.citizenName.length < 2) {
+        setSubmitError('Please enter your full name');
+        return false;
+      }
+      if (!values.citizenPhone || !/^\+?[\d\s\-()\/.]{7,20}$/.test(values.citizenPhone)) {
+        setSubmitError('Please enter a valid phone number');
+        return false;
+      }
+      if (!values.citizenEmail || !/\S+@\S+\.\S+/.test(values.citizenEmail)) {
+        setSubmitError('Please enter a valid email address');
+        return false;
+      }
+      return true;
+    }
+    
+    if (step === 2) {
+      // Step 2: Complaint Details
+      if (!values.locality || values.locality.length < 2) {
+        setSubmitError('Please select your location on the map');
+        return false;
+      }
+      if (!values.description || values.description.length < 10) {
+        setSubmitError('Please provide a detailed description (at least 10 characters)');
+        return false;
+      }
+      return true;
+    }
+    
+    return true;
+  };
+
+  const handleNextStep = () => {
+    setSubmitError('');
+    if (validateStep(currentStep)) {
+      setCurrentStep((prev) => Math.min(prev + 1, totalSteps));
+    }
+  };
+
+  const handlePrevStep = () => {
+    setSubmitError('');
+    setCurrentStep((prev) => Math.max(prev - 1, 1));
+  };
+
+  const getStepTitle = () => {
+    switch (currentStep) {
+      case 1: return 'Personal Information';
+      case 2: return 'Complaint Details';
+      case 3: return 'Attachments & Review';
+      default: return '';
+    }
+  };
+
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-start font-sans pt-12 pb-16 px-4 overflow-hidden">
       <AbstractBackground />
@@ -378,191 +439,245 @@ export default function PublicSubmitPage() {
       {!trackingId && (
         <form
           onSubmit={handleSubmit(onSubmit)}
-          className="z-10 w-full max-w-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl space-y-5"
+          className="z-10 w-full max-w-xl bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
         >
-          {/* Organisation (search for public users, locked for logged-in citizens) */}
-          {lockedTenantSlug && (
-            <div>
-              <label className={labelCls}>{t('submit.organisationLabel')}</label>
-              <div className="w-full bg-slate-800/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 flex items-center justify-between">
-                <span>{user?.tenant?.name ?? 'Your organisation'}</span>
-                <span className="text-xs text-slate-500 font-mono">{lockedTenantSlug}</span>
+          {/* Step Progress Bar */}
+          <div className="p-8 border-b border-white/10">
+            {/* Step Indicators */}
+            <div className="flex items-center justify-center mb-6">
+              <div className="flex items-center max-w-md w-full">
+                {[1, 2, 3].map((step) => (
+                  <React.Fragment key={step}>
+                    <div className="flex flex-col items-center">
+                      <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all ${
+                        currentStep === step 
+                          ? 'border-purple-500 bg-purple-500/20 text-purple-300 shadow-lg shadow-purple-500/20' 
+                          : currentStep > step
+                          ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
+                          : 'border-slate-600 bg-slate-800/40 text-slate-500'
+                      }`}>
+                        {currentStep > step ? (
+                          <CheckCircle2 size={20} />
+                        ) : (
+                          <span className="text-base font-bold">{step}</span>
+                        )}
+                      </div>
+                    </div>
+                    {step < 3 && (
+                      <div className={`flex-1 h-0.5 mx-3 transition-all ${
+                        currentStep > step ? 'bg-emerald-500' : 'bg-slate-700'
+                      }`} />
+                    )}
+                  </React.Fragment>
+                ))}
               </div>
-            </div>
-          )}
-          {needsSlug && (
-            <div>
-              <label className={labelCls}>
-                Organisation <span className="text-red-400">*</span>
-              </label>
-              <TenantSearch 
-                value={tenantSlug} 
-                onChange={setTenantSlug}
-                autoSelectSlug="main-office"
-              />
-            </div>
-          )}
-
-          {/* Name + Phone */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>Full Name <span className="text-red-400">*</span></label>
-              <input {...register('citizenName')} type="text" placeholder="Your full name" className={fieldCls} />
-              {errors.citizenName && <p className="text-red-400 text-xs mt-1">{errors.citizenName.message}</p>}
-            </div>
-            <div>
-              <label className={labelCls}>Phone Number <span className="text-red-400">*</span></label>
-              <input {...register('citizenPhone')} type="tel" placeholder={t('submit.phonePlaceholder', '+91 98765 43210')} className={fieldCls} />
-              {errors.citizenPhone && <p className="text-red-400 text-xs mt-1">{errors.citizenPhone.message}</p>}
-            </div>
-          </div>
-
-          {/* Email */}
-          <div>
-            <label className={labelCls}>Email Address <span className="text-red-400">*</span></label>
-            <input {...register('citizenEmail')} type="email" placeholder="you@example.com" className={fieldCls} />
-            <p className="text-slate-500 text-xs mt-1">{t('submit.emailHelp')}</p>
-            {errors.citizenEmail && <p className="text-red-400 text-xs mt-1">{errors.citizenEmail.message}</p>}
-          </div>
-
-          {/* Locality */}
-<div>
-  <label className={labelCls}>
-    Locality / Area <span className="text-red-400">*</span>
-  </label>
-
-  {/* Pick location on map button */}
-  <button
-    type="button"
-    onClick={() => setShowPinMap(true)}
-    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-slate-800/60 text-sm text-slate-300 hover:bg-white/10 hover:border-purple-500/50 transition-all"
-  >
-    🗺️ Pick location on map
-  </button>
-
-  {/* Display selected location */}
-  {manualLocality && (
-    <div className="mt-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-      <p className="text-xs font-medium text-emerald-400 flex items-center gap-1.5">
-        <CheckCircle2 size={12} />
-        {manualLocality}
-      </p>
-    </div>
-  )}
-
-  <p className="text-slate-500 text-xs mt-1.5">{t('submit.localityHelp')}</p>
-  {errors.locality && <p className="text-red-400 text-xs mt-1">{errors.locality.message}</p>}
-</div>
-
-          {/* Category + Priority */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={labelCls}>{t('submit.categoryLabel')}</label>
-              <div className="relative">
-                <select
-                  value={categorySelect}
-                  onChange={(e) => { setCategorySelect(e.target.value); setCategoryOther(''); }}
-                  className={`${fieldCls} appearance-none pr-9`}
-                >
-                  <option value="">{t('submit.categorySelectPlaceholder')}</option>
-                  {COMPLAINT_CATEGORIES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-              </div>
-              {categorySelect === 'Other' && (
-                <input
-                  type="text"
-                  value={categoryOther}
-                  onChange={(e) => setCategoryOther(e.target.value)}
-                  placeholder="Describe the category…"
-                  className={`${fieldCls} mt-2`}
-                  maxLength={100}
-                />
-              )}
-            </div>
-            <div>
-              <label className={labelCls}>{t('submit.priorityLabel')}</label>
-              <div className="relative">
-                <select
-                  {...register('priority', { setValueAs: (v) => v === '' ? undefined : v })}
-                  className={`${fieldCls} appearance-none pr-9`}
-                >
-                  <option value="">{t('submit.autoDetectAI')}</option>
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="CRITICAL">Critical</option>
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-              </div>
-            </div>
-          </div>
-
-          {/* Department (loads after tenant is selected) */}
-          {resolvedSlug && (
-            <div>
-              <label className={labelCls}>
-                Department <span className="text-slate-500 font-normal">(optional)</span>
-              </label>
-              <div className="relative">
-                <select
-                  value={departmentId}
-                  onChange={(e) => setDepartmentId(e.target.value)}
-                  className={`${fieldCls} appearance-none pr-9`}
-                >
-                  <option value="">Let the system assign automatically</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>{d.name}</option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-              </div>
-            </div>
-          )}
-
-          {/* Description */}
-          <div>
-            <label className={labelCls}>Description <span className="text-red-400">*</span></label>
-            <textarea
-              {...register('description')}
-              rows={5}
-              placeholder="Describe your complaint in detail — what happened, where, and when…"
-              className={`${fieldCls} resize-none`}
-            />
-            {errors.description && <p className="text-red-400 text-xs mt-1">{errors.description.message}</p>}
-          </div>
-
-          {/* Attachments */}
-          <div>
-            <label className={labelCls}>
-              Attachments <span className="text-slate-500 font-normal">(optional, max 5 files)</span>
-            </label>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              accept="image/*,.pdf,.doc,.docx,.txt"
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center cursor-pointer hover:border-purple-500/50 hover:bg-white/5 transition-all"
-            >
-              <Upload size={24} className="text-slate-500 mx-auto mb-2" />
-              <p className="text-sm text-slate-400">
-                Click or drag files here to upload
-              </p>
-              <p className="text-xs text-slate-500 mt-1">
-                Images, PDFs, or documents (max 10MB each)
-              </p>
             </div>
             
-            {attachments.length > 0 && (
-              <div className="mt-3 space-y-2">
-                {attachments.map((file, index) => (
+            {/* Step Title */}
+            <div className="text-center">
+              <h3 className="text-xl font-bold text-white mb-1">{getStepTitle()}</h3>
+              <p className="text-xs text-slate-500">Step {currentStep} of {totalSteps}</p>
+            </div>
+          </div>
+
+          {/* Form Content */}
+          <div className="p-8 space-y-5">
+            {/* Step 1: Personal Information */}
+            {currentStep === 1 && (
+              <>
+                {/* Organisation */}
+                {lockedTenantSlug && (
+                  <div>
+                    <label className={labelCls}>{t('submit.organisationLabel')}</label>
+                    <div className="w-full bg-slate-800/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-slate-200 flex items-center justify-between">
+                      <span>{user?.tenant?.name ?? 'Your organisation'}</span>
+                      <span className="text-xs text-slate-500 font-mono">{lockedTenantSlug}</span>
+                    </div>
+                  </div>
+                )}
+                {needsSlug && (
+                  <div>
+                    <label className={labelCls}>
+                      Organisation <span className="text-red-400">*</span>
+                    </label>
+                    <TenantSearch 
+                      value={tenantSlug} 
+                      onChange={setTenantSlug}
+                      autoSelectSlug="main-office"
+                    />
+                  </div>
+                )}
+
+                {/* Name + Phone */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>Full Name <span className="text-red-400">*</span></label>
+                    <input {...register('citizenName')} type="text" placeholder="Your full name" className={fieldCls} />
+                    {errors.citizenName && <p className="text-red-400 text-xs mt-1">{errors.citizenName.message}</p>}
+                  </div>
+                  <div>
+                    <label className={labelCls}>Phone Number <span className="text-red-400">*</span></label>
+                    <input {...register('citizenPhone')} type="tel" placeholder={t('submit.phonePlaceholder', '+91 98765 43210')} className={fieldCls} />
+                    {errors.citizenPhone && <p className="text-red-400 text-xs mt-1">{errors.citizenPhone.message}</p>}
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className={labelCls}>Email Address <span className="text-red-400">*</span></label>
+                  <input {...register('citizenEmail')} type="email" placeholder="you@example.com" className={fieldCls} />
+                  <p className="text-slate-500 text-xs mt-1">{t('submit.emailHelp')}</p>
+                  {errors.citizenEmail && <p className="text-red-400 text-xs mt-1">{errors.citizenEmail.message}</p>}
+                </div>
+              </>
+            )}
+
+            {/* Step 2: Complaint Details */}
+            {currentStep === 2 && (
+              <>
+                {/* Locality */}
+                <div>
+                  <label className={labelCls}>
+                    Locality / Area <span className="text-red-400">*</span>
+                  </label>
+
+                  {/* Pick location on map button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowPinMap(true)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 bg-slate-800/60 text-sm text-slate-300 hover:bg-white/10 hover:border-purple-500/50 transition-all"
+                  >
+                    🗺️ Pick location on map
+                  </button>
+
+                  {/* Display selected location */}
+                  {manualLocality && (
+                    <div className="mt-2 px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                      <p className="text-xs font-medium text-emerald-400 flex items-center gap-1.5">
+                        <CheckCircle2 size={12} />
+                        {manualLocality}
+                      </p>
+                    </div>
+                  )}
+
+                  <p className="text-slate-500 text-xs mt-1.5">{t('submit.localityHelp')}</p>
+                  {errors.locality && <p className="text-red-400 text-xs mt-1">{errors.locality.message}</p>}
+                </div>
+
+                {/* Category + Priority */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelCls}>{t('submit.categoryLabel')}</label>
+                    <div className="relative">
+                      <select
+                        value={categorySelect}
+                        onChange={(e) => { setCategorySelect(e.target.value); setCategoryOther(''); }}
+                        className={`${fieldCls} appearance-none pr-9`}
+                      >
+                        <option value="">{t('submit.categorySelectPlaceholder')}</option>
+                        {COMPLAINT_CATEGORIES.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                    </div>
+                    {categorySelect === 'Other' && (
+                      <input
+                        type="text"
+                        value={categoryOther}
+                        onChange={(e) => setCategoryOther(e.target.value)}
+                        placeholder="Describe the category…"
+                        className={`${fieldCls} mt-2`}
+                        maxLength={100}
+                      />
+                    )}
+                  </div>
+                  <div>
+                    <label className={labelCls}>{t('submit.priorityLabel')}</label>
+                    <div className="relative">
+                      <select
+                        {...register('priority', { setValueAs: (v) => v === '' ? undefined : v })}
+                        className={`${fieldCls} appearance-none pr-9`}
+                      >
+                        <option value="">{t('submit.autoDetectAI')}</option>
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HIGH">High</option>
+                        <option value="CRITICAL">Critical</option>
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Department */}
+                {resolvedSlug && (
+                  <div>
+                    <label className={labelCls}>
+                      Department <span className="text-slate-500 font-normal">(optional)</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={departmentId}
+                        onChange={(e) => setDepartmentId(e.target.value)}
+                        className={`${fieldCls} appearance-none pr-9`}
+                      >
+                        <option value="">Let the system assign automatically</option>
+                        {departments.map((d) => (
+                          <option key={d.id} value={d.id}>{d.name}</option>
+                        ))}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Description */}
+                <div>
+                  <label className={labelCls}>Description <span className="text-red-400">*</span></label>
+                  <textarea
+                    {...register('description')}
+                    rows={5}
+                    placeholder="Describe your complaint in detail — what happened, where, and when…"
+                    className={`${fieldCls} resize-none`}
+                  />
+                  {errors.description && <p className="text-red-400 text-xs mt-1">{errors.description.message}</p>}
+                </div>
+              </>
+            )}
+
+            {/* Step 3: Attachments & Review */}
+            {currentStep === 3 && (
+              <>
+                {/* Attachments */}
+                <div>
+                  <label className={labelCls}>
+                    Attachments <span className="text-slate-500 font-normal">(optional, max 5 files)</span>
+                  </label>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept="image/*,.pdf,.doc,.docx,.txt"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-white/10 rounded-xl p-6 text-center cursor-pointer hover:border-purple-500/50 hover:bg-white/5 transition-all"
+                  >
+                    <Upload size={24} className="text-slate-500 mx-auto mb-2" />
+                    <p className="text-sm text-slate-400">
+                      Click or drag files here to upload
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Images, PDFs, or documents (max 10MB each)
+                    </p>
+                  </div>
+                  
+                  {attachments.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {attachments.map((file, index) => (
                   <div
                     key={`${file.name}-${index}`}
                     className="flex items-center justify-between bg-slate-800/60 border border-white/10 rounded-lg px-3 py-2"
@@ -587,25 +702,89 @@ export default function PublicSubmitPage() {
             )}
           </div>
 
+                {/* Review Summary */}
+                <div className="bg-slate-800/40 border border-white/10 rounded-xl p-4 space-y-3">
+                  <h4 className="text-sm font-semibold text-white">Review Your Complaint</h4>
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Name:</span>
+                      <span className="text-white">{watch('citizenName') || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Email:</span>
+                      <span className="text-white">{watch('citizenEmail') || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Phone:</span>
+                      <span className="text-white">{watch('citizenPhone') || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Location:</span>
+                      <span className="text-white">{manualLocality || '—'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Category:</span>
+                      <span className="text-white">{resolvedCategory || 'Not specified'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-slate-500">Attachments:</span>
+                      <span className="text-white">{attachments.length} file(s)</span>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Error Message */}
           {submitError && (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
-              {submitError}
+            <div className="px-8 pb-4">
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-red-400 text-sm">
+                {submitError}
+              </div>
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={isSubmitting || awaitingTenantResolution || (needsSlug && !tenantSlug)}
-            className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors"
-          >
-            {isSubmitting || isUploading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-            {isUploading ? 'Uploading files…' : isSubmitting ? 'Submitting…' : 'Submit Complaint'}
-          </button>
-
-          <p className="text-center text-xs text-slate-500">
-            Want to track an existing complaint?{' '}
-            <Link href="/track" className="text-purple-400 hover:text-purple-300">Track here</Link>
-          </p>
+          {/* Step Navigation Buttons */}
+          <div className="px-8 pb-6 pt-6 border-t border-white/5">
+            <div className="flex items-center justify-between gap-4">
+              {currentStep > 1 ? (
+                <button
+                  type="button"
+                  onClick={handlePrevStep}
+                  className="px-6 py-3 bg-white/5 hover:bg-white/10 text-slate-300 text-sm font-medium rounded-xl border border-white/10 transition-all hover:border-white/20"
+                >
+                  ← Previous
+                </button>
+              ) : (
+                <div></div>
+              )}
+              
+              {currentStep < totalSteps ? (
+                <button
+                  type="button"
+                  onClick={handleNextStep}
+                  className="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30"
+                >
+                  Next →
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={isSubmitting || awaitingTenantResolution || (needsSlug && !tenantSlug)}
+                  className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-xl transition-all shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30"
+                >
+                  {isSubmitting || isUploading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                  {isUploading ? 'Uploading files…' : isSubmitting ? 'Submitting…' : 'Submit Complaint'}
+                </button>
+              )}
+            </div>
+            
+            <p className="text-center text-xs text-slate-500 mt-6">
+              Want to track an existing complaint?{' '}
+              <Link href="/track" className="text-purple-400 hover:text-purple-300 underline">Track here</Link>
+            </p>
+          </div>
         </form>
       )}
     </div>
