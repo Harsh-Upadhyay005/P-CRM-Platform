@@ -305,7 +305,7 @@ export default function MapPage() {
         </div>
       </div>
 
-      <DelhiDistrictMap />
+      <DelhiDistrictMap containerId="map-page-delhi-map" />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className={`xl:col-span-2 ${premiumCardShell}`}>

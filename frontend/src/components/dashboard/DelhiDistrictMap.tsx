@@ -40,7 +40,7 @@ interface DistrictStat {
   critical: number;
 }
 
-export function DelhiDistrictMap() {
+export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { containerId?: string } = {}) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
   const polygonLayersRef = useRef<any[]>([]);
@@ -131,7 +131,7 @@ export function DelhiDistrictMap() {
       const mappls = (window as any).mappls;
 
       // Center on Delhi
-      const map = new mappls.Map("delhi-map-container", {
+      const map = new mappls.Map(containerId, {
         center: [28.6139, 77.2090],
         zoom: 10,
         zoomControl: true,
@@ -288,7 +288,7 @@ export function DelhiDistrictMap() {
 
       {/* Map Container */}
       <div
-        id="delhi-map-container"
+        id={containerId}
         ref={mapRef}
         style={{ width: "100%", height: "480px" }}
         className={loading ? "opacity-40" : "opacity-100"}

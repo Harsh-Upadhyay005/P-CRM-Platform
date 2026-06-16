@@ -137,7 +137,7 @@ export default function Dashboard() {
 
       {/* ── India Map ──────────────────────────────────────── */}
       <div className="dashboard-section">
-        <DelhiDistrictMap />
+        <DelhiDistrictMap containerId="dashboard-delhi-map" />
       </div>
 
       {/* ── Analytics + Alerts ─────────────────────────────── */}
