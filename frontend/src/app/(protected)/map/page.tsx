@@ -5,12 +5,12 @@ import { useMemo, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { analyticsApi } from '@/lib/api';
-import { IndiaMapView } from '@/components/dashboard';
+import { DelhiDistrictMap } from '@/components/dashboard';
 import { useRole } from '@/hooks/useRole';
 import {
   ArrowUpRight,
   Download,
-  Globe2,
+  MapPin,
   Play,
   Pause,
   RefreshCw,
@@ -251,13 +251,13 @@ export default function MapPage() {
       <div className="relative flex flex-wrap items-center justify-between gap-4 bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-2xl shadow-lg overflow-hidden transition-all duration-300 ease-out hover:border-white/20 hover:bg-white/6.5 hover:shadow-[0_18px_36px_rgba(2,6,23,0.45)]">
         <div className="absolute top-0 left-0 right-0 h-0.5" style={{ background: 'linear-gradient(90deg, #FF9933 33%, #FFFFFF 33%, #FFFFFF 66%, #138808 66%)' }} />
         <div className="w-10 h-10 rounded-xl bg-[#FF9933]/10 flex items-center justify-center border border-[#FF9933]/20">
-          <Globe2 size={20} className="text-[#FF9933]" />
+          <MapPin size={20} className="text-[#FF9933]" />
         </div>
         <div className="flex-1 min-w-72">
           <h1 className="text-2xl font-bold bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg, #FF9933, #FFFFFF, #138808)' }}>
-            India Geo Command Center
+            Delhi Geo Command Center
           </h1>
-          <p className="text-xs text-slate-400 mt-1">Time-window map intelligence with trend delta, anomaly flags, drill-down, and field-route planning.</p>
+          <p className="text-xs text-slate-400 mt-1">District-wise complaint heatmap with trend delta, anomaly flags, drill-down, and field-route planning.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <div className="inline-flex rounded-lg border border-white/10 overflow-hidden">
@@ -305,11 +305,7 @@ export default function MapPage() {
         </div>
       </div>
 
-      <IndiaMapView
-        visibleStateIds={computed.filtered.map((state) => state.id)}
-        windowDays={windowDays}
-        onStateSelect={(stateId) => setSelectedStateId(stateId)}
-      />
+      <DelhiDistrictMap />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <div className={`xl:col-span-2 ${premiumCardShell}`}>

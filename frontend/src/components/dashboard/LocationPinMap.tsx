@@ -24,6 +24,7 @@ export function LocationPinMap({ onLocationSelect, onClose }: LocationPinMapProp
   const [loading, setLoading] = useState(true);
   const [selectedLoc, setSelectedLoc] = useState<PinLocation | null>(null);
   const [reverseLoading, setReverseLoading] = useState(false);
+  const [detecting, setDetecting] = useState(false);
 
   useEffect(() => {
     loadMappleSDK().then(() => {
@@ -46,25 +47,7 @@ export function LocationPinMap({ onLocationSelect, onClose }: LocationPinMapProp
             ? { lat: e.lngLat.lat, lng: e.lngLat.lng }
             : { lat: e.lat, lng: e.lng };
 
-          // Remove old marker
-          if (markerRef.current) {
-            markerRef.current.remove();
-          }
-
-          // Add new marker
-          markerRef.current = new mappls.Marker({
-            map,
-            position: { lat, lng },
-            draggable: true,
-          });
-
-          // On marker drag end — reverse geocode again
-          markerRef.current.on("dragend", async () => {
-            const pos = markerRef.current.getPosition();
-            await reverseGeocode(pos.lat, pos.lng);
-          });
-
-          await reverseGeocode(lat, lng);
+          await dropPinAndGeocode(lat, lng);
         });
       });
     });
@@ -76,12 +59,81 @@ export function LocationPinMap({ onLocationSelect, onClose }: LocationPinMapProp
     };
   }, []);
 
+  // Drop pin at location and geocode
+  const dropPinAndGeocode = async (lat: number, lng: number) => {
+    const map = mapInstanceRef.current;
+    const mappls = (window as any).mappls;
+
+    // Remove old marker
+    if (markerRef.current) {
+      markerRef.current.remove();
+    }
+
+    // Add new marker
+    markerRef.current = new mappls.Marker({
+      map,
+      position: { lat, lng },
+      draggable: true,
+    });
+
+    // On marker drag end — reverse geocode again
+    markerRef.current.on("dragend", async () => {
+      const pos = markerRef.current.getPosition();
+      await reverseGeocode(pos.lat, pos.lng);
+    });
+
+    // Center map on pin
+    map.setCenter({ lat, lng });
+    map.setZoom(15);
+
+    await reverseGeocode(lat, lng);
+  };
+
+  // Detect user's current location
+  const detectMyLocation = () => {
+    setDetecting(true);
+    
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      setDetecting(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        await dropPinAndGeocode(lat, lng);
+        setDetecting(false);
+      },
+      (error) => {
+        console.error("Geolocation error:", error);
+        let message = "Could not detect your location.";
+        if (error.code === 1) {
+          message = "Location permission denied. Please enable location access.";
+        } else if (error.code === 2) {
+          message = "Location unavailable. Please try again.";
+        } else if (error.code === 3) {
+          message = "Location request timed out. Please try again.";
+        }
+        alert(message);
+        setDetecting(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
+  };
+
   // Reverse geocode using Mapple REST API
   const reverseGeocode = async (lat: number, lng: number) => {
     setReverseLoading(true);
     try {
+      const key = process.env.NEXT_PUBLIC_MAPPLS_API_KEY;
       const res = await fetch(
-        `https://apis.mapmyindia.com/advancedmaps/v1/${process.env.NEXT_PUBLIC_MAPMYINDIA_API_KEY}/rev_geocode?lat=${lat}&lng=${lng}`
+        `https://search.mappls.com/search/address/rev-geocode?lat=${lat}&lng=${lng}&access_token=${key}`
       );
       const data = await res.json();
       const result = data?.results?.[0];
@@ -128,12 +180,30 @@ export function LocationPinMap({ onLocationSelect, onClose }: LocationPinMapProp
               Pin your exact location
             </h3>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={detectMyLocation}
+              disabled={detecting || loading}
+              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-700 disabled:text-slate-500 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5"
+            >
+              {detecting ? (
+                <>
+                  <Loader2 size={12} className="animate-spin" />
+                  Detecting...
+                </>
+              ) : (
+                <>
+                  📍 Detect My Location
+                </>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Map */}
@@ -154,7 +224,7 @@ export function LocationPinMap({ onLocationSelect, onClose }: LocationPinMapProp
         <div className="px-5 py-4 border-t border-white/5">
           {!selectedLoc && !reverseLoading && (
             <p className="text-xs text-slate-500 text-center py-1">
-              👆 Click anywhere on the map to drop a pin
+              📍 Click "Detect My Location" or click anywhere on the map to drop a pin
             </p>
           )}
 

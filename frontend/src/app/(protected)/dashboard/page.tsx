@@ -12,14 +12,13 @@ import {
   ComplaintManager,
   TeamPerformance,
   QuickActions,
-  IndiaMapView,
+  DelhiDistrictMap,
   CitizenDashboard,
 } from "@/components/dashboard";
 import { Separator } from "@/components/ui/separator";
 import { Activity, Shield } from "lucide-react";
 import { useRole } from "@/hooks/useRole";
 import { useTranslation } from 'react-i18next';
-import { DelhiDistrictMap } from "@/components/dashboard/DelhiDistrictMap";
 
 // Lazy-load the 3D component to avoid SSR issues and reduce initial bundle
 const CommandCenter3D = dynamic(
@@ -138,7 +137,7 @@ export default function Dashboard() {
 
       {/* ── India Map ──────────────────────────────────────── */}
       <div className="dashboard-section">
-        <DelhiDistrictMap windowDays="all" />
+        <DelhiDistrictMap />
       </div>
 
       {/* ── Analytics + Alerts ─────────────────────────────── */}
