@@ -109,12 +109,12 @@ export function Sidebar() {
       icon: FileText,
       show: isAnyUser,
     },
-    // File Complaint: Call Operators (primary use) + Admins/SuperAdmin who may need to log manually
+    // File Complaint: Only Call Operators can file complaints on behalf of citizens
     {
       label: t('sidebar.fileComplaint', "File Complaint"),
       href: "/complaints/new",
       icon: PlusSquare,
-      show: isCallOperator || isAdmin,
+      show: isCallOperator,
     },
     { label: t('sidebar.users', "Users"), href: "/users", icon: Users, show: isAdmin },
     {
