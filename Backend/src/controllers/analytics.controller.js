@@ -1,6 +1,8 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import * as service from "../services/analytics.service.js";
+import { authMiddleware } from "../middlewares/auth.middleware.js";
+import { authorizeMinimum } from "../middlewares/role.middleware.js";
 
 export const getOverview = asyncHandler(async (req, res) => {
   const data = await service.getOverview(req.user, req.query);
@@ -42,12 +44,13 @@ export const getMapStats = asyncHandler(async (req, res) => {
   res.json(new ApiResponse(200, data, "Map statistics retrieved"));
 });
 
-// ── CSV helper ────────────────────────────────────────────────────────────
+// CSV helper 
 const csvCell = (v) => {
   if (v === null || v === undefined) return "";
   const s = String(v);
   return /[,"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
+
 const toCsv = (headers, rows) =>
   [headers, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
 
@@ -142,3 +145,9 @@ export const exportAnalytics = asyncHandler(async (req, res) => {
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   res.send("\uFEFF" + csv); // UTF-8 BOM for Excel compatibility
 });
+
+export const getDistrictStats = asyncHandler(async (req, res) => {
+  const data = await service.getDistrictStats(req.user);
+  res.json(new ApiResponse(200, data, "District statistics retrieved"));
+});
+

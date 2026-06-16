@@ -867,6 +867,44 @@ export const getCategoryDistribution = async (user) => {
   };
 };
 
+export async function getDistrictStats(user) {
+  const tenantId = user.tenantId;
+  
+  const rows = await prisma.complaint.groupBy({
+    by: ["district"],
+    where: {
+      tenantId,
+      isDeleted: false,
+      district: { not: null },
+    },
+    _count: { id: true },
+  });
+
+  const resolved = await prisma.complaint.groupBy({
+    by: ["district"],
+    where: {
+      tenantId,
+      isDeleted: false,
+      district: { not: null },
+      status: { in: ["RESOLVED", "CLOSED"] },
+    },
+    _count: { id: true },
+  });
+
+  const resolvedMap = {};
+  resolved.forEach((r) => {
+    if (r.district) resolvedMap[r.district] = r._count.id;
+  });
+
+  return rows.map((r) => ({
+    district:   r.district,
+    complaints: r._count.id,
+    resolved:   resolvedMap[r.district] ?? 0,
+    pending:    r._count.id - (resolvedMap[r.district] ?? 0),
+    critical:   0,
+  }));
+};
+
 // ── Map Stats ─────────────────────────────────────────────────────────────────
 // Keyword → State-ID mapping (city names, district names, state names, aliases).
 // Each entry is a lowercase keyword that appears in the `locality` field and maps
@@ -1561,3 +1599,6 @@ export const getMapStats = async (user, query = {}) => {
     routePlan,
   };
 };
+
+
+

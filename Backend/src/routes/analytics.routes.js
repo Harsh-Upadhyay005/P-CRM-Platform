@@ -2,6 +2,7 @@ import express from "express";
 import { authMiddleware } from "../middlewares/auth.middleware.js";
 import { authorizeMinimum } from "../middlewares/role.middleware.js";
 import * as controller from "../controllers/analytics.controller.js";
+import { getDistrictStats } from "../services/analytics.service.js";
 
 const router = express.Router();
 
@@ -55,6 +56,12 @@ router.get(
   controller.getMapStats,
 );
 
+router.get(
+  "/districts", 
+  authMiddleware, 
+  authorizeMinimum("DEPARTMENT_HEAD"),
+  getDistrictStats,
+)
 
 router.get(
   "/export",
