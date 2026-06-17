@@ -43,10 +43,20 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
       try {
         const response = await complaintsApi.list({ page: 1, limit: 1000 });
         
+        console.log('[DelhiDistrictMap] API Response:', response);
+        
         if (response.success && response.data?.data) {
+          console.log('[DelhiDistrictMap] Total complaints from API:', response.data.data.length);
+          
           // Filter complaints that have latitude/longitude
           const withLocation = response.data.data
-            .filter((c: any) => c.latitude != null && c.longitude != null)
+            .filter((c: any) => {
+              const hasLocation = c.latitude != null && c.longitude != null;
+              if (!hasLocation) {
+                console.log('[DelhiDistrictMap] Skipping complaint without location:', c.trackingId);
+              }
+              return hasLocation;
+            })
             .map((c: any) => ({
               id: c.id,
               trackingId: c.trackingId,
@@ -57,6 +67,7 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
               locality: c.locality || "Unknown location",
             }));
 
+          console.log('[DelhiDistrictMap] Complaints with location data:', withLocation.length);
           setComplaints(withLocation);
         }
       } catch (error) {
@@ -95,7 +106,16 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
 
         // Add marker for each complaint (only if we have complaints)
         if (complaints.length > 0) {
+          console.log('[DelhiDistrictMap] Adding markers for complaints:', complaints);
+          
           complaints.forEach((complaint) => {
+            console.log('[DelhiDistrictMap] Creating marker for:', {
+              trackingId: complaint.trackingId,
+              lat: complaint.latitude,
+              lng: complaint.longitude,
+              locality: complaint.locality
+            });
+            
             const color = getStatusColor(complaint.status);
             
             const marker = new mappls.Marker({
@@ -111,7 +131,10 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
             });
 
             markersRef.current.push(marker);
+            console.log('[DelhiDistrictMap] Marker added successfully');
           });
+        } else {
+          console.log('[DelhiDistrictMap] No complaints with location data to display');
         }
       });
     });
