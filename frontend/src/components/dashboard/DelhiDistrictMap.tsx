@@ -69,7 +69,7 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
     fetchComplaints();
   }, []);
 
-  // Init map and add markers
+  // Init map
   useEffect(() => {
     if (!mapRef.current || loading) return;
 
@@ -85,35 +85,6 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
       });
 
       mapInstanceRef.current = map;
-
-      map.on("load", () => {
-        // Clear existing markers
-        markersRef.current.forEach((marker) => {
-          if (marker && marker.remove) marker.remove();
-        });
-        markersRef.current = [];
-
-        // Add marker for each complaint (only if we have complaints)
-        if (complaints.length > 0) {
-          complaints.forEach((complaint) => {
-            const color = getStatusColor(complaint.status);
-            
-            const marker = new mappls.Marker({
-              map,
-              position: { lat: complaint.latitude, lng: complaint.longitude },
-              icon: {
-                html: `<div style="background: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer;"></div>`,
-              },
-            });
-
-            marker.addListener("click", () => {
-              setSelectedComplaint(complaint);
-            });
-
-            markersRef.current.push(marker);
-          });
-        }
-      });
     });
 
     return () => {
@@ -122,7 +93,40 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
         mapInstanceRef.current.remove?.();
       }
     };
-  }, [complaints, containerId, loading]);
+  }, [containerId, loading]);
+
+  // Add/update markers when complaints change
+  useEffect(() => {
+    if (!mapInstanceRef.current || complaints.length === 0) return;
+    
+    const map = mapInstanceRef.current;
+    const mappls = (window as any).mappls;
+    
+    // Clear existing markers
+    markersRef.current.forEach((marker) => {
+      if (marker && marker.remove) marker.remove();
+    });
+    markersRef.current = [];
+
+    // Add marker for each complaint
+    complaints.forEach((complaint) => {
+      const color = getStatusColor(complaint.status);
+      
+      const marker = new mappls.Marker({
+        map,
+        position: { lat: complaint.latitude, lng: complaint.longitude },
+        icon: {
+          html: `<div style="background: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer;"></div>`,
+        },
+      });
+
+      marker.addListener("click", () => {
+        setSelectedComplaint(complaint);
+      });
+
+      markersRef.current.push(marker);
+    });
+  }, [complaints]);
 
   return (
     <div className="relative w-full rounded-2xl border border-white/10 overflow-hidden"
