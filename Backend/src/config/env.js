@@ -85,4 +85,6 @@ export const env = {
 
   SEED_SUPER_ADMIN_EMAIL:    process.env.SEED_SUPER_ADMIN_EMAIL,
   SEED_SUPER_ADMIN_PASSWORD: process.env.SEED_SUPER_ADMIN_PASSWORD,
+
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || null,
 };
