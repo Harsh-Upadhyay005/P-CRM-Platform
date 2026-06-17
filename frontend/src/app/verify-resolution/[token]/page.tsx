@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { complaintsApi } from '@/lib/api';
 import { CheckCircle2, XCircle, AlertTriangle, Loader2, FileText, MapPin, Tag, Calendar } from 'lucide-react';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 
 export default function VerifyResolutionPage() {
   const params = useParams();

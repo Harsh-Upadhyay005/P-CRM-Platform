@@ -49,6 +49,9 @@ export interface Complaint {
   citizenPhone: string;
   citizenEmail: string | null;
   locality: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  upvotes: number;
   category: string | null;
   priority: Priority;
   status: ComplaintStatus;
