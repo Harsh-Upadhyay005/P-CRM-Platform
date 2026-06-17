@@ -249,6 +249,31 @@ export const complaintsApi = {
     });
     return response.data;
   },
+  
+  // Find similar complaints based on category and location
+  findSimilar: async (params: { 
+    category?: string; 
+    locality: string; 
+    tenantSlug: string;
+    radiusMeters?: number;
+  }) => {
+    const response = await api.get<ApiResponse<Complaint[]>>('/complaints/find-similar', { 
+      params: {
+        ...params,
+        radiusMeters: params.radiusMeters || 500,
+      }
+    });
+    return response.data;
+  },
+  
+  // Upvote an existing complaint
+  upvote: async (trackingId: string, citizenEmail: string, citizenPhone?: string) => {
+    const response = await api.post<ApiResponse<{ upvotes: number }>>(`/complaints/public/${trackingId}/upvote`, {
+      citizenEmail,
+      citizenPhone,
+    });
+    return response.data;
+  },
   deleteAttachment: async (complaintId: string, attachmentId: string) => {
     const response = await api.delete<ApiResponse<null>>(`/complaints/${complaintId}/attachments/${attachmentId}`);
     return response.data;
@@ -271,6 +296,41 @@ export const complaintsApi = {
   },
   searchPublicTenants: async (q: string) => {
     const response = await api.get<ApiResponse<{ name: string; slug: string }[]>>('/complaints/public/tenants', { params: { q } });
+    return response.data;
+  },
+  
+  // Resolution verification (citizen confirms if complaint is resolved)
+  getVerificationByToken: async (token: string) => {
+    const response = await api.get<ApiResponse<{
+      verification: {
+        id: string;
+        expiresAt: string;
+        isExpired: boolean;
+        hasResponded: boolean;
+        respondedAt: string | null;
+        isResolved: boolean | null;
+        citizenComment: string | null;
+      };
+      complaint: {
+        trackingId: string;
+        description: string;
+        category: string | null;
+        locality: string | null;
+        createdAt: string;
+        status: string;
+      };
+    }>>(`/complaints/verify-resolution/${token}`);
+    return response.data;
+  },
+  
+  submitResolutionVerification: async (token: string, isResolved: boolean, citizenComment?: string) => {
+    const response = await api.post<ApiResponse<{
+      complaint: Complaint;
+      message: string;
+    }>>(`/complaints/verify-resolution/${token}`, {
+      isResolved,
+      citizenComment,
+    });
     return response.data;
   },
   getPublicDepartments: async (slug: string) => {

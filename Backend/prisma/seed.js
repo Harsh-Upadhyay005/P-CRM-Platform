@@ -21,8 +21,8 @@ const DEFAULT_TENANTS = [
     slug: "main-office",
     stateCode: "DL",
     stateLabel: "Delhi",
-    districtLabel: "Central Delhi",
-    areas: ["Delhi"],
+    districtLabel: null,  // null = accepts complaints from all districts in Delhi
+    areas: ["Delhi"],  // Covers entire Delhi state (all 11 districts)
     superAdmin: {
       name: "Delhi CM Office",
       email: superAdminEmail,

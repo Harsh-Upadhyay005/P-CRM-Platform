@@ -184,6 +184,15 @@ export default function PublicSubmitPage() {
 
   // Manual locality input state
   const [manualLocality, setManualLocality] = useState('');
+  
+  // Location coordinates state (from map picker)
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
+  
+  // Duplicate detection state
+  const [similarComplaints, setSimilarComplaints] = useState<any[]>([]);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [checkingSimilar, setCheckingSimilar] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<any>(null);
 
   const envTenantSlug = process.env.NEXT_PUBLIC_TENANT_SLUG ?? '';
   const isCitizenUser = user?.role?.type === 'CITIZEN';
@@ -257,6 +266,40 @@ export default function PublicSubmitPage() {
       setSubmitError('Please select an organisation first.');
       return;
     }
+    
+    // Check for similar complaints before submitting
+    setCheckingSimilar(true);
+    setSubmitError('');
+    
+    try {
+      const similarResponse = await complaintsApi.findSimilar({
+        category: resolvedCategory,
+        locality: data.locality,
+        tenantSlug: resolvedSlug,
+        radiusMeters: 500,
+      });
+      
+      if (similarResponse.success && similarResponse.data && similarResponse.data.length > 0) {
+        // Found similar complaints - show modal
+        setSimilarComplaints(similarResponse.data);
+        setPendingSubmitData(data);
+        setShowDuplicateModal(true);
+        setCheckingSimilar(false);
+        return;
+      }
+      
+      // No similar complaints found - proceed with submission
+      await submitComplaint(data);
+    } catch (error) {
+      console.error('Error checking for similar complaints:', error);
+      // If checking fails, proceed with submission anyway
+      await submitComplaint(data);
+    } finally {
+      setCheckingSimilar(false);
+    }
+  }
+  
+  async function submitComplaint(data: SubmitForm) {
     setIsSubmitting(true);
     setSubmitError('');
     try {
@@ -266,7 +309,9 @@ export default function PublicSubmitPage() {
         category:     resolvedCategory || undefined,
         departmentId: departmentId || undefined,
         tenantSlug:   resolvedSlug,
-        // Location coordinates will be geocoded on backend from locality text
+        // Include coordinates if available from map picker
+        latitude:     locationCoords?.lat,
+        longitude:    locationCoords?.lng,
       });
       const trackingIdFromResponse = (res.data as { trackingId: string }).trackingId;
       
@@ -299,6 +344,7 @@ export default function PublicSubmitPage() {
       setDepartmentId('');
       setAttachments([]);
       setManualLocality('');
+      setLocationCoords(null);
       toast.success('Complaint submitted successfully!');
     } catch (err) {
       setSubmitError(getErrorMessage(err));
@@ -317,10 +363,57 @@ export default function PublicSubmitPage() {
     district: string;
     pincode: string;
   }) => {
+    // Store coordinates for submission
+    setLocationCoords({ lat: loc.lat, lng: loc.lng });
+    
     // Set the locality value from the selected location
     const localityValue = [loc.district, "Delhi"].filter(Boolean).join(", ");
     setValue("locality", localityValue, { shouldValidate: true });
     setManualLocality(localityValue);
+  };
+  
+  // Handle upvoting an existing complaint
+  const handleUpvote = async (trackingId: string) => {
+    try {
+      const citizenEmail = getValues('citizenEmail');
+      const citizenPhone = getValues('citizenPhone');
+      
+      if (!citizenEmail) {
+        toast.error('Email is required to upvote a complaint');
+        return;
+      }
+      
+      const response = await complaintsApi.upvote(trackingId, citizenEmail, citizenPhone);
+      if (response.success) {
+        toast.success('You have upvoted this complaint! The department has been notified of increased urgency.');
+        setShowDuplicateModal(false);
+        setSimilarComplaints([]);
+        setPendingSubmitData(null);
+        // Show success with tracking ID
+        setTrackingId(trackingId);
+        reset();
+        setCategorySelect('');
+        setCategoryOther('');
+        setDepartmentId('');
+        setAttachments([]);
+        setManualLocality('');
+        setLocationCoords(null);
+        setCurrentStep(1);
+      }
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || 'Failed to upvote complaint. Please try again.';
+      toast.error(errorMessage);
+    }
+  };
+  
+  // Handle submitting as a new complaint
+  const handleSubmitNew = async () => {
+    setShowDuplicateModal(false);
+    setSimilarComplaints([]);
+    if (pendingSubmitData) {
+      await submitComplaint(pendingSubmitData);
+      setPendingSubmitData(null);
+    }
   };
 
   // Step validation
@@ -384,6 +477,7 @@ export default function PublicSubmitPage() {
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-start font-sans pt-12 pb-16 px-4 overflow-hidden">
       <AbstractBackground />
+      
       {/* Pin Drop Map Modal */}
       {showPinMap && (
         <LocationPinMap
@@ -391,6 +485,111 @@ export default function PublicSubmitPage() {
           onClose={() => setShowPinMap(false)}
         />
       )}
+      
+      {/* Duplicate Complaint Detection Modal */}
+      {showDuplicateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl bg-slate-900 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
+            
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-white/5 bg-amber-500/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+                  <span className="text-2xl">⚠️</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">
+                    Similar Complaints Found
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    We found {similarComplaints.length} similar complaint(s) in your area
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Similar Complaints List */}
+            <div className="p-6 max-h-96 overflow-y-auto space-y-3">
+              {similarComplaints.map((complaint) => (
+                <div
+                  key={complaint.trackingId}
+                  className="bg-slate-800/60 border border-white/10 rounded-xl p-4 hover:border-purple-500/30 transition-all"
+                >
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-mono text-purple-400">
+                          #{complaint.trackingId}
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          complaint.status === 'OPEN' ? 'bg-blue-500/20 text-blue-300' :
+                          complaint.status === 'ASSIGNED' ? 'bg-yellow-500/20 text-yellow-300' :
+                          complaint.status === 'IN_PROGRESS' ? 'bg-purple-500/20 text-purple-300' :
+                          'bg-emerald-500/20 text-emerald-300'
+                        }`}>
+                          {complaint.status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-white font-medium mb-1">
+                        {complaint.category}
+                      </p>
+                      <p className="text-xs text-slate-400 line-clamp-2">
+                        {complaint.description}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-2">
+                        📍 {complaint.locality} • 
+                        <span className="ml-1">
+                          {new Date(complaint.createdAt).toLocaleDateString()}
+                        </span>
+                      </p>
+                    </div>
+                    {complaint.upvotes && (
+                      <div className="flex items-center gap-1 text-amber-400">
+                        <span className="text-lg">👍</span>
+                        <span className="text-sm font-bold">{complaint.upvotes}</span>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <button
+                    onClick={() => handleUpvote(complaint.trackingId)}
+                    className="w-full mt-3 flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    👍 This is the same issue - Upvote
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Footer Actions */}
+            <div className="px-6 py-4 border-t border-white/5 bg-slate-800/40">
+              <div className="flex flex-col gap-3">
+                <p className="text-xs text-slate-400 text-center">
+                  Is your issue different from the above complaints?
+                </p>
+                <button
+                  onClick={handleSubmitNew}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold rounded-xl transition-colors"
+                >
+                  <Send size={16} />
+                  No, Submit as New Complaint
+                </button>
+                <button
+                  onClick={() => {
+                    setShowDuplicateModal(false);
+                    setSimilarComplaints([]);
+                    setPendingSubmitData(null);
+                  }}
+                  className="w-full px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-300 text-sm font-medium rounded-xl border border-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div className="z-10 w-full max-w-xl mb-8">
         <Link
@@ -771,11 +970,11 @@ export default function PublicSubmitPage() {
               ) : (
                 <button
                   type="submit"
-                  disabled={isSubmitting || awaitingTenantResolution || (needsSlug && !tenantSlug)}
+                  disabled={isSubmitting || isUploading || checkingSimilar || awaitingTenantResolution || (needsSlug && !tenantSlug)}
                   className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold px-6 py-3 rounded-xl transition-all shadow-lg shadow-purple-500/20 hover:shadow-purple-500/30"
                 >
-                  {isSubmitting || isUploading ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                  {isUploading ? 'Uploading files…' : isSubmitting ? 'Submitting…' : 'Submit Complaint'}
+                  {(isSubmitting || isUploading || checkingSimilar) ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+                  {checkingSimilar ? 'Checking for similar complaints…' : isUploading ? 'Uploading files…' : isSubmitting ? 'Submitting…' : 'Submit Complaint'}
                 </button>
               )}
             </div>
