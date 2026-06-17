@@ -333,6 +333,19 @@ export const complaintsApi = {
     });
     return response.data;
   },
+  
+  getVerification: async (complaintId: string) => {
+    const response = await api.get<ApiResponse<{
+      id: string;
+      complaintId: string;
+      verifiedAt: string | null;
+      isResolved: boolean | null;
+      citizenComment: string | null;
+      expiresAt: string;
+    }>>(`/complaints/${complaintId}/verification`);
+    return response.data;
+  },
+  
   getPublicDepartments: async (slug: string) => {
     const response = await api.get<ApiResponse<{ id: string; name: string }[]>>(`/complaints/public/tenant/${slug}/departments`);
     return response.data;
