@@ -6,3 +6,4 @@ export { TeamPerformance } from "./TeamPerformance";
 export { QuickActions } from "./QuickActions";
 export { DelhiDistrictMap } from "./DelhiDistrictMap";
 export { CitizenDashboard } from "./CitizenDashboard";
+export { ComplaintLocationMap } from "./ComplaintLocationMap";

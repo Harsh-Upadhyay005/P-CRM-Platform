@@ -68,6 +68,7 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { useRole } from "@/hooks/useRole";
 import { useAuth } from "@/hooks/useAuth";
+import { ComplaintLocationMap } from "@/components/dashboard";
 
 // ─── Status transition map (mirrors backend statusEngine.js) ──────────────────
 const TRANSITIONS: Record<ComplaintStatus, ComplaintStatus[]> = {
@@ -777,6 +778,25 @@ export default function ComplaintDetailPage() {
               )}
             </CardContent>
           </Card>
+
+          {/* Location Map - Show if coordinates are available */}
+          {complaint.latitude != null && complaint.longitude != null && (
+            <Card className="bg-slate-900/40 backdrop-blur-md border-white/5">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base text-slate-200 flex items-center gap-2">
+                  <MapPin size={15} className="text-purple-400" /> Location
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ComplaintLocationMap
+                  latitude={complaint.latitude}
+                  longitude={complaint.longitude}
+                  locality={complaint.locality}
+                  containerId={`complaint-map-${complaint.id}`}
+                />
+              </CardContent>
+            </Card>
+          )}
 
           {/* Assignment */}
           <Card className="bg-slate-900/40 backdrop-blur-md border-white/5">
