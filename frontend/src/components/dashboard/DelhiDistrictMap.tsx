@@ -46,7 +46,7 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
         if (response.success && response.data?.data) {
           // Filter complaints that have latitude/longitude
           const withLocation = response.data.data
-            .filter((c: any) => c.latitude && c.longitude)
+            .filter((c: any) => c.latitude != null && c.longitude != null)
             .map((c: any) => ({
               id: c.id,
               trackingId: c.trackingId,
