@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { departmentsApi, tenantsApi, usersApi, getErrorMessage } from '@/lib/api';
 import { useRole } from '@/hooks/useRole';
+import { useAuth } from '@/hooks/useAuth';
 import { COMPLAINT_CATEGORIES } from '@/lib/constants';
 import { Department, User, RoleType, Tenant } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -208,14 +209,26 @@ function DeptForm({
 // ─── Members Dialog ───────────────────────────────────────────────────────────
 function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () => void }) {
   const qc = useQueryClient();
+  const { role: actorRole, isAdmin, isDeptHead, isSuperAdmin } = useRole();
+  const { user } = useAuth();
   const [selectedUserId, setSelectedUserId] = useState('');
+
+  // Department Heads can only manage their own department
+  const canManageThisDept = isSuperAdmin || isAdmin || 
+    (isDeptHead && user?.department?.id === dept.id);
+
+  // If user can't manage this department, don't show the dialog
+  if (!canManageThisDept) {
+    return null;
+  }
 
   const { data: membersData, isLoading: membersLoading } = useQuery({
     queryKey: ['users', 'dept-members', dept.id],
     queryFn: () => usersApi.list({ departmentId: dept.id, limit: 100 }),
     staleTime: 15_000,
   });
-  const members: User[] = membersData?.data?.data ?? [];
+  // Filter out SUPER_ADMIN - they should never be in department lists
+  const members: User[] = (membersData?.data?.data ?? []).filter(m => m.role.type !== 'SUPER_ADMIN');
 
   const { data: allUsersData } = useQuery({
     queryKey: ['users', 'all-for-assign', dept.tenantId],
@@ -224,12 +237,43 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
   });
   const allUsers: User[] = allUsersData?.data?.data ?? [];
   const memberIds = new Set(members.map((m) => m.id));
-  const availableUsers = allUsers.filter((u) => !memberIds.has(u.id) && u.isActive && u.role.type !== 'SUPER_ADMIN');
+  
+  // Filter available users - exclude:
+  // 1. Already members of this department
+  // 2. Inactive users
+  // 3. SUPER_ADMIN (they manage state, not departments)
+  // 4. Users already assigned to ANY other department (one department per user)
+  const availableUsers = allUsers.filter((u) => {
+    if (memberIds.has(u.id)) return false; // Already a member of THIS department
+    if (!u.isActive) return false; // Inactive user
+    if (u.role.type === 'SUPER_ADMIN') return false; // State admins don't belong to departments
+    
+    // ✅ Allow users with NO department (u.department === null)
+    // ❌ Exclude users assigned to a DIFFERENT department
+    if (u.department !== null && u.department.id !== dept.id) {
+      return false; // Already assigned to another department
+    }
+    
+    return true; // ✅ Users with no department OR same department are available
+  });
+
+  // Role hierarchy: can only promote users to roles BELOW actor's level
+  // SUPER_ADMIN > ADMIN > DEPT_HEAD > OFFICER > CALL_OPERATOR > CITIZEN
+  const canPromoteToAdmin = isSuperAdmin; // Only SUPER_ADMIN can create ADMIN
+  const canPromoteToDeptHead = isAdmin || isSuperAdmin; // ADMIN+ can create DEPT_HEAD
+  const canPromoteToOfficer = isDeptHead || isAdmin || isSuperAdmin; // DEPT_HEAD+ can create OFFICER
 
   const assignMutation = useMutation({
-    mutationFn: (userId: string) => departmentsApi.assignUser(userId, dept.id),
-    onSuccess: () => {
-      toast.success('User assigned to department');
+    mutationFn: (userId: string) => {
+      const targetUser = allUsers.find(u => u.id === userId);
+      return departmentsApi.assignUser(userId, dept.id).then(result => ({ result, wasCitizen: targetUser?.role.type === 'CITIZEN' }));
+    },
+    onSuccess: (data) => {
+      if (data.wasCitizen) {
+        toast.success('User assigned to department and auto-upgraded from Citizen to Officer');
+      } else {
+        toast.success('User assigned to department');
+      }
       qc.invalidateQueries({ queryKey: ['users', 'dept-members', dept.id] });
       qc.invalidateQueries({ queryKey: ['users', 'all-for-assign', dept.tenantId] });
       qc.invalidateQueries({ queryKey: ['departments'] });
@@ -343,8 +387,8 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
                   )}
                 </div>
                 <div className="flex items-center gap-1 shrink-0 ml-2">
-                  {/* Promote to Head */}
-                  {m.role.type !== 'DEPARTMENT_HEAD' && (
+                  {/* Promote to Head - Only ADMIN+ can do this, and member must be below DEPT_HEAD */}
+                  {canPromoteToDeptHead && m.role.type !== 'DEPARTMENT_HEAD' && m.role.type !== 'ADMIN' && m.role.type !== 'SUPER_ADMIN' && (
                     <button
                       title="Set as Department Head"
                       disabled={changeRoleMutation.isPending}
@@ -354,10 +398,10 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
                       Set Head
                     </button>
                   )}
-                  {/* Promote to Admin */}
-                  {m.role.type !== 'ADMIN' && m.role.type !== 'DEPARTMENT_HEAD' && (
+                  {/* Promote to Admin - Only SUPER_ADMIN can do this */}
+                  {canPromoteToAdmin && m.role.type !== 'ADMIN' && m.role.type !== 'DEPARTMENT_HEAD' && m.role.type !== 'SUPER_ADMIN' && (
                     <button
-                      title="Set as Department Admin"
+                      title="Set as Department Admin (Only Delhi CM Office)"
                       disabled={changeRoleMutation.isPending}
                       onClick={() => changeRoleMutation.mutate({ userId: m.id, roleType: 'ADMIN' })}
                       className="h-6 px-2 rounded text-[10px] font-medium bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 hover:text-orange-300 border border-orange-500/20 transition-all disabled:opacity-40"
@@ -365,17 +409,31 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
                       Set Admin
                     </button>
                   )}
-                  {/* Remove from dept */}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-slate-500 hover:text-red-400 hover:bg-red-500/10"
-                    onClick={() => removeMutation.mutate(m.id)}
-                    disabled={removeMutation.isPending}
-                    title="Remove from department"
-                  >
-                    <X size={11} />
-                  </Button>
+                  {/* Demote/Promote to Officer - DEPT_HEAD+ can do this */}
+                  {canPromoteToOfficer && (m.role.type === 'CALL_OPERATOR' || m.role.type === 'CITIZEN') && (
+                    <button
+                      title="Promote to Officer"
+                      disabled={changeRoleMutation.isPending}
+                      onClick={() => changeRoleMutation.mutate({ userId: m.id, roleType: 'OFFICER' })}
+                      className="h-6 px-2 rounded text-[10px] font-medium bg-green-500/10 text-green-400 hover:bg-green-500/20 hover:text-green-300 border border-green-500/20 transition-all disabled:opacity-40"
+                    >
+                      → Officer
+                    </button>
+                  )}
+                  {/* Remove from dept - Only show if actor can manage this user (role hierarchy check) */}
+                  {/* SUPER_ADMIN cannot be removed from departments by lower roles */}
+                  {m.role.type !== 'SUPER_ADMIN' && !(isDeptHead && (m.role.type === 'ADMIN' || m.role.type === 'DEPARTMENT_HEAD')) && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-slate-500 hover:text-red-400 hover:bg-red-500/10"
+                      onClick={() => removeMutation.mutate(m.id)}
+                      disabled={removeMutation.isPending}
+                      title="Remove from department"
+                    >
+                      <X size={11} />
+                    </Button>
+                  )}
                 </div>
               </div>
             ))
@@ -397,7 +455,10 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
                   {availableUsers.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.name}
-                      <span className="text-slate-500 text-xs ml-1">({ROLE_LABELS[u.role.type]})</span>
+                      <span className="text-slate-500 text-xs ml-1">
+                        ({ROLE_LABELS[u.role.type]}
+                        {u.department && u.department.id !== dept.id ? ` - ${u.department.name}` : ''})
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -420,7 +481,7 @@ function DeptMembersDialog({ dept, onClose }: { dept: Department; onClose: () =>
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function DepartmentsPage() {
-  const { isAdmin, isSuperAdmin } = useRole();
+  const { isAdmin, isSuperAdmin, isDeptHead, isOfficer } = useRole();
   const searchParams = useSearchParams();
   const qc = useQueryClient();
   const tenantIdFilter = searchParams.get('tenantId') ?? '';
@@ -428,6 +489,10 @@ export default function DepartmentsPage() {
   const [editDept, setEditDept] = useState<Department | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Department | null>(null);
   const [manageMembersDept, setManageMembersDept] = useState<Department | null>(null);
+
+  // Department Heads and Admins can manage departments/members
+  // but Dept Heads are scoped to their own department only
+  const canManageDepts = isAdmin || isDeptHead;
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['departments', 'list', isSuperAdmin ? tenantIdFilter : 'self'],
@@ -648,7 +713,7 @@ export default function DepartmentsPage() {
                       SLA: <span className="text-amber-400 font-semibold">{dept.slaHours}h</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      {isAdmin && (
+                      {canManageDepts && (
                         <Button
                           variant="ghost"
                           size="sm"

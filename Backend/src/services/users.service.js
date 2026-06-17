@@ -202,7 +202,13 @@ export const listUsers = async (query, user) => {
       const label = role === "ADMIN" ? "Department admin" : "Department head";
       throw new ApiError(403, `${label} is not assigned to any department`);
     }
-    deptFilter = { departmentId: dbUser.departmentId };
+    // Show users in their department OR users with no department (available to assign)
+    deptFilter = {
+      OR: [
+        { departmentId: dbUser.departmentId }, // Users in their department
+        { departmentId: null },                 // Users without a department
+      ],
+    };
   } else if (departmentId) {
     deptFilter = { departmentId };
   }
@@ -320,8 +326,30 @@ export const assignRole = async (targetId, { roleType, departmentId }, user) => 
 
   const actor = await prisma.user.findUnique({
     where: { id: user.userId },
-    select: { id: true, isPlatformOwner: true },
+    select: { id: true, isPlatformOwner: true, departmentId: true },
   });
+
+  // Department Head scope: can only manage users in THEIR OWN department
+  if (user.role === "DEPARTMENT_HEAD") {
+    if (!actor?.departmentId) {
+      throw new ApiError(403, "Department head is not assigned to any department");
+    }
+    
+    // If target is already in a department, it must be the actor's department
+    if (target.departmentId !== null && target.departmentId !== actor.departmentId) {
+      throw new ApiError(403, "Department heads can only manage users within their own department");
+    }
+    
+    // If assigning to a department, it must be the actor's department
+    if (departmentId !== undefined && departmentId !== null && departmentId !== actor.departmentId) {
+      throw new ApiError(403, "Department heads can only assign users to their own department");
+    }
+    
+    // Department Heads can ONLY assign OFFICER, CALL_OPERATOR, or CITIZEN roles
+    if (roleType !== "OFFICER" && roleType !== "CALL_OPERATOR" && roleType !== "CITIZEN") {
+      throw new ApiError(403, "Department heads can only assign Officer, Call Operator, or Citizen roles");
+    }
+  }
 
   const canPlatformOwnerManagePeerSuperAdmin =
     user.role === "SUPER_ADMIN" &&
@@ -348,6 +376,28 @@ export const assignRole = async (targetId, { roleType, departmentId }, user) => 
       where: { id: departmentId, isDeleted: false, isActive: true, ...forTenant(user) },
     });
     if (!dept) throw new ApiError(404, "Department not found");
+    
+    // For Department Heads, ensure they can only assign to their own department
+    if (user.role === "DEPARTMENT_HEAD" && dept.id !== actor?.departmentId) {
+      throw new ApiError(403, "Department heads can only assign users to their own department");
+    }
+    
+    // Additional validation: If assigning DEPARTMENT_HEAD role, check if user is already head of another department
+    if (roleType === "DEPARTMENT_HEAD" && target.departmentId && target.departmentId !== departmentId) {
+      // User is currently assigned to a different department
+      const currentDept = await prisma.department.findFirst({
+        where: { id: target.departmentId, isDeleted: false },
+        select: { name: true },
+      });
+      
+      // Check if user is currently DEPARTMENT_HEAD
+      if (target.role.type === "DEPARTMENT_HEAD") {
+        throw new ApiError(
+          400,
+          `User is already Department Head of "${currentDept?.name || 'another department'}". Remove them from that department first, or demote them to Officer.`
+        );
+      }
+    }
   }
 
   const roleId = await resolveRoleId(roleType);
@@ -443,12 +493,51 @@ export const assignRole = async (targetId, { roleType, departmentId }, user) => 
 export const assignDepartment = async (targetId, { departmentId }, user) => {
   const target = await prisma.user.findFirst({
     where: { id: targetId, isDeleted: false, ...forTenant(user) },
-    select: { id: true, role: { select: { type: true } } },
+    select: { 
+      id: true, 
+      role: { select: { type: true, id: true } },
+      department: { select: { id: true, name: true } },
+    },
   });
   if (!target) throw new ApiError(404, "User not found");
 
+  // SUPER_ADMIN cannot be assigned to departments - they manage states
+  if (target.role.type === "SUPER_ADMIN") {
+    throw new ApiError(403, "Delhi CM Office users cannot be assigned to departments");
+  }
+
   if (!canManageUser(user.role, target.role.type)) {
     throw new ApiError(403, "You cannot modify a user with an equal or higher role");
+  }
+  
+  // Department Head scope: can only assign users to THEIR OWN department
+  if (user.role === "DEPARTMENT_HEAD") {
+    const actorUser = await prisma.user.findUnique({
+      where: { id: user.userId },
+      select: { departmentId: true },
+    });
+    
+    if (!actorUser?.departmentId) {
+      throw new ApiError(403, "Department head is not assigned to any department");
+    }
+    
+    // Department Heads can only assign users to their own department
+    if (departmentId && departmentId !== actorUser.departmentId) {
+      throw new ApiError(403, "Department heads can only assign users to their own department");
+    }
+    
+    // If removing from department or assigning to different dept, check if target is in the same dept
+    if (target.department && target.department.id !== actorUser.departmentId) {
+      throw new ApiError(403, "You can only manage users within your own department");
+    }
+  }
+  
+  // Validation: User already assigned to another department must be removed from that department first
+  if (target.department && departmentId && target.department.id !== departmentId) {
+    throw new ApiError(
+      400,
+      `User is currently assigned to "${target.department.name}". Remove them from that department first (set department to None), then assign to the new department.`
+    );
   }
 
   if (departmentId !== null && departmentId !== undefined) {
@@ -456,11 +545,35 @@ export const assignDepartment = async (targetId, { departmentId }, user) => {
       where: { id: departmentId, isDeleted: false, isActive: true, ...forTenant(user) },
     });
     if (!dept) throw new ApiError(404, "Department not found");
+    
+    // For Department Heads, ensure they can only assign to their own department
+    if (user.role === "DEPARTMENT_HEAD") {
+      const actorUser = await prisma.user.findUnique({
+        where: { id: user.userId },
+        select: { departmentId: true },
+      });
+      
+      if (dept.id !== actorUser?.departmentId) {
+        throw new ApiError(403, "Department heads can only assign users to their own department");
+      }
+    }
+  }
+
+  // ✅ AUTO-UPGRADE LOGIC: If user is CITIZEN and being assigned to a department,
+  // automatically upgrade them to OFFICER (minimum staff role)
+  const updates = { departmentId: departmentId ?? null };
+  
+  if (target.role.type === "CITIZEN" && departmentId) {
+    const officerRole = await prisma.role.findUnique({ where: { type: "OFFICER" } });
+    if (officerRole) {
+      updates.roleId = officerRole.id;
+      console.log(`[Auto-upgrade] User ${targetId} upgraded from CITIZEN to OFFICER upon department assignment`);
+    }
   }
 
   const updated = await prisma.user.update({
     where: { id: targetId },
-    data:  { departmentId: departmentId ?? null },
+    data: updates,
     select: userSelect,
   });
 
