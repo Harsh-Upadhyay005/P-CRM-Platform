@@ -268,7 +268,7 @@ model Complaint {
   citizenEmail    String?
   description     String
 
-  locality        String?   // Ward / area / block — e.g. "Gomti Nagar, Lucknow" or "Lanka, Varanasi"
+  locality        String?   // Full formatted address from Mappls API
   latitude        Float?    // Geographic coordinates for proximity search
   longitude       Float?
   

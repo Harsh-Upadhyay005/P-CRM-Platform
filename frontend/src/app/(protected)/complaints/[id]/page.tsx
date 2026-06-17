@@ -810,17 +810,18 @@ export default function ComplaintDetailPage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2 text-slate-400">
                     <MapPin size={12} />{" "}
-                    <span className="truncate">{complaint.locality}</span>
+                    <span className="text-xs">{complaint.locality}</span>
                   </div>
                   {complaint.latitude != null && complaint.longitude != null && (
                     <a
                       href={`https://www.google.com/maps?q=${complaint.latitude},${complaint.longitude}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors ml-5"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/30 rounded-lg transition-colors"
                     >
-                      <ExternalLink size={11} />
+                      <MapPin size={12} />
                       View on map
+                      <ExternalLink size={10} />
                     </a>
                   )}
                 </div>
