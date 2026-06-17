@@ -47,14 +47,14 @@ router.get(
 
 router.patch(
   "/:id/role",
-  authorizeMinimum("ADMIN"),
+  authorizeMinimum("DEPARTMENT_HEAD"), // Allow DEPT_HEAD+ (service layer enforces what they can assign)
   validate(assignRoleSchema),
   controller.assignRole,
 );
 
 router.patch(
   "/:id/department",
-  authorizeMinimum("ADMIN"),
+  authorizeMinimum("DEPARTMENT_HEAD"), // Allow DEPT_HEAD+ (service layer enforces scope)
   validate(assignDepartmentSchema),
   controller.assignDepartment,
 );
