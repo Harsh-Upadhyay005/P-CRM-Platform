@@ -136,7 +136,7 @@ function fmtBytes(b: number) {
 export default function ComplaintDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { isAdmin, isDeptHead, isCallOperator, role } = useRole();
+  const { isAdmin, isDeptHead, isCallOperator, role, isSuperAdmin } = useRole();
   const { user: authUser } = useAuth();
   const qc = useQueryClient();
 
@@ -221,7 +221,14 @@ export default function ComplaintDetailPage() {
       }),
     enabled: (isAdmin || isDeptHead) && !!complaint,
   });
-  const departments: Department[] = departmentsData?.data?.data ?? [];
+  const allDepartments: Department[] = departmentsData?.data?.data ?? [];
+  
+  // Filter departments based on role:
+  // - DEPT_HEAD or ADMIN (Department Admin): Only see their own department
+  // - SUPER_ADMIN (Delhi CM Office): See all departments
+  const departments: Department[] = !isSuperAdmin
+    ? allDepartments.filter(d => d.id === authUser?.department?.id)
+    : allDepartments;
 
   const addNoteMutation = useMutation({
     mutationFn: (note: string) => complaintsApi.addNote(id, note),
@@ -432,6 +439,16 @@ export default function ComplaintDetailPage() {
               >
                 {complaint.priority}
               </Badge>
+              {/* Upvotes Badge */}
+              {complaint.upvotes != null && complaint.upvotes > 0 && (
+                <Badge
+                  variant="outline"
+                  className="text-xs border border-blue-500/30 bg-blue-500/10 text-blue-300 gap-1"
+                >
+                  <Star size={10} className="fill-blue-400 text-blue-400" />
+                  {complaint.upvotes} {complaint.upvotes === 1 ? 'upvote' : 'upvotes'}
+                </Badge>
+              )}
               {/* SLA Badge */}
               {complaint.slaSummary && (
                 <Badge
@@ -771,9 +788,22 @@ export default function ComplaintDetailPage() {
                 </div>
               )}
               {complaint.locality && (
-                <div className="flex items-center gap-2 text-slate-400">
-                  <MapPin size={12} />{" "}
-                  <span className="truncate">{complaint.locality}</span>
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <MapPin size={12} />{" "}
+                    <span className="truncate">{complaint.locality}</span>
+                  </div>
+                  {complaint.latitude != null && complaint.longitude != null && (
+                    <a
+                      href={`https://www.google.com/maps?q=${complaint.latitude},${complaint.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs text-purple-400 hover:text-purple-300 transition-colors ml-5"
+                    >
+                      <ExternalLink size={11} />
+                      View on map
+                    </a>
+                  )}
                 </div>
               )}
             </CardContent>
@@ -1120,10 +1150,8 @@ export default function ComplaintDetailPage() {
                     displayedOfficers.map((o) => (
                       <SelectItem key={o.id} value={o.id}>
                         {o.name}
-                        <span className="text-slate-500 text-xs ml-1">
-                          {o.role?.type === "OFFICER"
-                            ? ""
-                            : ` · ${o.role?.type?.replace("_", " ")}`}
+                        <span className="text-slate-500 text-xs ml-1.5">
+                          · {o.role?.type?.replace("_", " ")}
                           {o.department ? ` (${o.department.name})` : ""}
                         </span>
                       </SelectItem>

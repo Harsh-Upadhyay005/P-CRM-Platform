@@ -367,7 +367,8 @@ export default function PublicSubmitPage() {
     setLocationCoords({ lat: loc.lat, lng: loc.lng });
     
     // Set the locality value from the selected location
-    const localityValue = [loc.district, "Delhi"].filter(Boolean).join(", ");
+    // Use the full formatted address instead of just district
+    const localityValue = loc.address || [loc.district, "Delhi"].filter(Boolean).join(", ");
     setValue("locality", localityValue, { shouldValidate: true });
     setManualLocality(localityValue);
   };
