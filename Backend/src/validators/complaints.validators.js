@@ -59,6 +59,8 @@ export const publicCreateComplaintSchema = z.object({
   priority:     Priority.optional(),
   departmentId: z.string().uuid("Invalid department ID").optional().nullable(),
   tenantSlug:   z.string().min(1, "tenantSlug is required"),
+  latitude:     z.number().min(-90).max(90).optional().nullable(),
+  longitude:    z.number().min(-180).max(180).optional().nullable(),
 });
 
 // ── FEEDBACK ──────────────────────────────────────────────────────────────

@@ -303,14 +303,6 @@ export default function PublicSubmitPage() {
     setIsSubmitting(true);
     setSubmitError('');
     try {
-      console.log('[Submit] locationCoords state:', locationCoords);
-      console.log('[Submit] Submitting complaint with data:', {
-        ...data,
-        locality: (data as any).locality,
-        latitude: locationCoords?.lat,
-        longitude: locationCoords?.lng,
-      });
-      
       const res = await complaintsApi.createPublic({
         ...data,
         locality:     (data as any).locality || undefined,
@@ -321,9 +313,6 @@ export default function PublicSubmitPage() {
         latitude:     locationCoords?.lat,
         longitude:    locationCoords?.lng,
       });
-      
-      console.log('[Submit] Response:', res);
-      
       const trackingIdFromResponse = (res.data as { trackingId: string }).trackingId;
       
       if (attachments.length > 0) {
