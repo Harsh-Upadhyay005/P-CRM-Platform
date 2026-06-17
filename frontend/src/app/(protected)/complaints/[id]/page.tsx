@@ -317,6 +317,25 @@ export default function ComplaintDetailPage() {
   });
   const feedback = feedbackData?.data;
 
+  // Fetch resolution verification data
+  const { data: verificationData } = useQuery({
+    queryKey: ["complaint-verification", id],
+    queryFn: async () => {
+      try {
+        const response = await complaintsApi.getVerification(id);
+        return response;
+      } catch (e: unknown) {
+        if (e && typeof e === "object" && "response" in e) {
+          const axiosErr = e as { response?: { status?: number } };
+          if (axiosErr.response?.status === 404) return { data: null };
+        }
+        throw e;
+      }
+    },
+    enabled: !!id && complaint?.status === "ASSIGNED", // Check if status rolled back to ASSIGNED
+  });
+  const verification = verificationData?.data;
+
   const deleteAttachMutation = useMutation({
     mutationFn: (attachId: string) =>
       complaintsApi.deleteAttachment(id, attachId),
@@ -914,12 +933,27 @@ export default function ComplaintDetailPage() {
                   </p>
                 </div>
               )}
-              <Link
-                href={`/track/${complaint.trackingId}`}
-                className="block mt-2 text-xs text-purple-400 hover:text-purple-300 underline underline-offset-2"
-              >
-                View public tracking page →
-              </Link>
+              {/* Show rejection comment if exists */}
+              {verification && verification.isResolved === false && verification.citizenComment && (
+                <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                  <p className="text-red-400 text-xs font-medium mb-1">❌ Citizen Rejected Resolution</p>
+                  <p className="text-slate-300 text-xs italic">
+                    &ldquo;{verification.citizenComment}&rdquo;
+                  </p>
+                  <p className="text-slate-600 text-[10px] mt-1">
+                    Responded {verification.verifiedAt ? fmt(verification.verifiedAt) : 'recently'}
+                  </p>
+                </div>
+              )}
+              {/* Only show public tracking link for citizens */}
+              {role === 'CITIZEN' && (
+                <Link
+                  href={`/track/${complaint.trackingId}`}
+                  className="block mt-2 text-xs text-purple-400 hover:text-purple-300 underline underline-offset-2"
+                >
+                  View public tracking page →
+                </Link>
+              )}
             </CardContent>
           </Card>
 
@@ -1121,7 +1155,8 @@ export default function ComplaintDetailPage() {
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent className="bg-slate-900 border-white/10 text-slate-300">
-                  <SelectItem value="__all__">All departments</SelectItem>
+                  {/* Only show "All departments" for SUPER_ADMIN */}
+                  {isSuperAdmin && <SelectItem value="__all__">All departments</SelectItem>}
                   {departments.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
                       {d.name}

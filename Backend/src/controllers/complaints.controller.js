@@ -146,3 +146,8 @@ export const submitResolutionVerification = asyncHandler(async (req, res) => {
   const result = await service.verifyResolution(token, isResolved, citizenComment);
   res.json(new ApiResponse(200, result, result.message));
 });
+
+export const getComplaintVerification = asyncHandler(async (req, res) => {
+  const verification = await service.getComplaintVerification(req.params.id, req.user);
+  res.json(new ApiResponse(200, verification, "Verification status retrieved"));
+});

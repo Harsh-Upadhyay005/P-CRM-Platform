@@ -89,6 +89,13 @@ router.get(
   controller.getComplaint,
 );
 
+// Get verification status for a complaint (for officers to see rejection comments)
+router.get(
+  "/:id/verification",
+  authorizeMinimum("OFFICER"),
+  controller.getComplaintVerification,
+);
+
 router.patch(
   "/:id",
   authorizeMinimum("ADMIN"),

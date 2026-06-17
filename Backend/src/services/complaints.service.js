@@ -1745,3 +1745,33 @@ export async function getVerificationByToken(token) {
     complaint: verification.complaint,
   };
 }
+
+/**
+ * Get verification status by complaint ID (for officers to see rejection comments)
+ * @param {string} complaintId - Complaint ID
+ * @param {Object} user - Authenticated user
+ * @returns {Promise<Object>} Verification details
+ */
+export async function getComplaintVerification(complaintId, user) {
+  // Ensure the complaint exists and user has access
+  const complaint = await getComplaint(complaintId, user);
+  
+  // Find the most recent verification for this complaint
+  const verification = await prisma.complaintResolutionVerification.findFirst({
+    where: { complaintId },
+    orderBy: { createdAt: 'desc' },
+  });
+
+  if (!verification) {
+    throw new ApiError(404, "No verification record found for this complaint");
+  }
+
+  return {
+    id: verification.id,
+    complaintId: verification.complaintId,
+    verifiedAt: verification.respondedAt,
+    isResolved: verification.isResolved,
+    citizenComment: verification.citizenComment,
+    expiresAt: verification.expiresAt,
+  };
+}
