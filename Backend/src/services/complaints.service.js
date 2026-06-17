@@ -1,5 +1,6 @@
 import { prisma } from "../config/db.js";
 import { ApiError } from "../utils/ApiError.js";
+import crypto from "crypto";
 import { forTenant, inTenant } from "../utils/tenantScope.js";
 import {
   generateTrackingId,
@@ -21,6 +22,7 @@ import {
   sendStatusChangeEmail,
   sendComplaintConfirmationEmail,
   sendOfficerAssignmentEmail,
+  sendResolutionVerificationEmail,
 } from "./email.service.js";
 import { buildSlaSummary, NON_SLA_STATUSES } from "../utils/slaEngine.js";
 import {
@@ -38,6 +40,9 @@ const complaintSummarySelect = {
   citizenPhone: true,
   citizenEmail: true,
   locality: true,
+  latitude: true,
+  longitude: true,
+  upvotes: true,
   category: true,
   priority: true,
   status: true,
@@ -170,7 +175,15 @@ const inferTenantDistrict = (tenant) => {
 const assertComplaintDistrictMatchesTenant = (locality, tenant) => {
   const tenantDistrictRaw = inferTenantDistrict(tenant);
   const tenantDistrict = normalizeDistrictLabel(tenantDistrictRaw);
-  if (!tenantDistrict) return;
+  
+  // If tenant has no specific district OR tenant's areas include the entire state name,
+  // it means the tenant covers the whole state - skip district validation
+  const stateLabel = normalizeStateToken(tenant?.stateLabel || "").toLowerCase();
+  const coversWholeState = tenant?.areas?.some(area => 
+    normalizeStateToken(area).toLowerCase() === stateLabel
+  );
+  
+  if (!tenantDistrict || coversWholeState) return;
 
   const stateHints = buildStateHints(tenant);
   const inferredComplaintDistrict = inferDistrictFromAddress(locality, stateHints);
@@ -850,6 +863,13 @@ export const updateComplaintStatus = async (id, { newStatus, note }, user) => {
     ).catch(() => {});
   }
 
+  // If status changed to RESOLVED, create verification request for citizen
+  if (newStatus === "RESOLVED" && complaint.citizenEmail) {
+    createResolutionVerification(id).catch((err) => {
+      console.error(`[Resolution] Failed to create verification for ${complaint.trackingId}:`, err?.message);
+    });
+  }
+
   const [decorated] = await decorateWithSlaBatch([updated]);
   return decorated;
 };
@@ -1040,6 +1060,8 @@ export const createPublicComplaint = async (data) => {
     priority,
     departmentId,
     tenantSlug,
+    latitude,
+    longitude,
   } = data;
 
   // Resolve tenant from slug
@@ -1091,6 +1113,8 @@ export const createPublicComplaint = async (data) => {
       citizenPhone,
       citizenEmail,
       locality: locality ?? null,
+      latitude: latitude ?? null,
+      longitude: longitude ?? null,
       description,
       category: category ?? null,
       priority: resolvedPriority,
@@ -1331,3 +1355,393 @@ export const exportComplaints = async (query, user) => {
 
   return complaints;
 };
+
+// ── DUPLICATE DETECTION & UPVOTE SERVICES ────────────────────────────────
+
+/**
+ * Find similar complaints based on category and location proximity
+ * @param {Object} query - { category, locality, tenantSlug, radiusMeters }
+ * @returns {Promise<Array>} Similar complaints
+ */
+export async function findSimilarComplaints(query) {
+  const { category, locality, tenantSlug, radiusMeters = 500 } = query;
+
+  if (!locality || !tenantSlug) {
+    throw new ApiError(400, "locality and tenantSlug are required");
+  }
+
+  // Get tenant
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug: tenantSlug },
+  });
+
+  if (!tenant) {
+    throw new ApiError(404, "Tenant not found");
+  }
+
+  // Build where clause
+  const where = {
+    tenantId: tenant.id,
+    locality: { contains: locality, mode: "insensitive" },
+    status: { in: ["OPEN", "ASSIGNED", "IN_PROGRESS"] }, // Only active complaints
+    isDeleted: false,
+  };
+
+  // Add category filter if provided
+  if (category) {
+    where.category = { contains: category, mode: "insensitive" };
+  }
+
+  // Find similar complaints
+  // Note: For true geographic proximity (500m radius), you would need PostGIS extension
+  // For now, we're doing locality-based matching which is simpler
+  const complaints = await prisma.complaint.findMany({
+    where,
+    select: {
+      id: true,
+      trackingId: true,
+      citizenName: true,
+      description: true,
+      locality: true,
+      latitude: true,
+      longitude: true,
+      category: true,
+      priority: true,
+      status: true,
+      upvotes: true,
+      createdAt: true,
+      department: { select: { name: true } },
+    },
+    orderBy: [
+      { upvotes: "desc" },
+      { createdAt: "desc" },
+    ],
+    take: 10, // Limit to top 10 similar complaints
+  });
+
+  return complaints;
+}
+
+/**
+ * Upvote a complaint (citizen support for existing issue)
+ * @param {string} trackingId - Complaint tracking ID
+ * @param {string} citizenEmail - Email of citizen upvoting
+ * @param {string} citizenPhone - Phone of citizen (optional)
+ * @param {string} ipAddress - IP address for abuse prevention
+ * @returns {Promise<Object>} Updated complaint with new upvote count
+ */
+export async function upvoteComplaint(trackingId, citizenEmail, citizenPhone, ipAddress) {
+  if (!citizenEmail) {
+    throw new ApiError(400, "citizenEmail is required to upvote");
+  }
+
+  // Find complaint
+  const complaint = await prisma.complaint.findUnique({
+    where: { trackingId },
+  });
+
+  if (!complaint) {
+    throw new ApiError(404, "Complaint not found");
+  }
+
+  // Don't allow upvoting resolved/closed complaints
+  if (complaint.status === "RESOLVED" || complaint.status === "CLOSED") {
+    throw new ApiError(400, "Cannot upvote a resolved or closed complaint");
+  }
+
+  // Check if this email already upvoted
+  const existingUpvote = await prisma.complaintUpvote.findUnique({
+    where: {
+      complaintId_citizenEmail: {
+        complaintId: complaint.id,
+        citizenEmail: citizenEmail.toLowerCase(),
+      },
+    },
+  });
+
+  if (existingUpvote) {
+    throw new ApiError(400, "You have already upvoted this complaint");
+  }
+
+  // Create upvote record and increment counter in a transaction
+  const result = await prisma.$transaction(async (tx) => {
+    // Create upvote record
+    await tx.complaintUpvote.create({
+      data: {
+        complaintId: complaint.id,
+        citizenEmail: citizenEmail.toLowerCase(),
+        citizenPhone,
+        ipAddress,
+      },
+    });
+
+    // Increment upvote counter
+    const updated = await tx.complaint.update({
+      where: { id: complaint.id },
+      data: {
+        upvotes: { increment: 1 },
+      },
+      select: {
+        id: true,
+        trackingId: true,
+        upvotes: true,
+      },
+    });
+
+    return updated;
+  });
+
+  // If upvotes reach certain thresholds, escalate priority
+  if (result.upvotes === 5 || result.upvotes === 10 || result.upvotes === 20) {
+    // Auto-escalate to higher priority
+    const newPriority = 
+      result.upvotes >= 20 ? "CRITICAL" :
+      result.upvotes >= 10 ? "HIGH" :
+      "MEDIUM";
+
+    await prisma.complaint.update({
+      where: { id: complaint.id },
+      data: { priority: newPriority },
+    });
+
+    // Notify assigned officer about increased priority
+    if (complaint.assignedToId) {
+      await notifyAssignment(complaint.id, complaint.assignedToId);
+    }
+  }
+
+  return {
+    trackingId: result.trackingId,
+    upvotes: result.upvotes,
+    message: "Your support has been recorded. The department will be notified of the increased urgency.",
+  };
+}
+
+/**
+ * Create resolution verification when complaint status changes to RESOLVED
+ * @param {string} complaintId - Complaint ID
+ * @returns {Promise<Object>} Verification record
+ */
+export async function createResolutionVerification(complaintId) {
+  const complaint = await prisma.complaint.findUnique({
+    where: { id: complaintId },
+    select: {
+      id: true,
+      trackingId: true,
+      citizenName: true,
+      citizenEmail: true,
+      status: true,
+    },
+  });
+
+  if (!complaint) {
+    throw new ApiError(404, "Complaint not found");
+  }
+
+  if (!complaint.citizenEmail) {
+    throw new ApiError(400, "Complaint has no citizen email for verification");
+  }
+
+  if (complaint.status !== "RESOLVED") {
+    throw new ApiError(400, "Can only create verification for RESOLVED complaints");
+  }
+
+  // Check if verification already exists
+  const existing = await prisma.complaintResolutionVerification.findUnique({
+    where: { complaintId },
+  });
+
+  if (existing) {
+    return existing; // Already created, return existing
+  }
+
+  // Generate unique verification token
+  const verificationToken = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7); // 7 days to respond
+
+  const verification = await prisma.complaintResolutionVerification.create({
+    data: {
+      complaintId,
+      verificationToken,
+      expiresAt,
+    },
+  });
+
+  // Send verification email (fire-and-forget)
+  sendResolutionVerificationEmail(
+    complaint.citizenEmail,
+    complaint.citizenName,
+    complaint.trackingId,
+    verificationToken,
+  ).catch((err) => {
+    console.error(`[Resolution] Failed to send verification email for ${complaint.trackingId}:`, err?.message);
+  });
+
+  return verification;
+}
+
+/**
+ * Verify resolution by token (citizen confirms YES or NO)
+ * @param {string} token - Verification token from email
+ * @param {boolean} isResolved - true = confirmed, false = not resolved
+ * @param {string} citizenComment - Optional comment from citizen
+ * @returns {Promise<Object>} Updated complaint
+ */
+export async function verifyResolution(token, isResolved, citizenComment = null) {
+  const verification = await prisma.complaintResolutionVerification.findUnique({
+    where: { verificationToken: token },
+    include: {
+      complaint: {
+        select: {
+          id: true,
+          trackingId: true,
+          status: true,
+          citizenName: true,
+          citizenEmail: true,
+          assignedToId: true,
+          departmentId: true,
+        },
+      },
+    },
+  });
+
+  if (!verification) {
+    throw new ApiError(404, "Invalid or expired verification link");
+  }
+
+  if (verification.respondedAt) {
+    throw new ApiError(400, "You have already responded to this verification");
+  }
+
+  if (new Date() > verification.expiresAt) {
+    throw new ApiError(400, "Verification link has expired");
+  }
+
+  if (verification.complaint.status !== "RESOLVED") {
+    throw new ApiError(400, "Complaint is no longer in RESOLVED status");
+  }
+
+  // Update verification record
+  await prisma.complaintResolutionVerification.update({
+    where: { id: verification.id },
+    data: {
+      isResolved,
+      citizenComment,
+      respondedAt: new Date(),
+    },
+  });
+
+  let newStatus;
+  let statusMessage;
+
+  if (isResolved) {
+    // Citizen confirms it's resolved → Close complaint
+    newStatus = "CLOSED";
+    statusMessage = "Complaint closed after citizen confirmation";
+  } else {
+    // Citizen says NOT resolved → Reassign to ASSIGNED
+    newStatus = "ASSIGNED";
+    statusMessage = "Complaint reopened - Citizen reported issue not resolved";
+  }
+
+  // Update complaint status
+  const updated = await prisma.complaint.update({
+    where: { id: verification.complaintId },
+    data: {
+      status: newStatus,
+      ...(newStatus === "CLOSED" ? { resolvedAt: new Date() } : {}),
+    },
+    select: {
+      id: true,
+      trackingId: true,
+      status: true,
+      citizenName: true,
+      citizenEmail: true,
+      assignedTo: { select: { id: true, name: true, email: true } },
+      department: { select: { name: true } },
+    },
+  });
+
+  // Create status history
+  await prisma.complaintStatusHistory.create({
+    data: {
+      complaintId: verification.complaintId,
+      oldStatus: "RESOLVED",
+      newStatus,
+      changedById: verification.complaint.assignedToId || verification.complaint.departmentId || verification.complaint.id, // System change
+    },
+  });
+
+  // Notify assigned officer if complaint reopened
+  if (!isResolved && verification.complaint.assignedToId) {
+    await notifyStatusChange(
+      verification.complaintId,
+      verification.complaint.assignedToId,
+      "RESOLVED",
+      newStatus,
+    );
+
+    // Send email notification
+    if (updated.assignedTo?.email) {
+      sendStatusChangeEmail(
+        updated.assignedTo.email,
+        updated.assignedTo.name,
+        updated.trackingId,
+        "RESOLVED",
+        newStatus,
+        citizenComment || "Citizen reported the issue is not resolved",
+      ).catch(() => {});
+    }
+  }
+
+  return {
+    complaint: updated,
+    message: isResolved
+      ? "Thank you for confirming. Your complaint has been closed."
+      : "Thank you for your feedback. The complaint has been reassigned for further action.",
+  };
+}
+
+/**
+ * Get verification status by token
+ * @param {string} token - Verification token
+ * @returns {Promise<Object>} Verification details
+ */
+export async function getVerificationByToken(token) {
+  const verification = await prisma.complaintResolutionVerification.findUnique({
+    where: { verificationToken: token },
+    include: {
+      complaint: {
+        select: {
+          trackingId: true,
+          description: true,
+          category: true,
+          locality: true,
+          createdAt: true,
+          status: true,
+        },
+      },
+    },
+  });
+
+  if (!verification) {
+    throw new ApiError(404, "Invalid verification link");
+  }
+
+  const isExpired = new Date() > verification.expiresAt;
+  const hasResponded = !!verification.respondedAt;
+
+  return {
+    verification: {
+      id: verification.id,
+      expiresAt: verification.expiresAt,
+      isExpired,
+      hasResponded,
+      respondedAt: verification.respondedAt,
+      isResolved: verification.isResolved,
+      citizenComment: verification.citizenComment,
+    },
+    complaint: verification.complaint,
+  };
+}

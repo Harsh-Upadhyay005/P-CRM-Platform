@@ -269,6 +269,10 @@ model Complaint {
   description     String
 
   locality        String?   // Ward / area / block — e.g. "Gomti Nagar, Lucknow" or "Lanka, Varanasi"
+  latitude        Float?    // Geographic coordinates for proximity search
+  longitude       Float?
+  
+  upvotes         Int      @default(0)  // Count of citizen upvotes for duplicate/similar complaints
 
   category        String?
   priority        Priority @default(MEDIUM)
@@ -298,6 +302,8 @@ model Complaint {
   notifications   Notification[]
   attachments     ComplaintAttachment[]
   feedback        ComplaintFeedback?
+  upvoteRecords   ComplaintUpvote[]
+  resolutionVerification ComplaintResolutionVerification?
 
   @@index([tenantId])
   @@index([status])
@@ -307,6 +313,8 @@ model Complaint {
   @@index([createdById])
   @@index([createdAt])
   @@index([locality])
+  @@index([latitude, longitude])  // For geographic proximity search
+  @@index([category, locality])    // For duplicate detection
   // Compound indexes for the two most common filter combinations
   @@index([tenantId, status])
   @@index([tenantId, isDeleted])
@@ -417,4 +425,49 @@ model ComplaintFeedback {
   submittedAt DateTime @default(now())
 
   complaint   Complaint @relation(fields: [complaintId], references: [id])
+}
+
+// COMPLAINT UPVOTES (Track who upvoted to prevent duplicates)
+
+model ComplaintUpvote {
+  id           String   @id @default(uuid())
+  complaintId  String
+  citizenEmail String   // Email of the citizen who upvoted
+  citizenPhone String?  // Optional phone for additional tracking
+  ipAddress    String?  // Track IP to prevent abuse
+  
+  createdAt    DateTime @default(now())
+
+  complaint    Complaint @relation(fields: [complaintId], references: [id])
+
+  @@unique([complaintId, citizenEmail])  // One upvote per email per complaint
+  @@index([complaintId])
+  @@index([citizenEmail])
+}
+
+
+// COMPLAINT RESOLUTION VERIFICATION (Citizen confirms if complaint is actually resolved)
+
+model ComplaintResolutionVerification {
+  id                String    @id @default(uuid())
+  complaintId       String    @unique  // One verification per complaint
+  verificationToken String    @unique  // Unique token sent to citizen via email
+  expiresAt         DateTime            // Token expiry (e.g., 7 days)
+  
+  // Citizen response
+  isResolved        Boolean?            // null = pending, true = confirmed resolved, false = rejected (not resolved)
+  citizenComment    String?             // Optional comment from citizen
+  respondedAt       DateTime?           // When citizen responded
+  
+  // Auto-escalation if no response
+  reminderSentAt    DateTime?           // Track if reminder was sent
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  complaint         Complaint @relation(fields: [complaintId], references: [id])
+
+  @@index([complaintId])
+  @@index([verificationToken])
+  @@index([expiresAt])
 }

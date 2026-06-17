@@ -25,6 +25,20 @@ router.get("/track/:trackingId", controller.trackComplaint);
 router.get("/public/tenants",                   controller.searchPublicTenants);
 router.get("/public/tenant/:slug/departments",  controller.getPublicDepartments);
 
+// Find similar complaints (duplicate detection)
+router.get("/find-similar", controller.findSimilarComplaints);
+
+// Resolution verification (public endpoints - no auth required)
+router.get("/verify-resolution/:token", controller.getVerificationByToken);
+router.post("/verify-resolution/:token", apiWriteLimiter, controller.submitResolutionVerification);
+
+// Upvote a complaint (public endpoint)
+router.post(
+  "/public/:trackingId/upvote",
+  apiWriteLimiter,
+  controller.upvoteComplaint,
+);
+
 router.post(
   "/public",
   apiWriteLimiter,

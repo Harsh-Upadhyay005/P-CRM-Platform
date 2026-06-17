@@ -113,3 +113,36 @@ export const exportComplaints = asyncHandler(async (req, res) => {
   res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
   res.send("\uFEFF" + csv); // UTF-8 BOM for Excel compatibility
 });
+
+// ── DUPLICATE DETECTION & UPVOTE ENDPOINTS ────────────────────────────────
+
+export const findSimilarComplaints = asyncHandler(async (req, res) => {
+  const similar = await service.findSimilarComplaints(req.query);
+  res.json(new ApiResponse(200, similar, "Similar complaints retrieved"));
+});
+
+export const upvoteComplaint = asyncHandler(async (req, res) => {
+  const result = await service.upvoteComplaint(
+    req.params.trackingId, 
+    req.body.citizenEmail,
+    req.body.citizenPhone,
+    req.ip
+  );
+  res.json(new ApiResponse(200, result, "Complaint upvoted successfully"));
+});
+
+
+// ── RESOLUTION VERIFICATION ENDPOINTS ──────────────────────────────────────
+
+export const getVerificationByToken = asyncHandler(async (req, res) => {
+  const result = await service.getVerificationByToken(req.params.token);
+  res.json(new ApiResponse(200, result, "Verification details retrieved"));
+});
+
+export const submitResolutionVerification = asyncHandler(async (req, res) => {
+  const { token } = req.params;
+  const { isResolved, citizenComment } = req.body;
+  
+  const result = await service.verifyResolution(token, isResolved, citizenComment);
+  res.json(new ApiResponse(200, result, result.message));
+});

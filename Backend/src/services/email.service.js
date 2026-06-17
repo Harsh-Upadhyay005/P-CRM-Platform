@@ -727,3 +727,74 @@ export const sendComplaintConfirmationEmail = async (
     );
   }
 };
+
+// ── RESOLUTION VERIFICATION EMAIL (citizen must confirm if resolved) ──────
+
+export const sendResolutionVerificationEmail = async (
+  citizenEmail,
+  citizenName,
+  trackingId,
+  verificationToken,
+) => {
+  if (!citizenEmail) return;
+
+  const verifyUrl = `${env.FRONTEND_URL}/verify-resolution/${verificationToken}`;
+
+  const bodyContent = `
+    <tr>
+      <td style="padding:32px;font-size:15px;line-height:1.6;color:#334155;">
+        <p style="margin:0 0 16px;"><strong style="color:#1e293b;">Dear ${citizenName},</strong></p>
+        <p style="margin:0 0 16px;">Good news! The assigned officer has marked your complaint as <strong>RESOLVED</strong>.</p>
+        <p style="margin:0 0 24px;">Please verify if the issue has been actually resolved:</p>
+        
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td align="center" style="padding:0 0 24px;">
+              <a href="${verifyUrl}" style="display:inline-block;background-color:#059669;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:6px;box-shadow:0 2px 8px rgba(5,150,105,0.25);">Verify Resolution Status</a>
+            </td>
+          </tr>
+        </table>
+
+        <div style="background-color:#f1f5f9;border-left:4px solid #f59e0b;padding:16px;margin:0 0 24px;border-radius:4px;">
+          <p style="margin:0 0 8px;font-size:14px;color:#1e293b;font-weight:600;">Your Complaint Details:</p>
+          <p style="margin:0;font-size:14px;color:#475569;">Tracking ID: <strong>${trackingId}</strong></p>
+        </div>
+
+        <p style="margin:0 0 16px;font-size:14px;color:#475569;"><strong>What happens next?</strong></p>
+        <ul style="margin:0 0 24px;padding-left:20px;font-size:14px;color:#475569;">
+          <li style="margin-bottom:8px;">If you confirm the issue is resolved, the complaint will be closed.</li>
+          <li style="margin-bottom:8px;">If the issue is not resolved, it will be reassigned to the department for further action.</li>
+          <li>This verification link is valid for 7 days.</li>
+        </ul>
+
+        <p style="margin:0;font-size:13px;color:#64748b;">Thank you for using P-CRM Portal.</p>
+      </td>
+    </tr>
+  `;
+
+  const html = emailWrapper(
+    "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+    {
+      preheader: `Please verify if your complaint ${trackingId} has been resolved`,
+    },
+    bodyContent,
+  );
+
+  try {
+    await transactionalEmailApi.sendTransacEmail({
+      sender: { email: env.BREVO_SENDER_EMAIL, name: env.BREVO_SENDER_NAME },
+      to: [{ email: citizenEmail, name: citizenName }],
+      subject: `Action Required: Verify Resolution of Complaint ${trackingId}`,
+      htmlContent: html,
+      textContent: `Dear ${citizenName},\n\nThe assigned officer has marked your complaint ${trackingId} as RESOLVED.\n\nPlease verify if the issue has been actually resolved by visiting:\n${verifyUrl}\n\nIf the issue is resolved, the complaint will be closed. If not, it will be reassigned for further action.\n\nThis link is valid for 7 days.\n\nP-CRM Portal`,
+    });
+    console.log(
+      `[email] Resolution verification email sent to ${citizenEmail} for complaint ${trackingId}`,
+    );
+  } catch (err) {
+    console.error(
+      `[email] Failed to send resolution verification email to ${citizenEmail}:`,
+      err?.message,
+    );
+  }
+};
