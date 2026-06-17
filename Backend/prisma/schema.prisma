@@ -56,6 +56,7 @@ model Tenant {
   assignmentRules AutomationAssignmentRule[]
   categorySlaPolicies CategorySlaPolicy[]
   workflowSetting WorkflowSetting?
+  sevaQueries SevaQuery[]
 
   @@index([slug])
   @@index([stateCode])
@@ -116,6 +117,7 @@ model User {
   createdAutomationRules  AutomationAssignmentRule[] @relation("AutomationRuleCreator")
   generatedSuperAdminSignupCodes SuperAdminSignupCode[] @relation("CodeGenerator")
   redeemedSuperAdminSignupCodes  SuperAdminSignupCode[] @relation("CodeRedeemer")
+  sevaQueries   SevaQuery[]
 
   @@index([tenantId])
   @@index([roleId])
@@ -298,6 +300,7 @@ model Complaint {
   notifications   Notification[]
   attachments     ComplaintAttachment[]
   feedback        ComplaintFeedback?
+  sevaQuery       SevaQuery?
 
   @@index([tenantId])
   @@index([status])
@@ -417,4 +420,30 @@ model ComplaintFeedback {
   submittedAt DateTime @default(now())
 
   complaint   Complaint @relation(fields: [complaintId], references: [id])
+}
+
+// SEVA CHATBOT QUERIES
+
+model SevaQuery {
+  id                     String   @id @default(uuid())
+  tenantId               String?
+  userId                 String?
+  conversationData       Json     // Complete message history
+  classificationAttempts Int      @default(0)
+  finalCategory          String
+  finalConfidence        Float
+  createdComplaintId     String?  @unique
+  sessionLanguage        String   // 'en' or 'hi'
+  
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  
+  tenant                 Tenant?     @relation(fields: [tenantId], references: [id])
+  user                   User?       @relation(fields: [userId], references: [id])
+  complaint              Complaint?  @relation(fields: [createdComplaintId], references: [id])
+  
+  @@index([tenantId])
+  @@index([userId])
+  @@index([createdComplaintId])
+  @@index([createdAt])
 }
