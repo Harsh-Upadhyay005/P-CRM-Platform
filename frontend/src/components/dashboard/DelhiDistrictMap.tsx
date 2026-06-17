@@ -71,7 +71,7 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
 
   // Init map and add markers
   useEffect(() => {
-    if (!mapRef.current || complaints.length === 0) return;
+    if (!mapRef.current || loading) return;
 
     loadMappleSDK().then(() => {
       const mappls = (window as any).mappls;
@@ -93,24 +93,26 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
         });
         markersRef.current = [];
 
-        // Add marker for each complaint
-        complaints.forEach((complaint) => {
-          const color = getStatusColor(complaint.status);
-          
-          const marker = new mappls.Marker({
-            map,
-            position: { lat: complaint.latitude, lng: complaint.longitude },
-            icon: {
-              html: `<div style="background: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer;"></div>`,
-            },
-          });
+        // Add marker for each complaint (only if we have complaints)
+        if (complaints.length > 0) {
+          complaints.forEach((complaint) => {
+            const color = getStatusColor(complaint.status);
+            
+            const marker = new mappls.Marker({
+              map,
+              position: { lat: complaint.latitude, lng: complaint.longitude },
+              icon: {
+                html: `<div style="background: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer;"></div>`,
+              },
+            });
 
-          marker.addListener("click", () => {
-            setSelectedComplaint(complaint);
-          });
+            marker.addListener("click", () => {
+              setSelectedComplaint(complaint);
+            });
 
-          markersRef.current.push(marker);
-        });
+            markersRef.current.push(marker);
+          });
+        }
       });
     });
 
@@ -120,7 +122,7 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
         mapInstanceRef.current.remove?.();
       }
     };
-  }, [complaints, containerId]);
+  }, [complaints, containerId, loading]);
 
   return (
     <div className="relative w-full rounded-2xl border border-white/10 overflow-hidden"
