@@ -865,9 +865,11 @@ export const updateComplaintStatus = async (id, { newStatus, note }, user) => {
 
   // If status changed to RESOLVED, create verification request for citizen
   if (newStatus === "RESOLVED" && complaint.citizenEmail) {
-    createResolutionVerification(id).catch((err) => {
+    try {
+      await createResolutionVerification(id);
+    } catch (err) {
       console.error(`[Resolution] Failed to create verification for ${complaint.trackingId}:`, err?.message);
-    });
+    }
   }
 
   const [decorated] = await decorateWithSlaBatch([updated]);
