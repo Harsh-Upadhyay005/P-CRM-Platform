@@ -152,7 +152,7 @@ export default function SevaChatbot() {
       {!isOpen && (
         <Button
           onClick={openChat}
-          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+          className="fixed bottom-6 left-6 h-14 w-14 rounded-full z-50 bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-900/40 hover:shadow-emerald-500/50 transition-all duration-300 hover:scale-105"
           aria-label="Open Seva Chatbot"
         >
           <MessageCircle className="h-6 w-6" />
@@ -161,16 +161,16 @@ export default function SevaChatbot() {
 
       {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-6 right-6 w-96 h-[600px] shadow-2xl z-50 flex flex-col overflow-hidden border-2 border-blue-200">
+        <Card className="fixed bottom-6 left-6 w-96 h-[600px] z-50 flex flex-col overflow-hidden border border-white/[0.13] bg-[#020617]/95 backdrop-blur-2xl shadow-[0_40px_160px_rgba(0,0,0,0.75)]">
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 flex items-center justify-between">
+          <div className="bg-linear-to-r from-emerald-600 to-teal-600 text-white p-4 flex items-center justify-between shadow-lg shadow-emerald-900/30">
             <div className="flex items-center gap-2">
-              <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center border border-white/20">
                 <MessageCircle className="h-6 w-6" />
               </div>
               <div>
                 <h3 className="font-semibold text-lg">Seva Chatbot</h3>
-                <p className="text-xs text-white/80">AI-powered complaint assistant</p>
+                <p className="text-xs text-emerald-100/80">AI-powered complaint assistant</p>
               </div>
             </div>
             <Button
@@ -184,7 +184,7 @@ export default function SevaChatbot() {
           </div>
 
           {/* Messages Area */}
-          <ScrollArea className="flex-1 p-4 bg-gray-50" ref={scrollAreaRef}>
+          <ScrollArea className="flex-1 p-4 bg-[#020617]/50" ref={scrollAreaRef}>
             <div className="space-y-4">
               {messages.map((message, index) => (
                 <div
@@ -194,16 +194,16 @@ export default function SevaChatbot() {
                   }`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-lg p-3 ${
+                    className={`max-w-[80%] rounded-xl p-3 ${
                       message.role === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white text-gray-800 shadow-sm border border-gray-200'
+                        ? 'bg-linear-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/30'
+                        : 'bg-white/[0.06] text-slate-200 border border-white/[0.13]'
                     }`}
                   >
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     <p
                       className={`text-xs mt-1 ${
-                        message.role === 'user' ? 'text-blue-100' : 'text-gray-400'
+                        message.role === 'user' ? 'text-emerald-100/70' : 'text-zinc-500'
                       }`}
                     >
                       {new Date(message.timestamp).toLocaleTimeString('en-US', {
@@ -217,8 +217,8 @@ export default function SevaChatbot() {
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
-                    <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                  <div className="rounded-xl p-3 bg-white/[0.06] border border-white/[0.13]">
+                    <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
                   </div>
                 </div>
               )}
@@ -226,7 +226,7 @@ export default function SevaChatbot() {
           </ScrollArea>
 
           {/* Input Area */}
-          <div className="p-4 bg-white border-t border-gray-200">
+          <div className="p-4 bg-[#020617]/80 border-t border-white/[0.08]">
             <div className="flex gap-2">
               <Input
                 value={inputValue}
@@ -234,12 +234,12 @@ export default function SevaChatbot() {
                 onKeyPress={handleKeyPress}
                 placeholder="Type your message..."
                 disabled={isLoading}
-                className="flex-1"
+                className="flex-1 bg-white/[0.06] border-white/[0.13] text-slate-200 placeholder:text-zinc-500 focus-visible:border-emerald-500/50 focus-visible:ring-emerald-500/20"
               />
               <Button
                 onClick={sendMessage}
                 disabled={isLoading || !inputValue.trim()}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-900/30"
               >
                 {isLoading ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -248,7 +248,7 @@ export default function SevaChatbot() {
                 )}
               </Button>
             </div>
-            <p className="text-xs text-gray-500 mt-2 text-center">
+            <p className="text-xs text-zinc-500 mt-2 text-center">
               State: {conversationState}
             </p>
           </div>
