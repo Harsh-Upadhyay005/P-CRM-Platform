@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from "./providers";
 import "./globals.css";
 import LanguageToggle from "@/components/LanguageToggle";
+import SevaChatbot from "@/components/seva/SevaChatbot";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -40,6 +41,7 @@ export default function RootLayout({
         <Providers>
           {children}
           <LanguageToggle />
+          <SevaChatbot />
         </Providers>
       </body>
     </html>

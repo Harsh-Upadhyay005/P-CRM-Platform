@@ -18,6 +18,7 @@ import notificationsRoute from "./routes/notifications.routes.js";
 import auditLogRoute from "./routes/auditLog.routes.js";
 import tenantRoute from "./routes/tenant.routes.js";
 import workflowRoute from "./routes/workflow.routes.js";
+import sevaRoute from "./routes/seva.routes.js";
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use("/api/v1/notifications", notificationsRoute);
 app.use("/api/v1/audit-logs",    auditLogRoute);
 app.use("/api/v1/tenants",        tenantRoute);
 app.use("/api/v1/workflow",      workflowRoute);
+app.use("/api/v1/seva",          sevaRoute);
 
 app.use((req, res, next) => {
   next(new ApiError(404, "Route not found"));
