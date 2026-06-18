@@ -4,8 +4,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Card } from '@/components/ui/card';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -18,9 +16,8 @@ interface ChatResponse {
   message: string;
   state: string;
   language: 'en' | 'hi';
+  trackingId?: string;
 }
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export default function SevaChatbot() {
   const [isOpen, setIsOpen] = useState(false);
@@ -28,22 +25,19 @@ export default function SevaChatbot() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [conversationState, setConversationState] = useState<string>('INITIAL');
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
-    if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
-    }
-  }, [messages]);
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isLoading]);
 
-  // Welcome message when chatbot opens
   useEffect(() => {
     if (isOpen && messages.length === 0) {
       const welcomeMessage: Message = {
         role: 'assistant',
-        content: 'नमस्ते! मैं सेवा हूं, आपकी शिकायत दर्ज करने में मदद करूंगा। कृपया अपना नाम बताएं।\n\nHello! I am Seva, I will help you file your complaint. Please provide your name.',
+        content:
+          'नमस्ते! मैं सेवा हूं, आपकी शिकायत दर्ज करने में मदद करूंगा। कृपया अपना नाम बताएं।\n\nHello! I am Seva, I will help you file your complaint. Please provide your name.',
         timestamp: new Date().toISOString(),
       };
       setMessages([welcomeMessage]);
@@ -51,11 +45,12 @@ export default function SevaChatbot() {
   }, [isOpen, messages.length]);
 
   const sendMessage = async () => {
-    if (!inputValue.trim() || isLoading) return;
+    const trimmed = inputValue.trim();
+    if (!trimmed || isLoading) return;
 
     const userMessage: Message = {
       role: 'user',
-      content: inputValue,
+      content: trimmed,
       timestamp: new Date().toISOString(),
     };
 
@@ -64,65 +59,52 @@ export default function SevaChatbot() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/seva/chat`, {
+      const response = await fetch('/api/v1/seva/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include', // Include cookies for authentication
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
-          sessionId: sessionId,
-          message: inputValue,
+          sessionId,
+          message: trimmed,
         }),
       });
 
+      const payload = await response.json().catch(() => null);
+
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errMsg =
+          payload?.message ||
+          payload?.errors?.[0] ||
+          `Request failed (${response.status})`;
+        throw new Error(errMsg);
       }
 
-      const data: { data: ChatResponse } = await response.json();
-      
-      // Update session ID
-      if (data.data.sessionId) {
-        setSessionId(data.data.sessionId);
+      const data = payload?.data as ChatResponse | undefined;
+      if (!data?.message) {
+        throw new Error('Invalid response from server');
       }
 
-      // Update conversation state
-      if (data.data.state) {
-        setConversationState(data.data.state);
-      }
+      if (data.sessionId) setSessionId(data.sessionId);
 
       const botMessage: Message = {
         role: 'assistant',
-        content: data.data.message,
+        content: data.message,
         timestamp: new Date().toISOString(),
       };
-
       setMessages((prev) => [...prev, botMessage]);
 
-      // If state is READY, show submit button
-      if (data.data.state === 'READY') {
-        const confirmMessage: Message = {
-          role: 'assistant',
-          content: 'Ready to submit! Type "yes" to confirm or type your changes.',
-          timestamp: new Date().toISOString(),
-        };
-        setMessages((prev) => [...prev, confirmMessage]);
-      }
-
-      // If state is SUBMITTED, show success and reset
-      if (data.data.state === 'SUBMITTED') {
+      if (data.state === 'SUBMITTED') {
         setTimeout(() => {
           setMessages([]);
           setSessionId(null);
-          setConversationState('INITIAL');
-        }, 5000);
+        }, 8000);
       }
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage: Message = {
         role: 'assistant',
-        content: 'क्षमा करें, कुछ गलत हो गया। कृपया पुनः प्रयास करें।\n\nSorry, something went wrong. Please try again.',
+        content:
+          'क्षमा करें, कुछ गलत हो गया। कृपया पुनः प्रयास करें।\n\nSorry, something went wrong. Please try again.',
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMessage]);
@@ -138,72 +120,67 @@ export default function SevaChatbot() {
     }
   };
 
-  const closeChat = () => {
-    setIsOpen(false);
-  };
-
-  const openChat = () => {
-    setIsOpen(true);
-  };
-
   return (
     <>
-      {/* Floating Chat Button */}
       {!isOpen && (
         <Button
-          onClick={openChat}
-          className="fixed bottom-6 left-6 h-14 w-14 rounded-full z-50 bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-900/40 hover:shadow-emerald-500/50 transition-all duration-300 hover:scale-105"
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-6 left-6 h-14 w-14 rounded-full z-50 bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-900/40 hover:shadow-emerald-500/50 transition-all duration-300 hover:scale-105 border border-white/10 backdrop-blur-sm"
           aria-label="Open Seva Chatbot"
         >
           <MessageCircle className="h-6 w-6" />
         </Button>
       )}
 
-      {/* Chat Window */}
       {isOpen && (
-        <Card className="fixed bottom-6 left-6 w-96 h-[600px] z-50 flex flex-col overflow-hidden border border-white/[0.13] bg-[#020617]/95 backdrop-blur-2xl shadow-[0_40px_160px_rgba(0,0,0,0.75)]">
-          {/* Header */}
-          <div className="bg-linear-to-r from-emerald-600 to-teal-600 text-white p-4 flex items-center justify-between shadow-lg shadow-emerald-900/30">
-            <div className="flex items-center gap-2">
-              <div className="h-10 w-10 rounded-full bg-white/20 flex items-center justify-center border border-white/20">
-                <MessageCircle className="h-6 w-6" />
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg">Seva Chatbot</h3>
-                <p className="text-xs text-emerald-100/80">AI-powered complaint assistant</p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={closeChat}
-              className="text-white hover:bg-white/20"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          </div>
+        <div className="fixed bottom-6 left-6 z-50 w-[min(100vw-2rem,24rem)] h-[min(100vh-6rem,600px)]">
+          {/* Ambient glow */}
+          <div className="absolute -inset-1 rounded-3xl bg-linear-to-br from-emerald-500/20 via-teal-500/10 to-transparent blur-xl pointer-events-none" />
 
-          {/* Messages Area */}
-          <ScrollArea className="flex-1 p-4 bg-[#020617]/50" ref={scrollAreaRef}>
-            <div className="space-y-4">
+          <div className="relative flex flex-col h-full rounded-2xl overflow-hidden border border-white/[0.12] bg-[#020617]/40 backdrop-blur-2xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06),0_40px_160px_rgba(0,0,0,0.75)]">
+            {/* Header */}
+            <div className="shrink-0 bg-linear-to-r from-emerald-600/90 to-teal-600/90 backdrop-blur-md text-white px-4 py-3 flex items-center justify-between border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="h-9 w-9 rounded-full bg-white/15 flex items-center justify-center border border-white/20 backdrop-blur-sm">
+                  <MessageCircle className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-[15px] leading-tight">Seva</h3>
+                  <p className="text-[11px] text-emerald-100/75">Complaint assistant</p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsOpen(false)}
+                className="text-white hover:bg-white/15 h-8 w-8"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            {/* Scrollable messages */}
+            <div
+              ref={messagesContainerRef}
+              className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-3 scroll-smooth"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(100,116,139,0.5) transparent' }}
+            >
               {messages.map((message, index) => (
                 <div
-                  key={index}
-                  className={`flex ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
+                  key={`${message.timestamp}-${index}`}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-xl p-3 ${
+                    className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 ${
                       message.role === 'user'
-                        ? 'bg-linear-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-900/30'
-                        : 'bg-white/[0.06] text-slate-200 border border-white/[0.13]'
+                        ? 'bg-linear-to-r from-emerald-600/90 to-teal-600/90 text-white shadow-md shadow-emerald-900/25 border border-emerald-400/20'
+                        : 'bg-white/[0.07] text-slate-200 border border-white/[0.1] backdrop-blur-sm'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    <p className="text-[13px] leading-relaxed whitespace-pre-wrap">{message.content}</p>
                     <p
-                      className={`text-xs mt-1 ${
-                        message.role === 'user' ? 'text-emerald-100/70' : 'text-zinc-500'
+                      className={`text-[10px] mt-1.5 ${
+                        message.role === 'user' ? 'text-emerald-100/60' : 'text-zinc-500'
                       }`}
                     >
                       {new Date(message.timestamp).toLocaleTimeString('en-US', {
@@ -217,42 +194,41 @@ export default function SevaChatbot() {
 
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="rounded-xl p-3 bg-white/[0.06] border border-white/[0.13]">
-                    <Loader2 className="h-5 w-5 animate-spin text-emerald-400" />
+                  <div className="rounded-2xl px-3.5 py-2.5 bg-white/[0.07] border border-white/[0.1] backdrop-blur-sm">
+                    <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
                   </div>
                 </div>
               )}
+              <div ref={messagesEndRef} />
             </div>
-          </ScrollArea>
 
-          {/* Input Area */}
-          <div className="p-4 bg-[#020617]/80 border-t border-white/[0.08]">
-            <div className="flex gap-2">
-              <Input
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type your message..."
-                disabled={isLoading}
-                className="flex-1 bg-white/[0.06] border-white/[0.13] text-slate-200 placeholder:text-zinc-500 focus-visible:border-emerald-500/50 focus-visible:ring-emerald-500/20"
-              />
-              <Button
-                onClick={sendMessage}
-                disabled={isLoading || !inputValue.trim()}
-                className="bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-900/30"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <Send className="h-5 w-5" />
-                )}
-              </Button>
+            {/* Input */}
+            <div className="shrink-0 p-3 border-t border-white/[0.08] bg-[#020617]/60 backdrop-blur-md">
+              <div className="flex gap-2">
+                <Input
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyPress}
+                  placeholder="Type your message…"
+                  disabled={isLoading}
+                  className="flex-1 h-10 bg-white/[0.06] border-white/[0.12] text-slate-200 placeholder:text-zinc-500 focus-visible:border-emerald-500/40 focus-visible:ring-emerald-500/20 backdrop-blur-sm"
+                />
+                <Button
+                  onClick={sendMessage}
+                  disabled={isLoading || !inputValue.trim()}
+                  size="icon"
+                  className="h-10 w-10 shrink-0 bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-900/30 border border-emerald-400/20"
+                >
+                  {isLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
             </div>
-            <p className="text-xs text-zinc-500 mt-2 text-center">
-              State: {conversationState}
-            </p>
           </div>
-        </Card>
+        </div>
       )}
     </>
   );

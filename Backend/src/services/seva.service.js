@@ -1,13 +1,69 @@
 import { redisClient } from '../config/redis.js';
+import { env } from '../config/env.js';
 import { ApiError } from '../utils/ApiError.js';
 import { classifyComplaint, detectLanguage } from './gemini.service.js';
-import { getCategoriesForLanguage } from '../constants/complaintCategories.js';
+import {
+  COMPLAINT_CATEGORIES,
+  getCategoryByName,
+  getCategoriesForLanguage,
+} from '../constants/complaintCategories.js';
+import { createPublicComplaint, createComplaint } from './complaints.service.js';
 
-const SESSION_TTL = 3600; // 1 hour
+const SESSION_TTL = 3600;
+const DEFAULT_TENANT_SLUG = env.SEVA_DEFAULT_TENANT_SLUG || 'main-office';
 
-/**
- * Conversation state enum defining all possible states in the chatbot flow
- */
+/** In-memory fallback when Redis is unavailable or misconfigured */
+const memorySessions = new Map();
+let redisUnavailable = false;
+
+function sessionKey(sessionId) {
+  return `seva:session:${sessionId}`;
+}
+
+function readMemorySession(key) {
+  const entry = memorySessions.get(key);
+  if (!entry) return null;
+  if (Date.now() > entry.expiresAt) {
+    memorySessions.delete(key);
+    return null;
+  }
+  return entry.data;
+}
+
+function writeMemorySession(key, session) {
+  memorySessions.set(key, {
+    data: session,
+    expiresAt: Date.now() + SESSION_TTL * 1000,
+  });
+}
+
+async function readSession(key) {
+  if (redisClient && !redisUnavailable) {
+    try {
+      const raw = await redisClient.get(key);
+      if (!raw) return readMemorySession(key);
+      return typeof raw === 'string' ? JSON.parse(raw) : raw;
+    } catch (error) {
+      console.warn('[seva.service] Redis read failed, using in-memory sessions:', error.message);
+      redisUnavailable = true;
+    }
+  }
+  return readMemorySession(key);
+}
+
+async function writeSession(key, session) {
+  writeMemorySession(key, session);
+
+  if (redisClient && !redisUnavailable) {
+    try {
+      await redisClient.set(key, JSON.stringify(session), { ex: SESSION_TTL });
+    } catch (error) {
+      console.warn('[seva.service] Redis write failed, using in-memory sessions:', error.message);
+      redisUnavailable = true;
+    }
+  }
+}
+
 export const ConversationState = {
   INITIAL: 'INITIAL',
   COLLECTING_NAME: 'COLLECTING_NAME',
@@ -17,40 +73,41 @@ export const ConversationState = {
   CLASSIFYING: 'CLASSIFYING',
   CONFIRMING: 'CONFIRMING',
   READY: 'READY',
-  SUBMITTED: 'SUBMITTED'
+  SUBMITTED: 'SUBMITTED',
 };
 
-/**
- * Get or create conversation session from Redis
- * @param {string} sessionId - Unique session identifier
- * @param {string|null} userId - Optional user ID for authenticated users
- * @param {string|null} tenantId - Optional tenant ID
- * @returns {Promise<Object>} Session object
- * @throws {ApiError} If Redis is unavailable
- */
-export async function getOrCreateSession(sessionId, userId = null, tenantId = null) {
-  if (!redisClient) {
-    throw new ApiError(503, 'Session service temporarily unavailable');
-  }
+function categoryDisplayName(categoryEn, language) {
+  const cat = COMPLAINT_CATEGORIES.find((c) => c.en === categoryEn);
+  if (!cat) return categoryEn;
+  return language === 'hi' ? cat.hi : cat.en;
+}
 
-  const sessionKey = `seva:session:${sessionId}`;
-  
+function resolveCategoryFromInput(input) {
+  const trimmed = input.trim();
+  const byNumber = Number(trimmed);
+  if (!Number.isNaN(byNumber) && byNumber >= 1 && byNumber <= COMPLAINT_CATEGORIES.length) {
+    return COMPLAINT_CATEGORIES[byNumber - 1]?.en ?? null;
+  }
+  return getCategoryByName(trimmed)?.en ?? null;
+}
+
+export async function getOrCreateSession(sessionId, userId = null, tenantId = null) {
+  const key = sessionKey(sessionId);
+
   try {
-    let session = await redisClient.get(sessionKey);
-    
+    let session = await readSession(key);
+
     if (session) {
-      // Reset TTL on activity
-      await redisClient.expire(sessionKey, SESSION_TTL);
-      // Handle both string and object responses from Redis
-      return typeof session === 'string' ? JSON.parse(session) : session;
+      await writeSession(key, session);
+      return session;
     }
-    
-    // Create new session with initial state
+
     session = {
       sessionId,
       userId: userId || null,
       tenantId: tenantId || null,
-      language: 'en', // Will be detected from first message
+      tenantSlug: DEFAULT_TENANT_SLUG,
+      language: 'en',
       state: ConversationState.INITIAL,
       messages: [],
       collectedData: {
@@ -60,283 +117,259 @@ export async function getOrCreateSession(sessionId, userId = null, tenantId = nu
         locality: null,
         description: null,
         category: null,
-        confidence: null
+        confidence: null,
       },
       classificationAttempts: 0,
       classificationHistory: [],
       createdAt: new Date().toISOString(),
-      lastActivityAt: new Date().toISOString()
+      lastActivityAt: new Date().toISOString(),
     };
-    
-    await redisClient.set(sessionKey, JSON.stringify(session), { ex: SESSION_TTL });
+
+    await writeSession(key, session);
     return session;
   } catch (error) {
-    console.error('[seva.service] Redis error in getOrCreateSession:', error);
+    console.error('[seva.service] Session error in getOrCreateSession:', error);
     throw new ApiError(503, 'Session service temporarily unavailable');
   }
 }
 
-/**
- * Update session in Redis and reset TTL
- * @param {Object} session - Complete session object to save
- * @returns {Promise<void>}
- * @throws {ApiError} If Redis is unavailable
- */
 export async function updateSession(session) {
-  if (!redisClient) {
-    throw new ApiError(503, 'Session service temporarily unavailable');
-  }
-
   session.lastActivityAt = new Date().toISOString();
-  const sessionKey = `seva:session:${session.sessionId}`;
-  
+  const key = sessionKey(session.sessionId);
+
   try {
-    // Store as JSON string with TTL reset to 3600 seconds
-    await redisClient.set(sessionKey, JSON.stringify(session), { ex: SESSION_TTL });
+    await writeSession(key, session);
   } catch (error) {
     console.error(`[seva.service] Failed to update session ${session.sessionId}:`, error);
     throw new ApiError(503, 'Session service temporarily unavailable');
   }
 }
 
-/**
- * Add message to session history
- * @param {Object} session - Session object to update
- * @param {string} role - Message role ('user' or 'assistant')
- * @param {string} content - Message content
- */
 export function addMessage(session, role, content) {
   session.messages.push({
     role,
     content,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 }
 
-/**
- * Validate Indian mobile phone number
- * Accepts 10-digit numbers starting with 6-9
- * Cleans spaces, dashes, and parentheses before validation
- * @param {string} phone - Phone number to validate
- * @returns {boolean} True if valid Indian phone number
- */
 export function isValidIndianPhone(phone) {
-  // Clean phone number by removing spaces, dashes, and parentheses
-  const cleaned = phone.replace(/[\s\-\(\)]/g, '');
-  // Validate pattern: starts with 6-9, followed by 9 digits (total 10 digits)
-  const phonePattern = /^[6-9]\d{9}$/;
-  return phonePattern.test(cleaned);
+  const cleaned = phone.replace(/[\s\-()]/g, '');
+  return /^[6-9]\d{9}$/.test(cleaned);
 }
 
-/**
- * Handle COLLECTING_NAME state
- * Validates name has at least 2 characters and stores it
- * @param {Object} session - Current session object
- * @param {string} userMessage - User's input message
- * @returns {Promise<string>} Response message for the user
- */
 export async function handleCollectingName(session, userMessage) {
   const name = userMessage.trim();
-  
-  // Validate minimum name length
+
   if (name.length < 2) {
     return session.language === 'hi'
       ? 'कृपया अपना पूरा नाम बताएं।'
       : 'Please provide your full name.';
   }
-  
-  // Store name and transition to next state
+
   session.collectedData.citizenName = name;
   session.state = ConversationState.COLLECTING_PHONE;
-  
-  // Return bilingual prompt for phone number
+
   return session.language === 'hi'
     ? `धन्यवाद ${name}। कृपया अपना मोबाइल नंबर बताएं।`
     : `Thank you ${name}. Please provide your mobile number.`;
 }
 
-/**
- * Handle COLLECTING_PHONE state
- * Validates Indian phone format and stores it
- * @param {Object} session - Current session object
- * @param {string} userMessage - User's input message
- * @returns {Promise<string>} Response message for the user
- */
 export async function handleCollectingPhone(session, userMessage) {
   const phone = userMessage.trim();
-  
-  // Validate Indian phone number format
+
   if (!isValidIndianPhone(phone)) {
     return session.language === 'hi'
       ? 'कृपया एक मान्य 10 अंकों का मोबाइल नंबर दर्ज करें।'
       : 'Please enter a valid 10-digit mobile number.';
   }
-  
-  // Store cleaned phone number and transition to next state
-  session.collectedData.citizenPhone = phone.replace(/[\s\-\(\)]/g, '');
+
+  session.collectedData.citizenPhone = phone.replace(/[\s\-()]/g, '');
   session.state = ConversationState.COLLECTING_LOCALITY;
-  
-  // Return bilingual prompt for locality
+
   return session.language === 'hi'
     ? 'कृपया अपना इलाका या स्थान बताएं।'
     : 'Please provide your locality or area.';
 }
 
-/**
- * Handle COLLECTING_LOCALITY state
- * Validates locality has at least 3 characters and stores it
- * @param {Object} session - Current session object
- * @param {string} userMessage - User's input message
- * @returns {Promise<string>} Response message for the user
- */
 export async function handleCollectingLocality(session, userMessage) {
   const locality = userMessage.trim();
-  
-  // Validate minimum locality length
+
   if (locality.length < 3) {
     return session.language === 'hi'
       ? 'कृपया एक मान्य स्थान बताएं।'
       : 'Please provide a valid locality.';
   }
-  
-  // Store locality and transition to next state
+
   session.collectedData.locality = locality;
   session.state = ConversationState.COLLECTING_DESCRIPTION;
-  
-  // Return bilingual prompt for complaint description
+
   return session.language === 'hi'
     ? 'कृपया अपनी शिकायत का विवरण दें।'
     : 'Please describe your complaint.';
 }
 
-/**
- * Handle COLLECTING_DESCRIPTION state
- * Validates description has at least 10 characters and stores it
- * Transitions to CLASSIFYING state after successful validation
- * @param {Object} session - Current session object
- * @param {string} userMessage - User's input message
- * @returns {Promise<string>} Response message for the user
- */
 export async function handleCollectingDescription(session, userMessage) {
   const description = userMessage.trim();
-  
-  // Validate minimum description length
+
   if (description.length < 10) {
     return session.language === 'hi'
-      ? 'कृपया अपनी शिकायत का विस्तृत विवरण दें।'
-      : 'Please provide a detailed description of your complaint.';
+      ? 'कृपया अपनी शिकायत का विस्तृत विवरण दें (कम से कम 10 अक्षर)।'
+      : 'Please provide a detailed description of your complaint (at least 10 characters).';
   }
-  
-  // Store description and transition to classification state
+
   session.collectedData.description = description;
   session.state = ConversationState.CLASSIFYING;
-  
-  // Return acknowledgment message indicating classification will begin
-  return session.language === 'hi'
-    ? 'धन्यवाद। मैं आपकी शिकायत को वर्गीकृत कर रहा हूं...'
-    : 'Thank you. I am classifying your complaint...';
+  return handleClassifying(session);
 }
 
-/**
- * Handle CLASSIFYING state
- * Uses Gemini AI to classify complaint and suggest category
- * @param {Object} session - Current session object
- * @returns {Promise<string>} Response message for the user
- */
 export async function handleClassifying(session) {
   try {
     const result = await classifyComplaint(
       session.collectedData.description,
       session.language
     );
-    
+
     session.classificationAttempts++;
     session.classificationHistory.push({
       suggestedCategory: result.suggestedCategory,
       confidence: result.confidence,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
-    
+
     session.collectedData.category = result.suggestedCategory;
     session.collectedData.confidence = result.confidence;
     session.state = ConversationState.CONFIRMING;
-    
-    const categories = getCategoriesForLanguage(session.language);
-    const categoryLabel = categories.find(c => c.key === result.suggestedCategory)?.label;
-    
+
+    const categoryLabel = categoryDisplayName(result.suggestedCategory, session.language);
+
     if (result.confidence >= 70) {
       return session.language === 'hi'
         ? `मैंने आपकी शिकायत को "${categoryLabel}" के रूप में वर्गीकृत किया है। क्या यह सही है? (हां/नहीं)`
         : `I have classified your complaint as "${categoryLabel}". Is this correct? (Yes/No)`;
-    } else {
-      const topCategories = session.classificationHistory
-        .slice(-3)
-        .map(h => categories.find(c => c.key === h.suggestedCategory)?.label)
-        .filter(Boolean)
-        .slice(0, 3);
-      
-      return session.language === 'hi'
-        ? `मैं निश्चित नहीं हूं। कृपया निम्नलिखित में से चुनें:\n${topCategories.map((c, i) => `${i + 1}. ${c}`).join('\n')}\nया "अन्य" टाइप करें।`
-        : `I'm not certain. Please choose from the following:\n${topCategories.map((c, i) => `${i + 1}. ${c}`).join('\n')}\nOr type "other".`;
     }
+
+    const topCategories = session.classificationHistory
+      .slice(-3)
+      .map((h) => categoryDisplayName(h.suggestedCategory, session.language))
+      .filter(Boolean);
+
+    return session.language === 'hi'
+      ? `मैं निश्चित नहीं हूं। कृपया निम्नलिखित में से चुनें:\n${topCategories.map((c, i) => `${i + 1}. ${c}`).join('\n')}\n\nनंबर या श्रेणी का नाम टाइप करें।`
+      : `I'm not certain. Please choose from:\n${topCategories.map((c, i) => `${i + 1}. ${c}`).join('\n')}\n\nType the number or category name.`;
   } catch (error) {
     console.error(`[seva.service] Classification error for session ${session.sessionId}:`, error);
-    
+
     session.state = ConversationState.CONFIRMING;
-    const categories = getCategoriesForLanguage(session.language);
-    
+    session.collectedData.category = 'Other/General';
+    session.collectedData.confidence = 0;
+
+    const sample = getCategoriesForLanguage(session.language)
+      .slice(0, 8)
+      .map((c, i) => `${i + 1}. ${c.name}`)
+      .join('\n');
+
     return session.language === 'hi'
-      ? `क्षमा करें, स्वचालित वर्गीकरण अभी उपलब्ध नहीं है। कृपया ${categories.length} श्रेणियों में से चुनें।`
-      : `Sorry, automatic classification is temporarily unavailable. Please select from ${categories.length} categories.`;
+      ? `स्वचालित वर्गीकरण उपलब्ध नहीं है। कृपया श्रेणी चुनें:\n${sample}\n\nनंबर या नाम टाइप करें।`
+      : `Automatic classification is unavailable. Please choose a category:\n${sample}\n\nType the number or name.`;
   }
 }
 
-/**
- * Handle CONFIRMING state
- * Detects confirmation keywords and displays summary
- * @param {Object} session - Current session object
- * @param {string} userMessage - User's input message
- * @returns {Promise<string>} Response message for the user
- */
 export async function handleConfirming(session, userMessage) {
   const message = userMessage.toLowerCase().trim();
-  
+
   if (['yes', 'हां', 'हाँ', 'y'].includes(message)) {
     session.state = ConversationState.READY;
-    
-    const summary = session.language === 'hi'
-      ? `शिकायत सारांश:\nनाम: ${session.collectedData.citizenName}\nफोन: ${session.collectedData.citizenPhone}\nस्थान: ${session.collectedData.locality}\nविवरण: ${session.collectedData.description}\nश्रेणी: ${session.collectedData.category}\n\nक्या आप इसे सबमिट करना चाहते हैं? (हां/नहीं)`
-      : `Complaint Summary:\nName: ${session.collectedData.citizenName}\nPhone: ${session.collectedData.citizenPhone}\nLocality: ${session.collectedData.locality}\nDescription: ${session.collectedData.description}\nCategory: ${session.collectedData.category}\n\nWould you like to submit this? (Yes/No)`;
-    
-    return summary;
+    const cat = categoryDisplayName(session.collectedData.category, session.language);
+
+    return session.language === 'hi'
+      ? `शिकायत सारांश:\nनाम: ${session.collectedData.citizenName}\nफोन: ${session.collectedData.citizenPhone}\nस्थान: ${session.collectedData.locality}\nविवरण: ${session.collectedData.description}\nश्रेणी: ${cat}\n\nक्या आप इसे सबमिट करना चाहते हैं? (हां/नहीं)`
+      : `Complaint Summary:\nName: ${session.collectedData.citizenName}\nPhone: ${session.collectedData.citizenPhone}\nLocality: ${session.collectedData.locality}\nDescription: ${session.collectedData.description}\nCategory: ${cat}\n\nWould you like to submit this? (Yes/No)`;
   }
-  
+
+  if (['no', 'नहीं', 'n'].includes(message)) {
+    const sample = getCategoriesForLanguage(session.language)
+      .slice(0, 10)
+      .map((c, i) => `${i + 1}. ${c.name}`)
+      .join('\n');
+
+    return session.language === 'hi'
+      ? `कोई बात नहीं। सही श्रेणी चुनें:\n${sample}\n\nनंबर या नाम टाइप करें।`
+      : `No problem. Choose the correct category:\n${sample}\n\nType the number or name.`;
+  }
+
+  const picked = resolveCategoryFromInput(userMessage);
+  if (picked) {
+    session.collectedData.category = picked;
+    const cat = categoryDisplayName(picked, session.language);
+    return session.language === 'hi'
+      ? `श्रेणी "${cat}" चुनी गई। क्या यह सही है? (हां/नहीं)`
+      : `Category set to "${cat}". Is this correct? (Yes/No)`;
+  }
+
   return session.language === 'hi'
-    ? 'कृपया "हां" या "नहीं" टाइप करें।'
-    : 'Please type "Yes" or "No".';
+    ? 'कृपया "हां" या "नहीं" टाइप करें, या सही श्रेणी का नाम/नंबर दें।'
+    : 'Please type "Yes" or "No", or provide the correct category number/name.';
 }
 
-/**
- * Main message processing orchestration
- * Routes to appropriate state handler and manages conversation flow
- * @param {string} sessionId - Unique session identifier
- * @param {string} userMessage - User's input message
- * @param {string|null} userId - Optional user ID for authenticated users
- * @param {string|null} tenantId - Optional tenant ID
- * @returns {Promise<Object>} Response object with sessionId, message, state, language
- */
-export async function processMessage(sessionId, userMessage, userId = null, tenantId = null) {
+export async function handleReady(session, userMessage, userId = null, userContext = null) {
+  const message = userMessage.toLowerCase().trim();
+
+  if (['no', 'नहीं', 'n'].includes(message)) {
+    session.state = ConversationState.COLLECTING_DESCRIPTION;
+    return session.language === 'hi'
+      ? 'कोई बात नहीं। कृपया अपनी शिकायत का विवरण फिर से दें।'
+      : 'No problem. Please describe your complaint again.';
+  }
+
+  if (!['yes', 'हां', 'हाँ', 'y'].includes(message)) {
+    return session.language === 'hi'
+      ? 'कृपया "हां" या "नहीं" टाइप करें।'
+      : 'Please type "Yes" or "No".';
+  }
+
+  try {
+    const complaintData = {
+      citizenName: session.collectedData.citizenName,
+      citizenPhone: session.collectedData.citizenPhone,
+      citizenEmail: session.collectedData.citizenEmail || undefined,
+      locality: session.collectedData.locality,
+      description: session.collectedData.description,
+      category: session.collectedData.category,
+      tenantSlug: session.tenantSlug || DEFAULT_TENANT_SLUG,
+    };
+
+    const complaint =
+      userId && userContext
+        ? await createComplaint(complaintData, userContext)
+        : await createPublicComplaint(complaintData);
+
+    session.state = ConversationState.SUBMITTED;
+
+    return session.language === 'hi'
+      ? `आपकी शिकायत सफलतापूर्वक दर्ज की गई है।\n\nट्रैकिंग आईडी: ${complaint.trackingId}\n\nइस आईडी से अपनी शिकायत की स्थिति ट्रैक करें।`
+      : `Your complaint has been filed successfully.\n\nTracking ID: ${complaint.trackingId}\n\nUse this ID to track your complaint status.`;
+  } catch (error) {
+    console.error(`[seva.service] Submit error for session ${session.sessionId}:`, error);
+    const detail = error.message || 'Unknown error';
+    return session.language === 'hi'
+      ? `क्षमा करें, शिकायत सबमिट नहीं हो सकी: ${detail}\n\nकृपया पुनः "हां" टाइप करके प्रयास करें।`
+      : `Sorry, could not submit your complaint: ${detail}\n\nPlease try again by typing "Yes".`;
+  }
+}
+
+export async function processMessage(sessionId, userMessage, userId = null, tenantId = null, userContext = null) {
   const session = await getOrCreateSession(sessionId, userId, tenantId);
-  
+
   if (session.state === ConversationState.INITIAL) {
     session.language = detectLanguage(userMessage);
     session.state = ConversationState.COLLECTING_NAME;
   }
-  
+
   addMessage(session, 'user', userMessage);
-  
+
   let response;
-  
+
   switch (session.state) {
     case ConversationState.COLLECTING_NAME:
       response = await handleCollectingName(session, userMessage);
@@ -356,19 +389,30 @@ export async function processMessage(sessionId, userMessage, userId = null, tena
     case ConversationState.CONFIRMING:
       response = await handleConfirming(session, userMessage);
       break;
+    case ConversationState.READY:
+      response = await handleReady(session, userMessage, userId, userContext);
+      break;
+    case ConversationState.SUBMITTED:
+      response =
+        session.language === 'hi'
+          ? 'आपकी शिकायत पहले ही दर्ज हो चुकी है। नई शिकायत के लिए पेज रीफ्रेश करें।'
+          : 'Your complaint is already submitted. Refresh the page to start a new one.';
+      break;
     default:
-      response = session.language === 'hi'
-        ? 'नमस्ते! मैं आपकी शिकायत दर्ज करने में मदद करूंगा। कृपया अपना नाम बताएं।'
-        : 'Hello! I will help you file your complaint. Please provide your name.';
+      session.state = ConversationState.COLLECTING_NAME;
+      response =
+        session.language === 'hi'
+          ? 'नमस्ते! कृपया अपना नाम बताएं।'
+          : 'Hello! Please provide your name.';
   }
-  
+
   addMessage(session, 'assistant', response);
   await updateSession(session);
-  
+
   return {
     sessionId: session.sessionId,
     message: response,
     state: session.state,
-    language: session.language
+    language: session.language,
   };
 }
