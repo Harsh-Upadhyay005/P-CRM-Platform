@@ -6,7 +6,6 @@
 <div align="center">
 
 [![Live Demo](https://img.shields.io/badge/🌐%20Live%20Demo-p--crm--platform.vercel.app-blue?style=for-the-badge)](https://p-crm-platform.vercel.app)
-[![YouTube Demo](https://img.shields.io/badge/▶%20Watch%20Demo-YouTube-red?style=for-the-badge&logo=youtube)](https://youtu.be/mSzsh3HA2A8)
 
 [![Frontend](https://img.shields.io/badge/Frontend-Next.js%2016-black?logo=next.js)](https://nextjs.org)
 [![Backend](https://img.shields.io/badge/Backend-Express%205%20ESM-green?logo=node.js)](https://expressjs.com)
@@ -74,7 +73,6 @@ No complaint is lost. No deadline is invisible. No step goes undocumented.
 | Resource             | URL                                                 |
 | -------------------- | --------------------------------------------------- |
 | **Live Application** | https://p-crm-platform.vercel.app                   |
-| **YouTube Demo**     | https://youtu.be/mSzsh3HA2A8                        |
 | **GitHub Repo**      | https://github.com/Harsh-Upadhyay005/P-CRM-Platform |
 
 ---
@@ -83,31 +81,93 @@ No complaint is lost. No deadline is invisible. No step goes undocumented.
 
 ### For Citizens (No Login Required)
 
-- **Public complaint portal** — submit a complaint in under 2 minutes
-- **Instant Tracking ID** — unique `PCRM-YYYYMMDD-XXXXXXXX` reference issued on submission
+- **Public complaint portal** — submit a complaint in under 2 minutes with multi-step guided form
+- **Interactive map-based location picker** — drop a pin on Mappls (MapmyIndia) interactive map to capture exact GPS coordinates
+- **Auto-detect location** — "Detect My Location" button uses browser geolocation API for instant location capture
+- **Full address capture** — stores complete formatted address including street, area, district, and pincode from Mappls reverse geocoding
+- **Instant Tracking ID** — unique `PCRM-YYYYMMDD-XXXXXXXX` reference issued on submission with email confirmation
 - **Real-time status tracking** — visit `/track/:id` at any time to see current status, assigned officer, SLA deadline, and full history
-- **Feedback** — rate the resolution (1–5 stars) after the complaint is closed
+- **Smart duplicate detection** — AI-powered similarity check prevents duplicate submissions; suggests upvoting existing complaints instead
+- **Complaint upvoting** — upvote existing similar complaints to show community support and increase priority
+- **Resolution verification** — receive email verification link when complaint is marked resolved; confirm or reject with detailed comments
+- **View on map** — see exact complaint location on Google Maps with lat/lng coordinates or search by address
+- **File attachments** — upload up to 5 photos/documents (10MB each) during submission
+- **Feedback system** — rate the resolution (1–5 stars) and provide comments after the complaint is resolved
+- **Public tracking page** — shareable link with complaint timeline, status updates, and officer information
 
 ### For Government Staff
 
-- **AI-powered triage** — every complaint is automatically scored for priority (CRITICAL/HIGH/MEDIUM/LOW), sentiment, and duplicate detection — no external API, zero subscription cost
-- **Role-gated workflow** — 6-level RBAC ensures officers only see their cases, department heads only see their department, and admins see everything
-- **SLA auto-enforcement** — complaints that breach their department deadline are automatically escalated by a background job every 30 minutes; breach emails are dispatched to the assigned officer and department head
-- **Workflow automation engine** — admins can configure rule-based auto-assignment by category, area, and keywords, plus smart routing using AI + department service metadata
-- **Category SLA policy** — set SLA per category (for example: Water = 24h, Road = 72h) with automatic fallback to department SLA
+#### Intelligence & Automation
+
+- **AI-powered triage** — every complaint is automatically scored for priority (CRITICAL/HIGH/MEDIUM/LOW), sentiment analysis, and duplicate detection — no external API, zero subscription cost
+- **Smart duplicate detection** — TF cosine-similarity algorithm compares against last 200 complaints with 70% similarity threshold
+- **Sentiment analysis** — lexicon-based scorer with intensifier weighting and negation handling to detect citizen distress
+- **Priority prediction** — keyword density + urgency phrase matching + emergency category boosts for automatic priority assignment
+- **Workflow automation engine** — configure rule-based auto-assignment by category, area, and keywords with smart routing using AI + department service metadata
+- **Auto-escalation** — background job runs every 30 minutes to auto-escalate SLA-breached complaints with email notifications
+- **Category SLA policy** — set SLA per category (e.g., Water = 24h, Road = 72h) with automatic fallback to department SLA
 - **Auto-close automation** — resolved complaints can be auto-closed after configurable no-feedback days
+
+#### Geospatial Features
+
+- **Interactive geospatial dashboard** — real-time map showing all complaints with precise location markers; click any marker to view complaint details
+- **Mappls (MapmyIndia) integration** — native Indian map provider with accurate district-level boundaries and address data
+- **Complaint location map** — each complaint detail page shows embedded map with exact pinned location
+- **Proximity-based routing** — match complaints to departments based on service area overlap
+- **Geographic filtering** — filter complaints by district, locality, or draw custom boundaries (upcoming)
+
+#### Access Control & Permissions
+
+- **6-level role hierarchy** — SUPER_ADMIN > ADMIN > DEPT_HEAD > OFFICER > CALL_OPERATOR > CITIZEN
+- **Role hierarchy enforcement** — strict role management where users can only promote to roles below their level:
+  - DEPT_HEAD → OFFICER only
+  - ADMIN → DEPT_HEAD and OFFICER only
+  - SUPER_ADMIN → all roles including ADMIN
+- **Auto-upgrade workflow** — CITIZEN users automatically promoted to OFFICER (minimum staff role) when assigned to a department
+- **Department-scoped access** — DEPT_HEAD and ADMIN (Department Admin) users see only their own department complaints, users, and assignments
+- **Tenant isolation** — SUPER_ADMIN can manage multiple tenants across state; ADMIN scoped to single tenant
+- **ABAC enforcement** — cross-scope access returns 404 (not 403) to prevent resource enumeration
+- **Self-protection rules** — admins cannot deactivate or delete their own account
+
+#### Resolution Verification Workflow
+
+- **Email verification link** — system sends one-time verification link when complaint status changes to RESOLVED
+- **Citizen confirmation** — citizens can confirm resolution or reject with detailed comments
+- **Auto-revert on rejection** — if citizen rejects resolution, status automatically reverts to ASSIGNED
+- **Rejection visibility** — rejection comments displayed in red alert box on complaint details page for staff
+- **Reminder system** — automatic reminder emails if citizen doesn't respond within configurable timeframe
+- **Token expiry** — verification tokens expire after 7 days with secure SHA-256 hashing
+
+#### Workflow & Collaboration
+
+- **Role-gated status transitions** — graph-based status engine with two-layer validation (graph validity + role permission)
+- **Assignment rules** — only ADMIN or DEPT_HEAD can assign; DEPT_HEAD limited to own department
+- **SLA auto-enforcement** — visual indicators (OK/WARNING/BREACHED) with automatic escalation and email alerts
 - **Real-time notifications** — Server-Sent Events (SSE) push instant alerts to staff on complaint assignment and status changes — no polling, no reload
-- **File attachments** — photos, PDFs, site reports stored securely in Supabase with signed (1-hour) access links
-- **Internal notes** — staff discussion inside the complaint record, never visible to citizens
-- **Full audit trail** — every action on every record is logged with actor, timestamp, and IP address; immutable
+- **Internal notes** — staff-only discussion thread inside complaint record, never visible to citizens
+- **File attachments** — photos, PDFs, site reports stored securely in Supabase with signed 1-hour expiry URLs
+- **Status history timeline** — immutable log of every status change with actor, timestamp, and old/new state
+- **Full audit trail** — every action on every record logged with actor, timestamp, IP address, and metadata
+
+#### Analytics & Reporting
+
 - **7-panel analytics dashboard** — KPI cards, trend charts, officer leaderboard, SLA heatmap, escalation trends, category distribution — all scoped to the actor's authority level
-- **CSV export** — any analytics report or complaint list downloadable as a spreadsheet
+- **CSV export** — any analytics report or complaint list downloadable as spreadsheet with full data
+- **Officer performance tracking** — resolved complaint count, average resolution time, SLA compliance rate
+- **Department benchmarking** — compare departments by open/resolved ratio, average SLA, breach rate
+- **Escalation trends** — daily escalation volume to identify systemic bottlenecks
+- **Category distribution** — pie chart showing complaint volume by category for resource allocation
+- **SLA heatmap** — breach rate categorized by department and priority (CRITICAL/HIGH/MEDIUM/LOW)
+- **Trend analysis** — daily filed and resolved complaint volume over custom date ranges
 
 ### For Platform Operators
 
 - **True multi-tenancy** — each municipality/organisation is a fully isolated tenant; no data can cross tenant boundaries at the query level
-- **Tenant management** — SUPER_ADMIN can provision, activate, and deactivate tenants
-- **Docker Compose** — one command spins up PostgreSQL + Redis locally
+- **State-level management** — SUPER_ADMIN can manage all tenants within their assigned state
+- **Tenant provisioning** — create, activate, and deactivate tenants with state assignment
+- **Cross-tenant analytics** — SUPER_ADMIN can view aggregated metrics across all tenants in their state
+- **Super Admin signup codes** — generate time-limited, single-use signup codes for controlled SUPER_ADMIN onboarding
+- **Docker Compose** — one command spins up PostgreSQL + Redis locally for development
 
 ---
 
@@ -143,7 +203,7 @@ No complaint is lost. No deadline is invisible. No step goes undocumented.
 | Styling               | Tailwind CSS v4 + shadcn/ui                 |
 | Animation             | Framer Motion + GSAP                        |
 | 3D                    | Three.js via `@react-three/fiber` + Drei    |
-| Maps                  | D3-geo (India SVG choropleth map)           |
+| Maps                  | Mappls (MapmyIndia) - Interactive location picker & complaint visualization |
 | Forms                 | React Hook Form + Zod                       |
 | Real-Time             | SSE EventSource (live notification badge)   |
 | Icons                 | lucide-react                                |
@@ -587,6 +647,21 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
 SUPABASE_STORAGE_BUCKET=complaint-attachments
 ```
 
+Create `frontend/.env.local`:
+
+```env
+# API
+NEXT_PUBLIC_API_URL=http://localhost:5000/api/v1
+
+# Maps (Mappls/MapmyIndia)
+NEXT_PUBLIC_MAPPLS_API_KEY=your_mappls_api_key
+
+# Optional: Auto-select tenant slug for public portal
+NEXT_PUBLIC_TENANT_SLUG=main-office
+```
+
+> **Get Mappls API Key:** Sign up at [mappls.com](https://apis.mappls.com/) for free API access. Required for interactive map features, location picker, and reverse geocoding.
+
 > Generate strong secrets: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
 
 All variables are validated at startup — the server **throws and refuses to start** if any are missing or invalid.
@@ -601,12 +676,14 @@ Full step-by-step instructions including DB migration, role seeding, CORS config
 | Service      | Platform                              | Key Config                                                                                                      |
 | ------------ | ------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
 | Backend API  | Render Web Service                    | Root: `Backend` · Build: `npm install && npx prisma generate && npx prisma migrate deploy` · Start: `npm start` |
-| Frontend     | Vercel                                | Root: `frontend` · Env: `NEXT_PUBLIC_API_URL=https://<backend>.onrender.com/api/v1`                             |
+| Frontend     | Vercel                                | Root: `frontend` · Env: `NEXT_PUBLIC_API_URL=https://<backend>.onrender.com/api/v1` · Env: `NEXT_PUBLIC_MAPPLS_API_KEY` |
 | Database     | PostgreSQL (Supabase / Render / Neon) | Set `DATABASE_URL` on Render                                                                                    |
 | Redis        | Upstash free tier                     | Set `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN`                                                       |
 | File Storage | Supabase Storage                      | Create bucket `complaint-attachments`, set service role key                                                     |
 
 After deploying backend, update `FRONTEND_URL` on Render to your Vercel domain so CORS allows the browser.
+
+> **Note:** The build command `npx prisma migrate deploy` automatically applies all pending migrations on every deployment. This includes the coordinate fields (`latitude`, `longitude`) and upvotes feature added in migration `20260617000000_add_upvotes_and_coordinates`.
 
 ---
 
