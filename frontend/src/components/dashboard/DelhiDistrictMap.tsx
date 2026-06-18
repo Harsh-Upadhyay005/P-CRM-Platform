@@ -35,6 +35,7 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
   const markersRef = useRef<any[]>([]);
   const [complaints, setComplaints] = useState<ComplaintMarker[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<ComplaintMarker | null>(null);
 
   // Fetch complaints with location data
@@ -84,7 +85,10 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
         hybrid: false,
       });
 
-      mapInstanceRef.current = map;
+      map.on("load", () => {
+        mapInstanceRef.current = map;
+        setMapReady(true);
+      });
     });
 
     return () => {
@@ -95,9 +99,9 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
     };
   }, [containerId, loading]);
 
-  // Add/update markers when complaints change
+  // Add/update markers when complaints change OR map becomes ready
   useEffect(() => {
-    if (!mapInstanceRef.current || complaints.length === 0) return;
+    if (!mapReady || !mapInstanceRef.current || complaints.length === 0) return;
     
     const map = mapInstanceRef.current;
     const mappls = (window as any).mappls;
@@ -112,21 +116,32 @@ export function DelhiDistrictMap({ containerId = "delhi-map-container" }: { cont
     complaints.forEach((complaint) => {
       const color = getStatusColor(complaint.status);
       
-      const marker = new mappls.Marker({
-        map,
-        position: { lat: complaint.latitude, lng: complaint.longitude },
-        icon: {
-          html: `<div style="background: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer;"></div>`,
-        },
-      });
+      try {
+        const marker = new mappls.Marker({
+          map,
+          position: { lat: complaint.latitude, lng: complaint.longitude },
+          icon: {
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(
+              `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+                <circle cx="14" cy="14" r="11" fill="${color}" stroke="white" stroke-width="3"/>
+                <circle cx="14" cy="14" r="4" fill="white" opacity="0.8"/>
+              </svg>`
+            )}`,
+            width: 28,
+            height: 28,
+          },
+        });
 
-      marker.addListener("click", () => {
-        setSelectedComplaint(complaint);
-      });
+        marker.addListener("click", () => {
+          setSelectedComplaint(complaint);
+        });
 
-      markersRef.current.push(marker);
+        markersRef.current.push(marker);
+      } catch (err) {
+        console.error("Marker creation failed for complaint:", complaint.trackingId, err);
+      }
     });
-  }, [complaints]);
+  }, [complaints, mapReady]);
 
   return (
     <div className="relative w-full rounded-2xl border border-white/10 overflow-hidden"
