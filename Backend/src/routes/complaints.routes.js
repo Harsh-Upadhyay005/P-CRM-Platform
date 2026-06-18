@@ -21,6 +21,9 @@ const router = express.Router();
 // ── PUBLIC (no auth) ──────────────────────────────────────────────────────
 router.get("/track/:trackingId", controller.trackComplaint);
 
+// Public verification route - citizen confirms/rejects resolution
+router.post("/track/:trackingId/verify", apiWriteLimiter, controller.verifyResolutionPublic);
+
 // Tenant search + department lookup for the public submit form
 router.get("/public/tenants",                   controller.searchPublicTenants);
 router.get("/public/tenant/:slug/departments",  controller.getPublicDepartments);

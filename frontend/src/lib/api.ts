@@ -354,6 +354,13 @@ export const complaintsApi = {
     const response = await api.post<ApiResponse<null>>(`/complaints/${id}/feedback`, data);
     return response.data;
   },
+  
+  // Public verification on tracking page (no token needed)
+  verifyResolution: async (trackingId: string, data: { isResolved: boolean; comment?: string }) => {
+    const response = await api.post<ApiResponse<{ message: string; newStatus: string }>>(`/complaints/track/${trackingId}/verify`, data);
+    return response.data;
+  },
+  
   exportComplaints: async (params?: Record<string, string | undefined>) => {
     const response = await api.get('/complaints/export', { params, responseType: 'blob' });
     const disposition = (response.headers['content-disposition'] as string) ?? '';

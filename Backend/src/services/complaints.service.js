@@ -1785,3 +1785,105 @@ export async function getComplaintVerification(complaintId, user) {
     expiresAt: verification.expiresAt,
   };
 }
+
+/**
+ * Public verification for tracking page (uses trackingId instead of token)
+ * @param {string} trackingId - Complaint tracking ID
+ * @param {boolean} isResolved - true = confirmed, false = not resolved
+ * @param {string} comment - Optional comment from citizen
+ * @returns {Promise<Object>} Result with message
+ */
+export async function verifyResolutionPublic(trackingId, isResolved, comment = null) {
+  const complaint = await prisma.complaint.findFirst({
+    where: { trackingId, isDeleted: false },
+    select: {
+      id: true,
+      trackingId: true,
+      status: true,
+      assignedToId: true,
+      assignedTo: { select: { id: true, name: true, email: true } },
+    },
+  });
+
+  if (!complaint) {
+    throw new ApiError(404, "Complaint not found");
+  }
+
+  if (complaint.status !== "RESOLVED") {
+    throw new ApiError(400, "Only RESOLVED complaints can be verified");
+  }
+
+  let newStatus;
+  let statusMessage;
+
+  if (isResolved) {
+    // Citizen confirms it's resolved → Close complaint
+    newStatus = "CLOSED";
+    statusMessage = "धन्यवाद! शिकायत बंद की गई।";
+
+    await prisma.complaint.update({
+      where: { id: complaint.id },
+      data: { 
+        status: "CLOSED",
+        resolvedAt: new Date(),
+      },
+    });
+
+    // Create status history
+    await prisma.complaintStatusHistory.create({
+      data: {
+        complaintId: complaint.id,
+        oldStatus: "RESOLVED",
+        newStatus: "CLOSED",
+        changedById: complaint.assignedToId || complaint.id, // System change
+      },
+    });
+  } else {
+    // Citizen says NOT resolved → Reassign to ASSIGNED
+    newStatus = "ASSIGNED";
+    statusMessage = "आपकी प्रतिक्रिया मिल गई। शिकायत फिर से खोली गई है।";
+
+    await prisma.complaint.update({
+      where: { id: complaint.id },
+      data: { status: "ASSIGNED" },
+    });
+
+    // Create status history
+    await prisma.complaintStatusHistory.create({
+      data: {
+        complaintId: complaint.id,
+        oldStatus: "RESOLVED",
+        newStatus: "ASSIGNED",
+        changedById: complaint.assignedToId || complaint.id,
+      },
+    });
+
+    // Add internal note for officer
+    if (complaint.assignedToId) {
+      await prisma.internalNote.create({
+        data: {
+          complaintId: complaint.id,
+          userId: complaint.assignedToId,
+          note: `🚫 नागरिक ने resolution reject किया: "${comment || 'No reason provided'}"`,
+        },
+      });
+
+      // Notify officer
+      if (complaint.assignedTo?.email) {
+        sendStatusChangeEmail(
+          complaint.assignedTo.email,
+          complaint.assignedTo.name,
+          complaint.trackingId,
+          "RESOLVED",
+          "ASSIGNED",
+          comment || "Citizen reported the issue is not resolved",
+        ).catch(() => {});
+      }
+    }
+  }
+
+  return {
+    message: statusMessage,
+    newStatus,
+  };
+}
