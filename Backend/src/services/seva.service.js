@@ -397,9 +397,9 @@ export async function handleReady(session, userMessage, userId = null, userConte
 
   try {
     const complaintData = {
-      citizenName: 'Anonymous',
+      citizenName: 'Sewa Bot',
       citizenPhone: '1818181818',
-      citizenEmail: 'anonymous@xyz.com',
+      citizenEmail: 'sewa@seva.com',
       locality: session.collectedData.locality,
       description: session.collectedData.description,
       category: session.collectedData.category,

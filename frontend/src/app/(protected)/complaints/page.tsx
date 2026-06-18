@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { complaintsApi, departmentsApi } from "@/lib/api";
 import { Complaint, ComplaintStatus, Priority, Department } from "@/types";
@@ -62,6 +62,7 @@ function StatusBadge({ status }: { status: ComplaintStatus }) {
 
 export default function ComplaintsPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { role, isCitizen } = useRole();
   const isOfficerOnly = role === "OFFICER";
   const canExport =
@@ -355,17 +356,18 @@ export default function ComplaintsPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/10 bg-slate-900/60 overflow-hidden backdrop-blur-sm shadow-xl">
-        <table className="w-full text-left text-sm">
+      <div className="rounded-xl border border-white/10 bg-slate-900/60 backdrop-blur-sm shadow-xl">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="bg-white/5 text-slate-400 font-medium">
             <tr>
-              <th className="px-6 py-4">Tracking ID</th>
-              {isCitizen && <th className="px-6 py-4">Citizen</th>}
-              <th className="px-6 py-4">Priority</th>
-              <th className="px-6 py-4">Status</th>
-              {!isCitizen && <th className="px-6 py-4">Department</th>}
-              <th className="px-6 py-4">Created</th>
-              <th className="px-6 py-4 text-right">Actions</th>
+              <th className="px-6 py-4 whitespace-nowrap">Tracking ID</th>
+              {isCitizen && <th className="px-6 py-4 whitespace-nowrap">Citizen</th>}
+              <th className="px-6 py-4 whitespace-nowrap">Priority</th>
+              <th className="px-6 py-4 whitespace-nowrap">Status</th>
+              {!isCitizen && <th className="px-6 py-4 whitespace-nowrap">Department</th>}
+              <th className="px-6 py-4 whitespace-nowrap">Created</th>
+              <th className="px-6 py-4 text-right whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -405,7 +407,8 @@ export default function ComplaintsPage() {
               complaints.map((complaint) => (
                 <tr
                   key={complaint.id}
-                  className="hover:bg-white/5 transition-colors group"
+                  className="hover:bg-white/5 transition-colors group cursor-pointer relative"
+                  onClick={() => router.push(`/complaints/${complaint.id}`)}
                 >
                   <td className="px-6 py-4 font-mono text-slate-300 text-xs group-hover:text-blue-400 transition-colors">
                     {complaint.trackingId}
@@ -448,7 +451,7 @@ export default function ComplaintsPage() {
                   <td className="px-6 py-4 text-slate-400 text-xs">
                     {new Date(complaint.createdAt).toLocaleDateString()}
                   </td>
-                  <td className="px-6 py-4 text-right">
+                  <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                     <Link
                       href={`/complaints/${complaint.id}`}
                       className="text-blue-400 hover:text-blue-300 font-medium text-xs hover:underline"
@@ -461,6 +464,7 @@ export default function ComplaintsPage() {
             )}
           </tbody>
         </table>
+        </div>
 
         {/* Pagination */}
         {pagination && pagination.totalPages > 1 && (
