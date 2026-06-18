@@ -28,6 +28,11 @@ export default function TrackPage() {
   const [complaint, setComplaint] = useState<Complaint | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Verification states
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectComment, setRejectComment] = useState('');
+  const [verifying, setVerifying] = useState(false);
 
   async function handleTrack(e: React.FormEvent) {
     e.preventDefault();
@@ -35,6 +40,8 @@ export default function TrackPage() {
     setLoading(true);
     setError('');
     setComplaint(null);
+    setShowRejectForm(false);
+    setRejectComment('');
     try {
       const res = await complaintsApi.track(trackingId.trim().toUpperCase());
       setComplaint(res.data);
@@ -42,6 +49,35 @@ export default function TrackPage() {
       setError(getErrorMessage(err));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleVerify(isResolved: boolean) {
+    if (!complaint) return;
+    
+    if (!isResolved && !rejectComment.trim()) {
+      toast.error('कृपया कारण बताएं');
+      return;
+    }
+    
+    setVerifying(true);
+    try {
+      const res = await complaintsApi.verifyResolution(complaint.trackingId, {
+        isResolved,
+        comment: isResolved ? undefined : rejectComment.trim(),
+      });
+      
+      toast.success(res.data.message);
+      
+      // Refresh complaint data
+      const updated = await complaintsApi.track(complaint.trackingId);
+      setComplaint(updated.data);
+      setShowRejectForm(false);
+      setRejectComment('');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setVerifying(false);
     }
   }
 
@@ -189,6 +225,71 @@ export default function TrackPage() {
                   ))}
                 </div>
               </div>
+            )}
+
+            {/* Verification Box - Only show when status is RESOLVED */}
+            {complaint.status === 'RESOLVED' && (
+              <motion.div
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-gradient-to-br from-emerald-900/40 to-slate-900/60 backdrop-blur-md border border-emerald-500/30 rounded-2xl p-6"
+              >
+                <div className="flex items-start gap-3 mb-4">
+                  <CheckCircle2 size={20} className="text-emerald-400 shrink-0 mt-0.5" />
+                  <div>
+                    <h3 className="text-sm font-semibold text-white mb-1">क्या आपकी शिकायत हल हो गई?</h3>
+                    <p className="text-xs text-slate-300">कृपया पुष्टि करें कि समस्या हल हुई है या नहीं</p>
+                  </div>
+                </div>
+
+                {!showRejectForm ? (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleVerify(true)}
+                      disabled={verifying}
+                      className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-medium rounded-xl transition-colors text-sm"
+                    >
+                      {verifying ? 'प्रतीक्षा करें…' : '✅ हाँ, हल हो गई'}
+                    </button>
+                    <button
+                      onClick={() => setShowRejectForm(true)}
+                      disabled={verifying}
+                      className="flex-1 px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-medium rounded-xl transition-colors text-sm border border-white/10"
+                    >
+                      ❌ नहीं, अभी भी है
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <textarea
+                      value={rejectComment}
+                      onChange={(e) => setRejectComment(e.target.value)}
+                      placeholder="कृपया समस्या बताएं (Why is it not resolved?)"
+                      className="w-full bg-slate-900/60 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-slate-500 text-sm focus:outline-none focus:border-emerald-500/50 resize-none"
+                      rows={3}
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleVerify(false)}
+                        disabled={verifying || !rejectComment.trim()}
+                        className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-medium rounded-xl transition-colors text-sm"
+                      >
+                        {verifying ? 'भेज रहे हैं…' : 'Submit'}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowRejectForm(false);
+                          setRejectComment('');
+                        }}
+                        disabled={verifying}
+                        className="px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-medium rounded-xl transition-colors text-sm"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
             )}
           </motion.div>
         )}

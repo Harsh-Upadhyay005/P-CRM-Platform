@@ -81,6 +81,25 @@ No complaint is lost. No deadline is invisible. No step goes undocumented.
 
 ### For Citizens (No Login Required)
 
+#### Seva AI Chatbot — Conversational Complaint Filing
+
+- **Multi-language support** — automatically detects and responds in Hindi, Hinglish (Hindi written in English), or English based on user input
+- **Automatic GPS location capture** — gets precise coordinates and detailed locality (subSubLocality → subLocality → locality → district → city → state → pincode) using Mappls reverse geocoding when chatbot opens
+- **Non-blocking UX** — users can start typing their problem while GPS loads in background; smart waiting logic (up to 5 seconds) ensures location is captured before submission
+- **Location permission required** — submission blocked without GPS access; clear error messages guide users to enable location
+- **One-sentence problem description** — citizens describe their issue naturally in any language: "हमारे area में बिजली नहीं आ रही है" or "garbage not collected since 3 days"
+- **Intelligent keyword-based classification** — 50+ keywords across 6 categories (Water Supply, Electricity, Road Maintenance, Garbage Collection, Street Light, Drainage) with Hindi/Hinglish support (पानी, bijli, sadak, gandagi, naali, batti, etc.)
+- **Auto-generates professional complaint description** — converts casual user input into structured English complaint text for backend processing
+- **Bilingual category confirmation** — shows category in both English and Hindi: "Garbage Collection (कचरा संग्रह)"
+- **Language-matched responses** — bot replies in same language as user: Hindi input → Hindi response, Hinglish → Hinglish, English → English
+- **Anonymous filing** — no login required; uses defaults (name: "Anonymous", phone: "1818181818", email: "anonymous@xyz.com")
+- **Instant tracking ID** — receive `PCRM-YYYYMMDD-XXXXXXXX` tracking ID immediately after submission
+- **WhatsApp sharing** — one-click share button to forward tracking ID and status link to WhatsApp contacts
+- **Session persistence** — Redis-backed session storage (with in-memory fallback) maintains conversation state across page reloads
+- **Visual feedback** — animated loading states, message timestamps, and delivery indicators for smooth UX
+
+#### Traditional Web Form
+
 - **Public complaint portal** — submit a complaint in under 2 minutes with multi-step guided form
 - **Interactive map-based location picker** — drop a pin on Mappls (MapmyIndia) interactive map to capture exact GPS coordinates
 - **Auto-detect location** — "Detect My Location" button uses browser geolocation API for instant location capture
@@ -185,9 +204,12 @@ No complaint is lost. No deadline is invisible. No step goes undocumented.
 | Email           | Brevo (`sib-api-v3-sdk`)                                          |
 | File Storage    | Supabase Storage                                                  |
 | Token Blacklist | Upstash Redis — JWT JTI blacklist on logout / password reset      |
+| Session Store   | Upstash Redis (with in-memory fallback) — Seva chatbot sessions   |
 | File Upload     | Multer (memory buffer → Supabase)                                 |
 | Password        | bcrypt                                                            |
 | Real-Time       | SSE (Server-Sent Events) — native Node.js HTTP, no extra deps     |
+| AI/NLP          | In-process keyword classification + Gemini language detection     |
+| Geolocation     | Mappls (MapmyIndia) Reverse Geocode API                           |
 | Security        | helmet, cors, express-rate-limit, cookie-parser                   |
 | Validation      | Zod v4                                                            |
 | Background Jobs | Interval-based SLA monitor (every 30 min)                         |
@@ -206,6 +228,7 @@ No complaint is lost. No deadline is invisible. No step goes undocumented.
 | Maps                  | Mappls (MapmyIndia) - Interactive location picker & complaint visualization |
 | Forms                 | React Hook Form + Zod                       |
 | Real-Time             | SSE EventSource (live notification badge)   |
+| AI Chatbot            | Seva — Multi-language conversational complaint filing with GPS + reverse geocoding |
 | Icons                 | lucide-react                                |
 
 ---
@@ -341,15 +364,62 @@ Every transition is enforced by a two-layer engine: **graph validity check** (`4
 
 ## AI Intelligence Layer
 
-> **Zero external API cost.** All three engines run in-process on every new complaint.
+> **Zero external API cost.** All engines run in-process on every new complaint.
 
-`analyzeComplaint(description, category, priority, tenantId)` runs all three in parallel and merges output into the Prisma create call.
+### Complaint Analysis Pipeline
+
+`analyzeComplaint(description, category, priority, tenantId)` runs all three engines in parallel and merges output into the Prisma create call.
 
 | Engine                  | How It Works                                                                                   | Output                                                                                                 |
 | ----------------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | **Priority Prediction** | Keyword density + urgency phrase matching + emergency category boosts                          | `aiScore` [0,1], `suggestedPriority` (CRITICAL/HIGH/MEDIUM/LOW), `confidence` — auto-applied on create |
 | **Sentiment Analysis**  | Lexicon-based scorer with intensifier weighting (`very` → 1.5×) and negation handling          | `sentimentScore` [-1,+1] — near -1 = angry/distressed, near +1 = praise                                |
 | **Duplicate Detection** | TF cosine-similarity vs last 200 complaints in same tenant (90-day window, stop-word filtered) | `duplicateScore` [0,1], `potentialDuplicateId` if score > 0.7                                          |
+
+### Seva Chatbot Intelligence
+
+The Seva conversational AI uses a hybrid approach combining rule-based NLP with smart keyword matching:
+
+#### Language Detection
+- **Gemini Flash 2.0** API call for accurate language identification (Hindi, Hinglish, English)
+- Falls back to keyword-based detection if API unavailable
+- Maintains language consistency throughout conversation
+
+#### Keyword-Based Classification
+- **50+ keywords** across 6 complaint categories with multilingual support:
+  - **Water Supply**: paani, water, jal, supply, नल, tap, पानी, nal
+  - **Electricity**: bijli, electricity, light, बिजली, power, लाइट, current, करंट
+  - **Road Maintenance**: road, sadak, सड़क, pothole, गड्ढा, रास्ता, raasta, gaddha, गड्ढे
+  - **Garbage Collection**: kachra, garbage, कचरा, waste, safai, कूड़ा, kooda, kuda, gandagi, गंदगी, gandgi, sanitation, सफाई
+  - **Street Light**: street light, बत्ती, pole, रोशनी, streetlight, batti, roshni, खंभा, khamba, light pole
+  - **Drainage**: drainage, नाली, sewage, overflow, नाला, naali, nala, gutter, sewer, जमाव
+- **Case-insensitive matching** with partial word matching for flexibility
+- **Confidence scoring** (85% for keyword match, 50% for fallback to "Other/General")
+
+#### Professional Description Generation
+- **Template-based expansion** converts casual user input into structured complaint text
+- Example transformation:
+  - User input: "हमारे area में बिजली नहीं आ रही है"
+  - Generated: "Electricity outage reported at [locality]. The area is experiencing power supply issues affecting daily activities. Immediate inspection and restoration of power supply is requested from the electricity department."
+- Includes location context, impact description, and actionable request
+- Always in English for consistent backend processing and staff workflows
+
+#### Geospatial Integration
+- **Automatic GPS capture** via browser Geolocation API (non-blocking)
+- **Mappls reverse geocoding** extracts detailed address components:
+  - `subSubLocality` → `subLocality` → `locality` → `subDistrict` → `district` → `city` → `state` → `pincode`
+- **Smart waiting logic**: waits up to 5 seconds for location before submission
+- **Fallback handling**: shows clear error if location unavailable
+- Stores both coordinates (lat/lng) and formatted address for complaint record
+
+#### Conversation Flow State Machine
+```
+INITIAL → COLLECTING_DESCRIPTION → CLASSIFYING → CONFIRMING → READY → SUBMITTED
+```
+- **Redis-backed sessions** (1-hour TTL) with in-memory fallback for high availability
+- **State persistence** maintains conversation context across messages
+- **Classification history** tracks all category suggestions and user corrections
+- **Atomic submission** prevents duplicate complaints from rapid clicks
 
 ---
 

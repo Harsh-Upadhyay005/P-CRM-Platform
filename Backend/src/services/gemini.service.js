@@ -103,9 +103,35 @@ Respond in JSON format (suggestedCategory must be the exact English name from th
 /**
  * Detect language from user message
  * @param {string} message
- * @returns {'en' | 'hi'}
+ * @returns {'en' | 'hi' | 'hinglish'}
  */
 export function detectLanguage(message) {
   const hindiPattern = /[\u0900-\u097F]/;
-  return hindiPattern.test(message) ? 'hi' : 'en';
+  const hasHindiScript = hindiPattern.test(message);
+  
+  // If contains Devanagari script, it's Hindi
+  if (hasHindiScript) {
+    return 'hi';
+  }
+  
+  // Check for Hinglish patterns (Roman script but Hindi/Urdu words)
+  const hinglishWords = [
+    'hai', 'nahi', 'kya', 'mere', 'area', 'me', 'ka', 'ki', 'ko', 
+    'aur', 'bahut', 'kuch', 'kaise', 'kahan', 'kyun', 'ab', 'yahan',
+    'paani', 'bijli', 'sadak', 'kachra', 'aap', 'aapka', 'humara',
+    'problem', 'issue', 'complaint', 'shikayat', 'dikkat', 'samasya'
+  ];
+  
+  const lowerMessage = message.toLowerCase();
+  const hasHinglishWords = hinglishWords.some(word => 
+    lowerMessage.split(/\s+/).includes(word)
+  );
+  
+  // If has Hinglish words, it's Hinglish
+  if (hasHinglishWords) {
+    return 'hinglish';
+  }
+  
+  // Default to English
+  return 'en';
 }

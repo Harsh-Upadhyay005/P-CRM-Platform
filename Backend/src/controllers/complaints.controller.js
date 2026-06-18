@@ -151,3 +151,13 @@ export const getComplaintVerification = asyncHandler(async (req, res) => {
   const verification = await service.getComplaintVerification(req.params.id, req.user);
   res.json(new ApiResponse(200, verification, "Verification status retrieved"));
 });
+
+// ── PUBLIC RESOLUTION VERIFICATION (for tracking page) ────────────────────
+
+export const verifyResolutionPublic = asyncHandler(async (req, res) => {
+  const { trackingId } = req.params;
+  const { isResolved, comment } = req.body;
+  
+  const result = await service.verifyResolutionPublic(trackingId, isResolved, comment);
+  res.json(new ApiResponse(200, result, result.message));
+});

@@ -9,7 +9,7 @@ import crypto from 'crypto';
  * Process user message and return response
  */
 export const chat = asyncHandler(async (req, res) => {
-  const { sessionId, message } = req.body;
+  const { sessionId, message, coordinates } = req.body;
   
   if (!message || typeof message !== 'string') {
     throw new ApiError(400, 'Message is required');
@@ -25,6 +25,7 @@ export const chat = asyncHandler(async (req, res) => {
     userId,
     tenantId,
     req.user ?? null,
+    coordinates || null,
   );
   
   res.json(new ApiResponse(200, result, 'Message processed'));
