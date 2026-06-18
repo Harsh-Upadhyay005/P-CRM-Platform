@@ -33,6 +33,11 @@ requiredEnvVars.forEach((key) => {
   }
 });
 
+function envOrNull(key) {
+  const value = process.env[key];
+  return value && value.trim() ? value.trim() : null;
+}
+
 export const env = {
   PORT: process.env.PORT,
   DATABASE_URL: process.env.DATABASE_URL,
@@ -85,4 +90,7 @@ export const env = {
 
   SEED_SUPER_ADMIN_EMAIL:    process.env.SEED_SUPER_ADMIN_EMAIL,
   SEED_SUPER_ADMIN_PASSWORD: process.env.SEED_SUPER_ADMIN_PASSWORD,
+
+  GEMINI_API_KEY: envOrNull('GEMINI_API_KEY'),
+  SEVA_DEFAULT_TENANT_SLUG: process.env.SEVA_DEFAULT_TENANT_SLUG || 'main-office',
 };

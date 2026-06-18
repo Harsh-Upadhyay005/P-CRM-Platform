@@ -23,7 +23,8 @@ export const chat = asyncHandler(async (req, res) => {
     finalSessionId,
     message,
     userId,
-    tenantId
+    tenantId,
+    req.user ?? null,
   );
   
   res.json(new ApiResponse(200, result, 'Message processed'));
