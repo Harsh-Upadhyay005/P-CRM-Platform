@@ -1107,25 +1107,28 @@ export const createPublicComplaint = async (data) => {
   const resolvedPriority = priority ?? aiResult.suggestedPriority ?? "MEDIUM";
   const trackingId = generateTrackingId();
 
+  const createData = {
+    trackingId,
+    tenantId: tenant.id,
+    citizenName,
+    citizenPhone,
+    citizenEmail,
+    locality: locality ?? null,
+    description,
+    category: category ?? null,
+    priority: resolvedPriority,
+    sentimentScore: aiResult.sentimentScore,
+    duplicateScore: aiResult.duplicateScore,
+    aiScore: aiResult.aiScore,
+    departmentId: resolvedDepartmentId,
+    createdById: null,
+  };
+
+  if (latitude != null) createData.latitude = latitude;
+  if (longitude != null) createData.longitude = longitude;
+
   const complaint = await prisma.complaint.create({
-    data: {
-      trackingId,
-      tenantId: tenant.id,
-      citizenName,
-      citizenPhone,
-      citizenEmail,
-      locality: locality ?? null,
-      latitude: latitude ?? null,
-      longitude: longitude ?? null,
-      description,
-      category: category ?? null,
-      priority: resolvedPriority,
-      sentimentScore: aiResult.sentimentScore,
-      duplicateScore: aiResult.duplicateScore,
-      aiScore: aiResult.aiScore,
-      departmentId: resolvedDepartmentId,
-      createdById: null,
-    },
+    data: createData,
     select: {
       id: true,
       trackingId: true,
@@ -1165,8 +1168,13 @@ export const createPublicComplaint = async (data) => {
     },
   });
 
-  const [decorated] = await decorateWithSlaBatch([refreshed ?? complaint]);
-  return decorated;
+  try {
+    const [decorated] = await decorateWithSlaBatch([refreshed ?? complaint]);
+    return decorated;
+  } catch (err) {
+    console.warn('[complaints.service] SLA decoration skipped:', err.message);
+    return refreshed ?? complaint;
+  }
 };
 
 // ── PUBLIC TENANT / DEPARTMENT LOOKUP ────────────────────────────────────
